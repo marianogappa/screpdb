@@ -51,7 +51,15 @@ func (d *Dashboard) handlerMapTerrainCrop(w http.ResponseWriter, r *http.Request
 		http.Error(w, "replay file path unknown", http.StatusNotFound)
 		return
 	}
-	terrain, err := scmapanalyzer.MapImagePNGCropFromReplayFile(path, scmapanalyzer.TileRect{X: rect[0], Y: rect[1], W: rect[2], H: rect[3]})
+	// layer=terrain is the floor alone and layer=resources the minerals and geysers alone, so creep can go between them.
+	crop := scmapanalyzer.MapImagePNGCropFromReplayFile
+	switch q.Get("layer") {
+	case "terrain":
+		crop = scmapanalyzer.MapTerrainPNGCropFromReplayFile
+	case "resources":
+		crop = scmapanalyzer.MapResourcesPNGCropFromReplayFile
+	}
+	terrain, err := crop(path, scmapanalyzer.TileRect{X: rect[0], Y: rect[1], W: rect[2], H: rect[3]})
 	if err != nil {
 		log.Printf("map terrain crop replay=%d: %v", replayID, err)
 		http.Error(w, "map render failed", http.StatusInternalServerError)

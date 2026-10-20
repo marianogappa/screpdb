@@ -179,8 +179,10 @@ const terrainCrop = (replayId, region, width, height) => {
   const w = Math.min(Math.ceil((region.x + region.w) / TILE), Math.floor(width / TILE)) - x;
   const h = Math.min(Math.ceil((region.y + region.h) / TILE), Math.floor(height / TILE)) - y;
   if (w <= 0 || h <= 0) return null;
+  const url = `/api/custom/game-assets/map-crop?replay_id=${encodeURIComponent(replayId)}&x=${x}&y=${y}&w=${w}&h=${h}`;
   return {
-    url: `/api/custom/game-assets/map-crop?replay_id=${encodeURIComponent(replayId)}&x=${x}&y=${y}&w=${w}&h=${h}`,
+    url: `${url}&layer=terrain`,
+    resourcesUrl: `${url}&layer=resources`,
     x: x * TILE,
     y: y * TILE,
     w: w * TILE,
@@ -234,6 +236,8 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const metricOf = useSpriteMetrics(metricKeys);
   if (!width || !height) return null;
   const showZoomed = Boolean(region);
+  // Terrain, then creep on the floor, then minerals and geysers, then everything else.
+  const crop = showZoomed ? terrainCrop(replayId, region, width, height) : null;
   const color = (id) => colorByPlayerId?.get(id) || '#e2e8f0';
   // Bars and icons keep a readable size on screen whether the view is a base or the whole map.
   const uiScale = showZoomed ? Math.max(1, region.w / 1100) : Math.max(2.5, width / 1100);
@@ -321,7 +325,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
         mapWidth={width}
         mapHeight={height}
         view={showZoomed ? region : null}
-        detail={showZoomed ? terrainCrop(replayId, region, width, height) : null}
+        detail={crop}
         maxHeight="100vh - 28px"
         alt={mapAlt}
         mapLayers={(
@@ -338,6 +342,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
             </defs>
             {creep && tileset ? <CreepTiles id={creepId} creep={snapshot.creep} path={creep} edgesWidth={showZoomed ? edgesWidth : 0} /> : null}
             {creep && !tileset ? <path d={creep} fill="#000" filter={`url(#${creepId})`} opacity={0.92} /> : null}
+            {crop ? <image href={crop.resourcesUrl} x={crop.x} y={crop.y} width={crop.w} height={crop.h} preserveAspectRatio="none" /> : null}
             {shadows}
             {ground.map((g) => g.node)}
             {air.map((a) => a.node)}
