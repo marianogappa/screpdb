@@ -17,4 +17,8 @@
 // swaps anything until the user clicks Update in the dashboard. Package-manager
 // installs (e.g. Scoop) and non-writable install directories are detected and
 // excluded so the updater never fights another package manager.
+//
+// On Windows it also moves a binary opened from the Downloads folder into
+// %LOCALAPPDATA%\Programs\screpdb and writes its Start Menu and Desktop
+// shortcuts, so a browser download ends up installed like install.ps1 would.
 package selfupdate

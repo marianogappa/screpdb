@@ -55,7 +55,7 @@ macOS, Linux and other options: see [Installation](#installation).
 
 **Windows**
 
-[Download screpdb](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) and open it. If Windows says it protected your PC, click **More info → Run anyway**. screpdb opens in your browser.
+[Download screpdb](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) and open it. If Windows says it protected your PC, click **More info → Run anyway**. screpdb moves itself out of Downloads, adds Start Menu and Desktop shortcuts, and opens in your browser.
 
 <details>
 <summary>Trouble opening it?</summary>
@@ -188,8 +188,7 @@ make build
 
 | Installed with | Command |
 | --- | --- |
-| Windows download | Delete the `.exe` you downloaded |
-| Windows PowerShell installer (`install.ps1`) | `Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\screpdb", "$([Environment]::GetFolderPath('Programs'))\screpdb.lnk"` |
+| Windows download or PowerShell installer | `Remove-Item -Recurse -ErrorAction SilentlyContinue "$env:LOCALAPPDATA\Programs\screpdb", "$([Environment]::GetFolderPath('Programs'))\screpdb.lnk", "$([Environment]::GetFolderPath('Desktop'))\screpdb.lnk"` |
 | Scoop (Windows) | `scoop uninstall screpdb` |
 | Homebrew (macOS/Linux) | `brew uninstall screpdb` |
 | One-line installer / manual | Delete the binary you placed (e.g. `~/.local/bin/screpdb`) |
@@ -285,7 +284,7 @@ screpdb minimizes its attack surface by routing all I/O through facades and keep
 - **Filesystem** — all disk access goes through `internal/iofacade`, which permits reads/writes only within: a single per-OS **app-data directory** (`%LOCALAPPDATA%\screpdb` on Windows, `~/Library/Application Support/screpdb` on macOS, `$XDG_CONFIG_HOME/screpdb` on Linux) that holds settings, the Battle.net and game-asset caches, logs, crash reports, and extracted sample replays; and the configured replays folder (read replays, write "watch me" replays). A narrow, read-only exception walks up from the replays folder to find StarCraft's `CSettings.json`.
 - **Windows OS sandbox** — on Windows the app splits into a Medium-integrity **launcher** and a **Low-integrity worker** ([#237](https://github.com/marianogappa/screpdb/issues/237)). The launcher marks the app-data directory Low-writable and relaunches the real worker at Low integrity; the worker keeps read-down access to replays anywhere but can only *write* into that one Low-labeled folder — every other write is refused by the OS, even from a compromised `screp`/`scmapanalyzer` parser. The launcher retains self-update (it must overwrite the install `.exe`) and brokers the single "watch me" write into the read-only replays folder on the worker's behalf. This does **not** stop a compromised parser from *reading* private files (Low integrity can read up-level); blocking reads needs AppContainer + a broker process, a deferred "Tier 2" follow-up.
 - **Network** — the dashboard server binds to `localhost` only. The binary's outbound calls are confined to three sanctioned packages: **`internal/selfupdate`** ([#212](https://github.com/marianogappa/screpdb/issues/212)) queries GitHub Releases for self-update, verifying every byte against a minisign-signed `SHA256SUMS` (embedded public key) before any swap; **`internal/bnetfacade`** ([#317](https://github.com/marianogappa/screpdb/issues/317)) talks to SC:R's local web-api bridge (loopback only, path-prefixed to `/web-api/`) and downloads replays from `storage.googleapis.com` (allowlisted to the single path prefix `/starcraft-user-uploads-prod/S1-replays/`, with length + `seRS` magic-byte validation on every download); **`internal/netfacade`** houses localhost readiness probes.
-- **Self-update** — updates are always user-initiated, never automatic. Package-manager installs (Scoop on Windows, Homebrew/Linuxbrew on macOS/Linux) and non-writable install directories are detected and excluded so the updater never fights `scoop update` / `brew upgrade` or needs elevation; those installs are pointed back at their package manager. The `curl | sh` and `install.ps1` installers drop into writable dirs (`~/.local/bin`, `%LOCALAPPDATA%\Programs\screpdb`), so in-app self-update keeps working there. Self-written binaries carry no macOS quarantine xattr / Windows Mark-of-the-Web, so Gatekeeper/SmartScreen don't re-prompt after an update.
+- **Self-update** — updates are always user-initiated, never automatic. Package-manager installs (Scoop on Windows, Homebrew/Linuxbrew on macOS/Linux) and non-writable install directories are detected and excluded so the updater never fights `scoop update` / `brew upgrade` or needs elevation; those installs are pointed back at their package manager. The `curl | sh` and `install.ps1` installers drop into writable dirs (`~/.local/bin`, `%LOCALAPPDATA%\Programs\screpdb`), so in-app self-update keeps working there. On Windows, an app opened from the Downloads folder copies itself to `%LOCALAPPDATA%\Programs\screpdb`, writes Start Menu and Desktop shortcuts, relaunches from there and deletes the download. Self-written binaries carry no macOS quarantine xattr / Windows Mark-of-the-Web, so Gatekeeper/SmartScreen don't re-prompt after an update.
 - **Enforcement** — `TestNoDirectIOOutsideFacades` (in `internal/iofacade`) parses the whole module on every `go test` run and fails the build if any package reaches the filesystem or network directly instead of through the facades. `internal/selfupdate`, `internal/bnetfacade`, and `internal/winsandbox` (the Windows process-spawn / integrity-labeling / broker surface) are the documented exceptions.
 
 On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbox: paths handed to trusted dependencies (the screp parser, scmapanalyzer) are opened inside those libraries, and the facade only constrains screpdb's own code. On **Windows** the Low-integrity worker adds a real OS write boundary on top of the same facades.
@@ -298,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-20  OK. Docs only: Windows install is now a browser download of the app instead of the PowerShell one-liner, which antivirus software can block. No code changes.
+2026-10-20  OK. Windows self-install: the launcher, when opened from the Downloads folder, copies its own binary to %LOCALAPPDATA%\Programs\screpdb, writes Start Menu and Desktop .lnk files through the Windows Shell, relaunches the copy and deletes the download. All of it lives in internal/selfupdate (the sanctioned binary-swap exception), runs before the Low worker exists, makes no network calls, and dev builds, Scoop installs and binaries outside Downloads are left alone.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-20  OK. Docs only: Windows install is now a browser download of the app instead of the PowerShell one-liner, which antivirus software can block. No code changes.
 2026-10-18  OK. Skill: one scale per metric, recalls from 2:00, missing values count as 0, money maps measure worker production to 8:00 and banked resources over 20 minutes (stored in the engine record). Opening a game runs its engine pass at once, even on battery, and the game page says so; the engine pill is gone. Skill only exists for games with trusted engine data. No new files, reads or writes.
 2026-10-18  OK. Skill axis ends come from the fitted data (2nd and 98th percentile per race, in model.json), one tier per player, a single warning, flush rows and tinted summary pills. In-memory scoring and frontend only, no I/O changes.
 2026-10-18  OK. Skill macro rows of team games and money maps are converted to 1v1 regular-map equivalents with quantile tables embedded in internal/skill/model.json (fitted offline by scripts/skill-fit from skill-mine -dir output). In-memory scoring only, no I/O changes.
 2026-10-18  OK. Frontend only: Skill charts share one tier range and line up, and the estimate is a single chart carrying each verdict. scripts/skill-mine gains -dir to measure unlabelled replays under a folder the operator names (read only, one output file). No app I/O changes.
-2026-10-18  OK. Skill tab layout pass and wider rating: team games and money maps are rated with caveats (custom-rules and sub-8-minute games still are not); the verdict always shows after APM. Frontend and in-memory scoring only, no I/O changes.
 ```
 
 </details>
