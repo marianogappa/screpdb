@@ -553,6 +553,21 @@ type workflowGameEvent struct {
 	BuildOrders []workflowGameEventBuildOrder `json:"build_orders,omitempty"`
 	// Engine is set on events the game engine found; the browser snapshots the map at SnapshotSecond.
 	Engine *workflowEngineEvent `json:"engine,omitempty"`
+	// Outcome is what an engine attack, drop or harass did.
+	Outcome *workflowGameEventOutcome `json:"outcome,omitempty"`
+	// DurationSeconds is how long a span event (a long supply block) lasted.
+	DurationSeconds int64 `json:"duration_seconds,omitempty"`
+	// Key events are the few the tab shows by default; the rest show on request.
+	Key bool `json:"key"`
+}
+
+type workflowGameEventOutcome struct {
+	Killed    int64 `json:"killed"`
+	Lost      int64 `json:"lost"`
+	Workers   int64 `json:"workers,omitempty"`
+	Buildings int64 `json:"buildings,omitempty"`
+	TownHall  bool  `json:"town_hall,omitempty"`
+	First     bool  `json:"first,omitempty"`
 }
 
 type workflowEngineEvent struct {
@@ -602,6 +617,15 @@ type workflowGameEventBase struct {
 	MineralOnly    *bool                    `json:"mineral_only,omitempty"`
 	Center         workflowGameEventPoint   `json:"center"`
 	Polygon        []workflowGameEventPoint `json:"polygon,omitempty"`
+	// OpenField says where a place away from any base is, for the browser to put in words.
+	OpenField *workflowOpenField `json:"open_field,omitempty"`
+}
+
+// workflowOpenField is a place away from bases: near a base (Ref is its name), on a player's side of the
+// map or near their base (Ref is the player's name), or in the middle of the map.
+type workflowOpenField struct {
+	Relation string `json:"relation"`
+	Ref      string `json:"ref,omitempty"`
 }
 
 type workflowGameOwnership struct {

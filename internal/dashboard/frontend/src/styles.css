@@ -4214,6 +4214,18 @@ button.workflow-nav-update-available:disabled {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.workflow-events-view-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding-right: 8px;
+  margin-right: 4px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.workflow-events-view-switch .workflow-events-filter-chip {
+  font: inherit;
+}
+
 .workflow-events-filter-chip--active,
 .workflow-events-filter-chip--active:hover {
   background: rgba(100, 150, 255, 0.18);

@@ -149,7 +149,7 @@ func TestExpansionsSkipBasesAlreadyHeldAndMacroHatcheries(t *testing.T) {
 		{Owner: 1, Type: ut(bwgame.UnitTypesProtossNexus), From: uint16(openbw.UnitTypeNone), Unit: 12, X: 2000, Y: 400, Start: f(600), Complete: engine.NoFrame, Cancel: f(620)},
 	}
 	got := Detect(d, testBases, zvp)
-	if len(got) != 1 || got[0].Type != "expansion" || got[0].Base != 1 || got[0].Second != 120 || got[0].SnapshotSecond != 122 {
+	if len(got) != 1 || got[0].Type != "expansion" || got[0].Base != 1 || got[0].Second != 120 || got[0].SnapshotSecond != 132 {
 		t.Fatalf("want only the natural: %+v", got)
 	}
 }

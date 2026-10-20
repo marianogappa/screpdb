@@ -392,7 +392,50 @@ const attackLocationClause = (event, location) => {
   return t('events.location.at', { location });
 };
 
+// fightSentence picks the sentence for an attack, a worker massacre or a long supply block from what
+// the event says happened: a base destroyed, workers killed, an attack held off, a big open field win.
+// Every attack names who, whom and where; when the source left one out, the sentence drops just that
+// part instead of falling back to a bare "Attack". Both event renderers share it; null for other types.
+const fightSentence = (event, eventType, hasActor, hasTarget, location) => {
+  const o = event?.outcome;
+  if (eventType === 'attack') {
+    if (!hasActor) return { fallback: 'events.attack' };
+    if (!hasTarget) return location ? { key: 'events.sentence.attacksAt', params: { location } } : { fallback: 'events.attack' };
+    if (!location) return { key: 'events.sentence.attacksNoLocation', params: {} };
+    const params = { locationClause: attackLocationClause(event, location) };
+    if (o?.town_hall) return { key: 'events.sentence.destroysBase', params };
+    if (Number(o?.workers) >= 5) return { key: 'events.sentence.attacksKillingWorkers', params: { ...params, count: o.workers } };
+    if (o && Number(o.lost) >= 400 && Number(o.lost) > 2 * Number(o.killed)) return { key: 'events.sentence.attackHeldOff', params };
+    if (o && isOpenFieldLocation(event) && Number(o.killed) + Number(o.lost) >= 3000) return { key: 'events.sentence.winsFight', params };
+    return { key: 'events.sentence.attacks', params };
+  }
+  if (eventType === 'worker_kills') {
+    const count = Number(o?.workers || 0);
+    if (!hasActor || !hasTarget || !location || !count) return { fallback: 'events.workerKills' };
+    return { key: 'events.sentence.killsWorkers', params: { count, locationClause: attackLocationClause(event, location) } };
+  }
+  if (eventType === 'long_supply_block') {
+    return hasActor && event?.duration_seconds
+      ? { key: 'events.sentence.supplyBlocked', params: { duration: formatDuration(event.duration_seconds) } }
+      : { fallback: 'events.longSupplyBlock' };
+  }
+  return null;
+};
+
+// openFieldLabel says where a place away from bases is, in the reader's language.
+const openFieldLabel = (base) => {
+  const of = base?.open_field;
+  if (!of) return '';
+  if (of.relation === 'near_base') return t('events.location.nearBase', { location: of.ref });
+  if (of.relation === 'near_player_base') return t('events.location.nearPlayerBase', { player: of.ref });
+  if (of.relation === 'player_side') return t('events.location.playerSide', { player: of.ref });
+  if (of.relation === 'middle') return t('events.location.middle');
+  return '';
+};
+
 const gameEventLocationLabel = (event) => {
+  const openField = openFieldLabel(event?.base);
+  if (openField) return openField;
   const baseName = String(event?.base?.name || '').trim();
   if (baseName) {
     const isMineralOnly = event?.base?.mineral_only === true;
@@ -534,11 +577,8 @@ const gameEventDescription = (event, registry) => {
     if (actor && isActorAtOwnNaturalBase(event)) return t('events.sentence.expandsToNatural', { actor });
     return actor && location ? t('events.sentence.expandsTo', { actor, location }) : t('events.expansion');
   }
-  if (eventType === 'attack') {
-    return actor && target && location
-      ? t('events.sentence.attacks', { actor, target, locationClause: attackLocationClause(event, location) })
-      : t('events.attack');
-  }
+  const fight = fightSentence(event, eventType, Boolean(actor), Boolean(target), location);
+  if (fight) return fight.key ? t(fight.key, { actor, target, ...fight.params }) : t(fight.fallback);
   if (eventType === 'scout') return actor && target && location ? t('events.sentence.scouts', { actor, target, location }) : t('events.scout');
   if (DROP_TEXT[eventType]) {
     const fallback = t(DROP_TEXT[eventType].label);
@@ -1102,11 +1142,8 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     if (actorName && isActorAtOwnNaturalBase(event)) return fill('events.sentence.expandsToNatural', { actor: actorSpan });
     return actorName && location ? fill('events.sentence.expandsTo', { actor: actorSpan, location }) : t('events.expansion');
   }
-  if (eventType === 'attack') {
-    return actorName && targetName && location
-      ? fill('events.sentence.attacks', { actor: actorSpan, target: targetSpan, locationClause: attackLocationClause(event, location) })
-      : t('events.attack');
-  }
+  const fight = fightSentence(event, eventType, Boolean(actorName), Boolean(targetName), location);
+  if (fight) return fight.key ? fill(fight.key, { actor: actorSpan, target: targetSpan, ...fight.params }) : t(fight.fallback);
   if (eventType === 'scout') {
     return actorName && targetName && location
       ? fill('events.sentence.scouts', { actor: actorSpan, target: targetSpan, location })
@@ -1688,6 +1725,11 @@ const gameEventRowIconEntries = (event, playerRaceByID, registry) => {
   if (normalized === 'team_stacking_detected') {
     return [{ emoji: '😈', alt: t('events.icon.teamStacking.alt'), title: t('events.icon.teamStacking.title') }];
   }
+  if (normalized === 'long_supply_block') {
+    const supply = { terran: 'supplydepot', protoss: 'pylon', zerg: 'overlord' }[String(actorRace || '').toLowerCase()];
+    const icon = supply ? getUnitIcon(supply) : null;
+    return icon ? [{ src: icon, alt: t('events.longSupplyBlock'), title: t('events.longSupplyBlock') }] : [];
+  }
   if (normalized === 'expansion' || normalized === 'takeover') {
     const icon = getExpansionMarkerIconForRace(actorRace);
     if (!icon) return [];
@@ -1990,7 +2032,7 @@ const DEFAULT_SUMMARY_FILTERS = {
 };
 
 const SUMMARY_TOPIC_PATTERNS = {
-  attack: /\battacks?\b/i,
+  attack: /\battacks?\b|\bworker kills\b/i,
   expansion: /\bexpands?\b|\bexpansion\b/i,
   leaves: /\bleaves the game\b|\bstops playing\b|\bleave game\b|\bplayer dropped\b|\bmass disconnect\b|\bstopped playing\b/i,
   nuke: /\bnuke|nuclear\b/i,
@@ -2446,6 +2488,7 @@ function App() {
   // the actual map lives at module scope (see scPlayerColorMap above) so the
   // module-level helpers (playerColorToCss, mapLabelStyle) can consume it.
   const [, setScColorMapLoaded] = useState(false);
+  const [mainEventsShowAll, setMainEventsShowAll] = useState(false);
   const [mainSummaryFilters, setMainSummaryFilters] = useState(DEFAULT_SUMMARY_FILTERS);
   const [productionView, setProductionView] = useState('all');
   const [productionSubFilter, setProductionSubFilter] = useState('all');
@@ -4149,8 +4192,13 @@ function App() {
 
   const topicFilteredGameEvents = useMemo(() => {
     const allEvents = Array.isArray(mainGame?.game_events) ? mainGame.game_events : [];
+    // A type filter asks for every event of that type, key or not.
+    const onlyKey = !mainEventsShowAll && !Object.values(mainSummaryFilters).some(Boolean);
     const visibleEvents = allEvents.filter((event) => {
       if (isStructuralGameEventType(event?.type)) {
+        return false;
+      }
+      if (onlyKey && event?.key === false) {
         return false;
       }
       if (normalizeEventType(event?.type) === 'takeover') {
@@ -4179,7 +4227,12 @@ function App() {
       deduped.push(event);
     }
     return deduped;
-  }, [mainGame?.game_events, mainSummaryFilters, markerRegistry, t]);
+  }, [mainGame?.game_events, mainSummaryFilters, mainEventsShowAll, markerRegistry, t]);
+
+  const shownEventCount = useMemo(() => (mainGame?.game_events || []).filter((event) => (
+    !isStructuralGameEventType(event?.type) && !['takeover', 'scout'].includes(normalizeEventType(event?.type))
+  )).length, [mainGame?.game_events]);
+  const hasNonKeyEvents = useMemo(() => (mainGame?.game_events || []).some((event) => event?.key === false), [mainGame?.game_events]);
 
   const filteredGameEvents = useMemo(() => (
     topicFilteredGameEvents.filter((event) => {
@@ -4209,7 +4262,7 @@ function App() {
       const nt = normalizeEventType(event?.type);
       if (nt === 'takeover') continue;
       const text = gameEventSearchText(event, markerRegistry);
-      if (nt === 'attack') base.attack = true;
+      if (nt === 'attack' || nt === 'worker_kills') base.attack = true;
       if (nt === 'expansion') base.expansion = true;
       if (nt === 'leave_game' || nt === 'player_dropped' || nt === 'mass_disconnect' || nt === 'player_stopped_playing') base.leaves = true;
       if (SUMMARY_TOPIC_PATTERNS.nuke.test(text)) base.nuke = true;
@@ -6472,6 +6525,16 @@ function App() {
                     <div className="workflow-events-controls">
                       <div className="workflow-events-filters">
                       <div className="workflow-events-filter-row" role="group" aria-label={t('events.filterByTypeAria')}>
+                        {hasNonKeyEvents ? (
+                          <div className="workflow-events-view-switch" role="group">
+                            <button type="button" className={`workflow-events-filter-chip${mainEventsShowAll ? '' : ' workflow-events-filter-chip--active'}`} aria-pressed={!mainEventsShowAll} onClick={() => setMainEventsShowAll(false)}>
+                              {t('events.view.key')}
+                            </button>
+                            <button type="button" className={`workflow-events-filter-chip${mainEventsShowAll ? ' workflow-events-filter-chip--active' : ''}`} aria-pressed={mainEventsShowAll} onClick={() => setMainEventsShowAll(true)}>
+                              {t('events.view.all', { count: shownEventCount })}
+                            </button>
+                          </div>
+                        ) : null}
                         {[
                           { key: 'attack', label: t('events.attack') },
                           { key: 'expansion', label: t('events.expansion') },
