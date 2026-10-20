@@ -11,8 +11,6 @@ on:
     paths:
       - install.ps1
       - .github/workflows/install-windows.yml
-  release:
-    types: [published]
   workflow_dispatch:
 
 jobs:
