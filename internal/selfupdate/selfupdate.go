@@ -19,7 +19,15 @@ import (
 // release, classifies the update tier, and reports whether this install can
 // update itself in place. It never downloads or modifies the binary.
 func CheckStatus(ctx context.Context) (Status, error) {
-	s := Status{CurrentVersion: buildinfo.Version, Tier: TierNone, OS: runtime.GOOS}
+	s := Status{
+		CurrentVersion: buildinfo.Version,
+		Tier:           TierNone,
+		OS:             runtime.GOOS,
+		UpdateFailed:   os.Getenv(updateFailedEnv) == "1",
+	}
+	if name, ok := currentAssetName(); ok {
+		s.DownloadURL = latestDownloadURL(name)
+	}
 
 	rel, err := fetchLatestRelease(ctx)
 	if err != nil {

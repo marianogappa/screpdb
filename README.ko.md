@@ -51,7 +51,7 @@ macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
 
 **Windows**
 
-[screpdb 다운로드](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) 후 실행하세요. Windows가 PC를 보호했다고 표시하면 **추가 정보 → 실행**을 클릭하세요. screpdb가 브라우저에서 열립니다.
+[screpdb 다운로드](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) 후 실행하세요. Windows가 PC를 보호했다고 표시하면 **추가 정보 → 실행**을 클릭하세요. screpdb가 다운로드 폴더에서 설치 폴더로 옮겨지고, 시작 메뉴와 바탕 화면 바로 가기를 만든 뒤 브라우저에서 열립니다.
 
 <details>
 <summary>실행되지 않나요?</summary>
@@ -182,8 +182,7 @@ make build
 
 | 설치 방법 | 명령 |
 | --- | --- |
-| Windows 다운로드 | 내려받은 `.exe`를 삭제 |
-| Windows PowerShell 설치 스크립트 (`install.ps1`) | `Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\screpdb", "$([Environment]::GetFolderPath('Programs'))\screpdb.lnk"` |
+| Windows 다운로드 또는 PowerShell 설치 스크립트 | `Remove-Item -Recurse -ErrorAction SilentlyContinue "$env:LOCALAPPDATA\Programs\screpdb", "$([Environment]::GetFolderPath('Programs'))\screpdb.lnk", "$([Environment]::GetFolderPath('Desktop'))\screpdb.lnk"` |
 | Scoop (Windows) | `scoop uninstall screpdb` |
 | Homebrew (macOS/Linux) | `brew uninstall screpdb` |
 | 한 줄 설치 스크립트 / 수동 설치 | 직접 넣은 바이너리를 삭제하세요 (예: `~/.local/bin/screpdb`) |

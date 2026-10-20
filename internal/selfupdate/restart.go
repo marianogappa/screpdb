@@ -4,7 +4,10 @@ package selfupdate
 
 import "os"
 
-const restartEnv = "SCREPDB_SELFUPDATE_RESTART"
+const (
+	restartEnv      = "SCREPDB_SELFUPDATE_RESTART"
+	updateFailedEnv = "SCREPDB_SELFUPDATE_FAILED"
+)
 
 // IsRestart reports whether this process was launched by Restart after a
 // successful self-update. Startup uses it to suppress a duplicate browser tab and
@@ -16,6 +19,10 @@ func IsRestart() bool { return os.Getenv(restartEnv) == "1" }
 // relaunching the worker after applying an update, so the worker takes the same
 // IsRestart path as an in-place re-exec would.
 func RestartEnvKV() string { return restartEnv + "=1" }
+
+// UpdateFailedEnvKV marks a worker relaunched after the launcher failed to
+// apply an update, so its status reports UpdateFailed.
+func UpdateFailedEnvKV() string { return updateFailedEnv + "=1" }
 
 // Restart relaunches the just-swapped binary in place, inheriting the original
 // arguments. On Unix it replaces the current process image; on Windows it spawns

@@ -49,6 +49,8 @@
   "update.unsupportedPlatform": "이 플랫폼용 자동 업데이트 빌드가 없습니다. 새 버전을 다운로드해 주세요",
   "update.download": "새 버전 다운로드",
   "update.failed": "업데이트에 실패했습니다",
+  "update.failedDownload": "⚠️ 업데이트 실패 · 새 버전 다운로드",
+  "update.failedDownloadTip": "백신이나 방화벽 때문에 앱 안에서 업데이트를 내려받지 못했습니다. 브라우저에서 내려받아 주세요",
   "update.installedTip": "새 버전이 설치되었습니다. 새로 고침하여 불러오세요",
   "update.updatedRefresh": "✅ {version}으로 업데이트됨 · 새로 고침",
   "update.updatedRefreshFooter": "✅ {version}으로 업데이트됨 · 새로 고침",

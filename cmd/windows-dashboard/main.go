@@ -12,6 +12,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
 	"github.com/marianogappa/screpdb/internal/iofacade"
+	"github.com/marianogappa/screpdb/internal/selfupdate"
 	"github.com/marianogappa/screpdb/internal/winsandbox"
 	"github.com/spf13/pflag"
 )
@@ -30,6 +31,15 @@ func main() {
 			if logFile, err := iofacade.Create(logPath); err == nil {
 				log.SetOutput(logFile)
 			}
+		}
+		if selfupdate.SelfInstall() {
+			os.Exit(0)
+		}
+		if src := selfupdate.TakeMovedDownload(); src != "" {
+			go func() {
+				defer crashreport.GuardNonFatal(nil)
+				selfupdate.RemoveMovedDownload(src)
+			}()
 		}
 		os.Exit(runLauncher())
 	}

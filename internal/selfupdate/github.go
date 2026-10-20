@@ -47,6 +47,12 @@ func httpClient() *http.Client {
 // fetchLatestRelease queries the GitHub Releases API for the newest published
 // release. This is the only outbound call made during a launch-time update check
 // and is read-only.
+// latestDownloadURL is the browser link to the newest release's asset, which
+// GitHub redirects to whichever version is current.
+func latestDownloadURL(asset string) string {
+	return fmt.Sprintf("https://github.com/%s/%s/releases/latest/download/%s", repoOwner, repoName, asset)
+}
+
 func fetchLatestRelease(ctx context.Context) (ghRelease, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", repoOwner, repoName)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
