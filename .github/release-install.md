@@ -1,11 +1,7 @@
 <!-- screpdb-install -->
 ## Install
 
-**Windows:** open PowerShell and paste this. screpdb opens when it's done.
-
-```powershell
-irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
-```
+**Windows:** [download screpdb](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) and open it. If Windows says it protected your PC, click **More info → Run anyway**.
 
 **macOS / Linux:**
 
@@ -13,7 +9,6 @@ irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | ie
 curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh
 ```
 
-Prefer Scoop, Homebrew, or downloading a binary from the assets below? See the [installation guide](https://github.com/marianogappa/screpdb#installation). The binaries are unsigned, so direct downloads trigger SmartScreen / Gatekeeper warnings.
+Prefer Scoop, Homebrew, or the CLI? See the [installation guide](https://github.com/marianogappa/screpdb#installation).
 
 ---
-

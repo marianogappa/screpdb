@@ -12,11 +12,7 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 
 **▶️ [브라우저에서 바로 사용해 보기](https://marianogappa.github.io/screpdb/)** — 설치 없이 예시 리플레이로 전체 대시보드를 체험할 수 있고, 모든 처리는 브라우저에서 실행됩니다.
 
-**⬇️ Windows에 설치:** PowerShell에 붙여 넣으세요.
-
-```powershell
-irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
-```
+**⬇️ Windows에 설치:** [screpdb 다운로드](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) 후 실행하세요. Windows가 PC를 보호했다고 표시하면 **추가 정보 → 실행**을 클릭하세요.
 
 macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
 
@@ -55,11 +51,17 @@ macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
 
 **Windows**
 
-```powershell
-irm https://raw.githubusercontent.com/marianogappa/screpdb/main/install.ps1 | iex
-```
+[screpdb 다운로드](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) 후 실행하세요. Windows가 PC를 보호했다고 표시하면 **추가 정보 → 실행**을 클릭하세요. screpdb가 브라우저에서 열립니다.
 
-PowerShell에 붙여 넣으세요. screpdb가 브라우저에서 열리고 시작 메뉴 바로 가기가 생깁니다. [스크립트 보기](install.ps1).
+<details>
+<summary>실행되지 않나요?</summary>
+
+앱은 코드 서명이 되어 있지 않아:
+
+- **Defender나 다른 백신**이 격리할 수 있습니다(서명되지 않은 Go 바이너리의 알려진 오탐). 보호 기록에서 복원하세요.
+- AppLocker나 WDAC가 적용된 **회사 PC**에서는 완전히 차단될 수 있습니다.
+
+</details>
 
 <details>
 <summary><strong>Linux</strong></summary>
@@ -114,24 +116,16 @@ curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.s
 그다음 `screpdb`를 실행하세요. 두 방법 모두 Gatekeeper의 "확인되지 않은 개발자" 차단이 없습니다.
 
 <details>
-<summary>직접 다운로드를 원하시나요? (이 방법은 Gatekeeper에 <em>걸립니다</em>)</summary>
+<summary>Scoop 없이 CLI만 원하시나요?</summary>
 
-[릴리스 페이지](https://github.com/marianogappa/screpdb/releases)에서 Mac에 맞는 바이너리를 내려받은 뒤:
-
-```bash
-chmod +x screpdb-darwin-arm64                          # or screpdb-darwin-amd64
-xattr -d com.apple.quarantine screpdb-darwin-arm64     # clear the browser-download quarantine
-mkdir -p ~/.local/bin && mv screpdb-darwin-arm64 ~/.local/bin/screpdb
-```
-
-앱 내 업데이트 버튼이 작동하도록 쓰기 가능한 폴더(`~/Downloads`나 Homebrew prefix 제외)에 두세요.
+[릴리스 페이지](https://github.com/marianogappa/screpdb/releases)에서 **`screpdb-windows-amd64.exe`**를 내려받으세요. SmartScreen과 백신 관련 안내는 동일합니다. [소스에서 빌드](#소스에서-빌드하기)할 수도 있습니다.
 
 </details>
 
 </details>
 
 <details>
-<summary><strong>Windows: Scoop 또는 직접 다운로드</strong></summary>
+<summary><strong>Windows: Scoop 또는 CLI</strong></summary>
 
 <details>
 <summary>Scoop을 선호하시나요? (<code>screpdb</code> CLI도 함께 설치됩니다)</summary>
@@ -188,7 +182,8 @@ make build
 
 | 설치 방법 | 명령 |
 | --- | --- |
-| Windows 설치 스크립트 (`install.ps1`) | `Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\screpdb", "$([Environment]::GetFolderPath('Programs'))\screpdb.lnk"` |
+| Windows 다운로드 | 내려받은 `.exe`를 삭제 |
+| Windows PowerShell 설치 스크립트 (`install.ps1`) | `Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\screpdb", "$([Environment]::GetFolderPath('Programs'))\screpdb.lnk"` |
 | Scoop (Windows) | `scoop uninstall screpdb` |
 | Homebrew (macOS/Linux) | `brew uninstall screpdb` |
 | 한 줄 설치 스크립트 / 수동 설치 | 직접 넣은 바이너리를 삭제하세요 (예: `~/.local/bin/screpdb`) |
