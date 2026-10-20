@@ -157,3 +157,8 @@ jobs:
 
       - name: Run Low-integrity containment integration test
         run: go test -tags integration -run TestLowIntegrityContainment ./internal/winsandbox/
+
+      # Self-install from Downloads: file swap and Start Menu/Desktop shortcuts
+      # through the Windows Shell, which only exists on a Windows runner.
+      - name: Run selfupdate tests (Windows)
+        run: go test ./internal/selfupdate/
