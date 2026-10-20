@@ -13,6 +13,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   release:
@@ -22,6 +23,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # The release is published before any binary exists, and everything that
+      # downloads "latest" (the README's Windows link, install.sh, install.ps1,
+      # the in-app update check) would 404 until the upload below. Holding it
+      # as a prerelease keeps "latest" on the previous, complete release until
+      # this one has its assets. If the build fails, it stays held back.
+      - name: Keep the previous release as latest while building
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --prerelease
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -42,41 +54,6 @@ jobs:
       - name: Generate SHA256SUMS
         working-directory: dist
         run: sha256sum * > SHA256SUMS
-
-      # Bump the Homebrew formula in the dedicated marianogappa/homebrew-screpdb
-      # tap so `brew upgrade screpdb` picks up the release. Requires a
-      # HOMEBREW_TAP_TOKEN secret (a PAT with contents:write on that repo — the
-      # default GITHUB_TOKEN cannot push cross-repo). See RELEASING.md for setup.
-      # Best-effort: skips cleanly if the secret is absent and never fails the
-      # release.
-      - name: Update Homebrew formula
-        if: github.ref_type == 'tag'
-        continue-on-error: true
-        env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
-            echo "::warning::HOMEBREW_TAP_TOKEN secret not set; skipping Homebrew formula bump. See RELEASING.md."
-            exit 0
-          fi
-          VERSION="${GITHUB_REF_NAME#v}"
-          TAP_DIR="$(mktemp -d)"
-          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/marianogappa/homebrew-screpdb.git" "$TAP_DIR"
-          mkdir -p "$TAP_DIR/Formula"
-          ./scripts/update-homebrew-formula.sh "$VERSION" dist/SHA256SUMS "$TAP_DIR/Formula/screpdb.rb"
-          git -C "$TAP_DIR" config user.name "github-actions[bot]"
-          git -C "$TAP_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Stage first, then diff the index: `git diff` alone ignores untracked
-          # files, so on a fresh/empty tap the brand-new formula would look
-          # unchanged and never get committed.
-          git -C "$TAP_DIR" add Formula/screpdb.rb
-          if git -C "$TAP_DIR" diff --cached --quiet; then
-            echo "Homebrew formula already up to date."
-            exit 0
-          fi
-          git -C "$TAP_DIR" commit -m "screpdb ${VERSION}"
-          git -C "$TAP_DIR" push origin HEAD
 
       - name: Sign SHA256SUMS with minisign
         env:
@@ -115,6 +92,57 @@ jobs:
         with:
           files: dist/SHA256SUMS.minisig
           fail_on_unmatched_files: true
+
+      - name: Make this release latest
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --prerelease=false --latest
+
+      # Bump the Homebrew formula in the dedicated marianogappa/homebrew-screpdb
+      # tap so `brew upgrade screpdb` picks up the release. Requires a
+      # HOMEBREW_TAP_TOKEN secret (a PAT with contents:write on that repo — the
+      # default GITHUB_TOKEN cannot push cross-repo). See RELEASING.md for setup.
+      # Best-effort: skips cleanly if the secret is absent and never fails the
+      # release.
+      - name: Update Homebrew formula
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOMEBREW_TAP_TOKEN:-}" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN secret not set; skipping Homebrew formula bump. See RELEASING.md."
+            exit 0
+          fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAP_DIR="$(mktemp -d)"
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/marianogappa/homebrew-screpdb.git" "$TAP_DIR"
+          mkdir -p "$TAP_DIR/Formula"
+          ./scripts/update-homebrew-formula.sh "$VERSION" dist/SHA256SUMS "$TAP_DIR/Formula/screpdb.rb"
+          git -C "$TAP_DIR" config user.name "github-actions[bot]"
+          git -C "$TAP_DIR" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Stage first, then diff the index: `git diff` alone ignores untracked
+          # files, so on a fresh/empty tap the brand-new formula would look
+          # unchanged and never get committed.
+          git -C "$TAP_DIR" add Formula/screpdb.rb
+          if git -C "$TAP_DIR" diff --cached --quiet; then
+            echo "Homebrew formula already up to date."
+            exit 0
+          fi
+          git -C "$TAP_DIR" commit -m "screpdb ${VERSION}"
+          git -C "$TAP_DIR" push origin HEAD
+
+      # Events caused by GITHUB_TOKEN start no workflows, so the edit above does
+      # not fire `released`; dispatch the installer check now that "latest" is
+      # this complete release.
+      - name: Check the Windows installer against this release
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run install-windows.yml --ref main
 
       # Many users land on the Releases page and never see the README, so put
       # the install instructions at the top of every release body. Best-effort:
