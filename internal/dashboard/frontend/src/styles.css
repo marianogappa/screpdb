@@ -7544,20 +7544,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   display: block;
 }
 
-.engine-snapshot-region {
-  fill: none;
-  stroke: rgba(251, 191, 36, 0.9);
-  stroke-dasharray: 48 32;
-}
-.engine-snapshot-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  font-size: 0.78rem;
-  color: rgba(148, 163, 184, 0.9);
-}
 .macro-table td.macro-best {
   font-weight: 700;
   color: rgba(241, 245, 249, 1);

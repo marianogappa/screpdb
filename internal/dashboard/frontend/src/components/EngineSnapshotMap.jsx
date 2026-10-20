@@ -1,6 +1,5 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { useT } from '../lib/i18nContext';
-import { formatDuration } from '../lib/formatters';
 import { api } from '../api';
 import { getUnitIcon, normalizeUnitName, spriteKeyOf } from '../lib/gameAssets';
 import GameMap from './GameMap';
@@ -8,15 +7,13 @@ import GameMap from './GameMap';
 const TILE = 32;
 // scmapanalyzer's sprites are Remastered HD2 art: two sprite pixels per map pixel.
 const SPRITE_SCALE = 0.5;
-// The whole map is shown far smaller, so there units are drawn 2.5 times larger to stay visible.
-const WHOLE_MAP_UNIT_SCALE = 2.5;
 const LIFT_HEIGHT = 24;
 const FALLBACK_METRIC = { w: 56, h: 56, ax: 28, ay: 28 };
 
-// A Protoss building warping in glows blue-white in the game; the others show their bar alone.
-const PROTOSS_BUILDINGS = new Set([
-  'nexus', 'pylon', 'gateway', 'assimilator', 'forge', 'photoncannon', 'cyberneticscore', 'shieldbattery', 'roboticsfacility',
-  'stargate', 'citadelofadun', 'roboticssupportbay', 'fleetbeacon', 'templararchives', 'observatory', 'arbitertribunal',
+// Flyers are drawn above everything on the ground, as the game draws air above ground.
+const FLYERS = new Set([
+  'overlord', 'mutalisk', 'scourge', 'guardian', 'devourer', 'queen', 'wraith', 'dropship', 'sciencevessel', 'battlecruiser',
+  'valkyrie', 'scout', 'carrier', 'arbiter', 'corsair', 'shuttle', 'observer', 'interceptor',
 ]);
 
 // Only the Lurker has a burrowed sprite; other burrowed units are drawn see-through.
@@ -207,28 +204,22 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const engine = event?.engine;
   const second = engine?.snapshot_second ?? event?.second ?? 0;
   const [snapshot, setSnapshot] = useState(null);
-  const [failed, setFailed] = useState(false);
-  const [zoomed, setZoomed] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     let exactArrived = false;
-    setFailed(false);
     api.getEngineSnapshot(replayId, second)
       .then((data) => { if (!cancelled && !exactArrived) setSnapshot(data); })
-      .catch(() => { if (!cancelled && !exactArrived) setFailed(true); });
+      .catch(() => {});
     api.getEngineSnapshot(replayId, second, { exact: true, seconds: eventSeconds || [] })
       .then((data) => {
         if (cancelled) return;
         exactArrived = true;
         setSnapshot(data);
-        setFailed(false);
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [replayId, second, eventSeconds]);
-
-  useEffect(() => { setZoomed(true); }, [event]);
 
   const width = Number(mapWidth) || 0;
   const height = Number(mapHeight) || 0;
@@ -242,7 +233,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   ])].filter(Boolean).sort(), [snapshot]);
   const metricOf = useSpriteMetrics(metricKeys);
   if (!width || !height) return null;
-  const showZoomed = zoomed && region;
+  const showZoomed = Boolean(region);
   const color = (id) => colorByPlayerId?.get(id) || '#e2e8f0';
   // Bars and icons keep a readable size on screen whether the view is a base or the whole map.
   const uiScale = showZoomed ? Math.max(1, region.w / 1100) : Math.max(2.5, width / 1100);
@@ -258,60 +249,69 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
     h: m.h * SPRITE_SCALE * scale,
   });
 
+  // The game draws shadows first, then everything on the ground from north to south, then flyers.
   const shadows = [];
-  const buildings = (snapshot?.buildings || []).map((b, i) => {
-    const key = spriteKeyOf(b.unit_type);
+  const ground = [];
+  const air = [];
+  (snapshot?.buildings || []).forEach((b, i) => {
     const m = metricOf(metricKey(b.unit_type, false)) || FALLBACK_METRIC;
-    const scale = showZoomed ? 1 : 1.25;
     const lift = b.lifted ? LIFT_HEIGHT : 0;
-    const box = place(m, b.x, b.y - lift, scale);
-    if (m.shadow && showZoomed) {
-      const sb = place(m.shadow, b.x, b.y, scale);
+    const box = place(m, b.x, b.y - lift, 1);
+    if (m.shadow) {
+      const sb = place(m.shadow, b.x, b.y, 1);
       shadows.push(<image key={`bs-${i}`} href={getUnitIcon(b.unit_type, { shadow: true })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
     }
     const building = b.progress != null;
     const title = building ? t('snapshot.underConstruction', { unit: b.unit_type }) : b.unit_type;
-    return (
-      <g key={`b-${i}`}>
+    (b.lifted ? air : ground).push({
+      y: b.y,
+      node: (
+        <g key={`b-${i}`}>
+          <Sprite
+            href={getUnitIcon(b.unit_type, { color: color(b.player_id) })}
+            x={box.x}
+            y={box.y}
+            w={box.w}
+            h={box.h}
+            filter={building ? `url(#${warpId})` : undefined}
+            title={title}
+          />
+          {building ? (
+            <ProgressBar cx={b.x} top={b.y + b.h / 2 + 2 * uiScale} width={Math.min(b.w * 0.8, 110 * uiScale)} progress={b.progress} scale={uiScale} segmentsId={segmentsId} />
+          ) : null}
+        </g>
+      ),
+    });
+  });
+
+  (snapshot?.units || []).forEach((u, i) => {
+    const m = metricOf(metricKey(u.unit_type, u.burrowed)) || FALLBACK_METRIC;
+    const box = place(m, u.x, u.y, 1);
+    const variant = variantOf(u.unit_type, u.burrowed);
+    const burrowedLook = u.burrowed && !variant;
+    if (m.shadow && !burrowedLook) {
+      const sb = place(m.shadow, u.x, u.y, 1);
+      shadows.push(<image key={`us-${i}`} href={getUnitIcon(u.unit_type, { shadow: true, variant })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
+    }
+    (FLYERS.has(spriteKeyOf(u.unit_type)) ? air : ground).push({
+      y: u.y,
+      node: (
         <Sprite
-          href={getUnitIcon(b.unit_type, { color: color(b.player_id) })}
+          key={`u-${i}`}
+          href={getUnitIcon(u.unit_type, { color: color(u.player_id), variant })}
           x={box.x}
           y={box.y}
           w={box.w}
           h={box.h}
-          filter={building && PROTOSS_BUILDINGS.has(key) ? `url(#${warpId})` : undefined}
-          title={title}
+          opacity={burrowedLook ? 0.45 : 1}
+          title={u.unit_type}
         />
-        {building ? (
-          <ProgressBar cx={b.x} top={b.y + (b.h * scale) / 2 + 2 * uiScale} width={Math.min(b.w * scale * 0.8, 110 * uiScale)} progress={b.progress} scale={uiScale} segmentsId={segmentsId} />
-        ) : null}
-      </g>
-    );
+      ),
+    });
   });
-
-  const units = (snapshot?.units || []).map((u, i) => {
-    const m = metricOf(metricKey(u.unit_type, u.burrowed)) || FALLBACK_METRIC;
-    const scale = showZoomed ? 1 : WHOLE_MAP_UNIT_SCALE;
-    const box = place(m, u.x, u.y, scale);
-    const variant = variantOf(u.unit_type, u.burrowed);
-    const burrowedLook = u.burrowed && !variant;
-    if (m.shadow && showZoomed && !burrowedLook) {
-      const sb = place(m.shadow, u.x, u.y, scale);
-      shadows.push(<image key={`us-${i}`} href={getUnitIcon(u.unit_type, { shadow: true, variant })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
-    }
-    return (
-      <Sprite
-        key={`u-${i}`}
-        href={getUnitIcon(u.unit_type, { color: color(u.player_id), variant })}
-        x={box.x}
-        y={box.y}
-        w={box.w}
-        h={box.h}
-        opacity={burrowedLook ? 0.45 : 1}
-        title={u.unit_type}
-      />
-    );
-  });
+  const byY = (a, b) => a.y - b.y;
+  ground.sort(byY);
+  air.sort(byY);
 
   return (
     <div className="engine-snapshot">
@@ -338,31 +338,12 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
             </defs>
             {creep && tileset ? <CreepTiles id={creepId} creep={snapshot.creep} path={creep} edgesWidth={showZoomed ? edgesWidth : 0} /> : null}
             {creep && !tileset ? <path d={creep} fill="#000" filter={`url(#${creepId})`} opacity={0.92} /> : null}
-            {!showZoomed && region ? (
-              <rect x={region.x} y={region.y} width={region.w} height={region.h} className="engine-snapshot-region" strokeWidth={24} />
-            ) : null}
             {shadows}
-            {buildings}
-            {units}
+            {ground.map((g) => g.node)}
+            {air.map((a) => a.node)}
           </>
         )}
       />
-      <div className="engine-snapshot-meta">
-        <span>
-          {failed
-            ? t('snapshot.unavailable')
-            : !snapshot
-              ? t('snapshot.loading')
-              : snapshot.exact
-                ? t('snapshot.exactCaption', { time: formatDuration(snapshot.second) })
-                : t('snapshot.caption', { time: formatDuration(snapshot.second), armyTime: formatDuration(Math.max(0, snapshot.army_second)) })}
-        </span>
-        {region ? (
-          <button type="button" className="btn-switch engine-snapshot-zoom" onClick={() => setZoomed((z) => !z)}>
-            {zoomed ? t('snapshot.wholeMap') : t('snapshot.zoomIn')}
-          </button>
-        ) : null}
-      </div>
     </div>
   );
 }
