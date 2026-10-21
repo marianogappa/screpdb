@@ -1,5 +1,6 @@
 import React from 'react';
 import { useT } from '../lib/i18nContext';
+import SkillExplainerLink from './SkillExplainer';
 
 // SkillTab places each player on four tiers fitted to ladder MMR (internal/skill). Positions are on a shared
 // tier axis, 0 to 4, where each whole number is a cut between tiers, so players of different races compare
@@ -131,6 +132,7 @@ export default function SkillTab({ game, players, playerColor }) {
       {caveats.length ? (
         <div className="workflow-section-warning skill-caveat">{t('skill.caveat')}</div>
       ) : null}
+      <SkillExplainerLink model={game?.skill_model} className="skill-explainer-link--corner" />
       <div className="skill-rows">
         {combined.length ? (
           <>
@@ -167,6 +169,60 @@ export default function SkillTab({ game, players, playerColor }) {
             </React.Fragment>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+const PILL_TIER_KEYS = { no_hotkeys: 0, never_checks_hotkeys: 0, banks_resources: 0, hotkey_cycler: 3, nonstop_production: 3 };
+
+// PlayerSkillSummary is the player page's Skill section: the average of their rated games, its strips and
+// the habits most of those games show. It renders nothing until the API sends a summary.
+export function PlayerSkillSummary({ summary, name, color }) {
+  const t = useT();
+  if (!summary?.combined) return null;
+  const player = { player_id: 'player', name, color };
+  const entryFor = (placement) => (placement ? [{ player, placement }] : []);
+  const placements = [summary.combined, ...METRICS.map((m) => summary.metrics?.[m.key]).filter(Boolean)];
+  const range = tierRange(placements.map((p) => p.position));
+  const plain = () => color || '#9ca3af';
+  return (
+    <div className="wps-section skill-player-summary">
+      <div className="skill-player-summary-head">
+        <div className="workflow-card-title wps-section-title">
+          <span>{t('game.tabs.skill')} <span className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span></span>
+        </div>
+        <span className="workflow-subtle-note">{t('skill.player.basis', { count: summary.games })}</span>
+        <SkillExplainerLink model={summary.model} />
+      </div>
+      {summary.pills?.length ? (
+        <div className="skill-player-pills">
+          {summary.pills.map((pill) => (
+            <span
+              key={pill.key}
+              className={`workflow-pattern-pill skill-habit-pill skill-habit-pill--${PILL_TIER_KEYS[pill.key] === 3 ? 'strong' : 'plain'}`}
+              title={t(`skill.pill.${pill.key}.hint`, { games: pill.games, of: pill.of })}
+            >
+              {t(`skill.pill.${pill.key}`)}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="skill-rows">
+        <div className="skill-row-label skill-row-label--hero">
+          <span>{t('skill.metric.combined.title')}</span>
+          <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
+        </div>
+        <Strip entries={entryFor(summary.combined)} range={range} playerColor={plain} hero tierLabels />
+        {METRICS.filter((m) => summary.metrics?.[m.key]).map((m) => (
+          <React.Fragment key={m.key}>
+            <div className="skill-row-label">
+              <span>{t(`skill.metric.${m.key}.title`)}</span>
+              <Help text={t(`skill.metric.${m.key}.hint`)} />
+            </div>
+            <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline describe={(p) => String(m.format(p.value))} />
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );

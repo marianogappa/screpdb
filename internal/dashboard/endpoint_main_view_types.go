@@ -377,6 +377,8 @@ type workflowGameDetail struct {
 	EngineUnavailable bool `json:"engine_unavailable,omitempty"`
 	// SkillStatus says whether the skill tiers apply: ok, too_short or custom_rules (empty: no humans to rate).
 	SkillStatus string `json:"skill_status"`
+	// SkillModel feeds the Skill explainer; set with SkillStatus ok.
+	SkillModel *workflowSkillModel `json:"skill_model,omitempty"`
 	// SkillCaveats are why the tiers may be off for this game: team_game, money_map.
 	SkillCaveats                     []string                                 `json:"skill_caveats,omitempty"`
 	ReplayID                         int64                                    `json:"replay_id"`
@@ -827,7 +829,9 @@ type IdentityBadge struct {
 
 type workflowPlayerOverview struct {
 	// Engine is how many of this player's games have engine data; nil for a featured pro, who has no local games.
-	Engine              *engineCoverage               `json:"engine,omitempty"`
+	Engine *engineCoverage `json:"engine,omitempty"`
+	// Skill averages the player's rated engine games; nil below minSkillGames.
+	Skill               *workflowPlayerSkillSummary   `json:"skill,omitempty"`
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
 	PlayerName          string                        `json:"player_name"`

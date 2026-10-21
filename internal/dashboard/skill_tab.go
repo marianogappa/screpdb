@@ -40,6 +40,35 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 	if !ok {
 		return
 	}
+	g := rateGame(model, rec)
+	detail.SkillStatus, detail.SkillCaveats = g.status, g.caveats
+	if g.status == skillStatusOK {
+		detail.SkillModel = skillModelSummary(model)
+	}
+	for ordinal, r := range g.players {
+		id := library.PlayerID(rec.ID, uint8(ordinal))
+		for i := range detail.Players {
+			if detail.Players[i].PlayerID == id {
+				detail.Players[i].Skill = &workflowPlayerSkill{Combined: r.result.Combined, Confident: r.result.Confident, Metrics: r.result.Metrics}
+			}
+		}
+	}
+}
+
+type ratedGame struct {
+	status  string
+	caveats []string
+	players map[int]ratedPlayer
+}
+
+type ratedPlayer struct {
+	values map[string]float64
+	result skill.Result
+}
+
+// rateGame rates every human of a game with trusted engine data; status is empty when the game has no
+// Skill tab at all.
+func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 	var humans []int
 	for i := range rec.Players {
 		if p := &rec.Players[i]; p.IsHuman() && !p.IsObserver() {
@@ -47,32 +76,25 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 		}
 	}
 	// Skill is an engine feature: without trusted engine data the game simply has no Skill tab.
-	if rec.EngineData == nil || rec.EngineData.LowConfidence {
-		return
+	if rec.EngineData == nil || rec.EngineData.LowConfidence || len(humans) < 2 {
+		return ratedGame{}
 	}
 	switch {
-	case len(humans) < 2:
-		return
 	case rec.MapKind == library.MapKindUseMapSettings:
-		detail.SkillStatus = skillStatusCustom
-		return
+		return ratedGame{status: skillStatusCustom}
 	case int(rec.Duration) < skill.MinGameSeconds:
-		detail.SkillStatus = skillStatusTooShort
-		return
+		return ratedGame{status: skillStatusTooShort}
 	}
-	detail.SkillStatus = skillStatusOK
-	detail.SkillCaveats = []string{}
+	g := ratedGame{status: skillStatusOK, caveats: []string{}, players: map[int]ratedPlayer{}}
 	if len(humans) != 2 {
-		detail.SkillCaveats = append(detail.SkillCaveats, skillCaveatTeamGame)
+		g.caveats = append(g.caveats, skillCaveatTeamGame)
 	}
 	if rec.MapKind == library.MapKindMoney {
-		detail.SkillCaveats = append(detail.SkillCaveats, skillCaveatMoneyMap)
+		g.caveats = append(g.caveats, skillCaveatMoneyMap)
 	}
 	engine := map[uint8]library.EnginePlayer{}
-	if rec.EngineData != nil && !rec.EngineData.LowConfidence {
-		for _, p := range rec.EngineData.Players {
-			engine[p.Slot] = p
-		}
+	for _, p := range rec.EngineData.Players {
+		engine[p.Slot] = p
 	}
 	for _, ordinal := range humans {
 		p := &rec.Players[ordinal]
@@ -90,14 +112,9 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 			}
 			addFinite(values, skill.ProductionIdle, e.ProductionIdleShare)
 		}
-		res := model.Evaluate(race, skillContext(rec, len(humans)), values)
-		id := library.PlayerID(rec.ID, uint8(ordinal))
-		for i := range detail.Players {
-			if detail.Players[i].PlayerID == id {
-				detail.Players[i].Skill = &workflowPlayerSkill{Combined: res.Combined, Confident: res.Confident, Metrics: res.Metrics}
-			}
-		}
+		g.players[ordinal] = ratedPlayer{values: values, result: model.Evaluate(race, skillContext(rec, len(humans)), values)}
 	}
+	return g
 }
 
 // skillValues are the fast-pass metrics, measured as scripts/skill-mine measured them.

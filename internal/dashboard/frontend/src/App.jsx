@@ -6,7 +6,8 @@ import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineCoverage from './components/EngineCoverage';
-import SkillTab, { TIER_KEYS, tierLabel } from './components/SkillTab';
+import SkillTab, { PlayerSkillSummary, TIER_KEYS, tierLabel } from './components/SkillTab';
+import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
 import GamingSessionPanel from './components/GamingSessionPanel';
@@ -6526,7 +6527,7 @@ function App() {
                     <div className={`workflow-player-table${mainGameShowsSkill ? ' workflow-player-table--skill' : ''}`} style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
                       <div className="wpt-head">{t('common.name')}</div>
                       <div className="wpt-head">APM</div>
-                      {mainGameShowsSkill ? <div className="wpt-head">{t('game.tabs.skill')}</div> : null}
+                      {mainGameShowsSkill ? <div className="wpt-head">{t('game.tabs.skill')} <SkillExplainerLink model={mainGame?.skill_model} compact /></div> : null}
                       <div className="wpt-head">{t('common.featuring')}</div>
                       <div className="wpt-head wpt-head-comp">
                         <span>{t('game.summary.unitComposition')}</span>
@@ -7428,9 +7429,6 @@ function App() {
                     {!isFeaturedPlayer && !mainPlayer?.primary_badge && !mainPlayer?.fingerprint_match ? (
                       <FingerprintCoverageNote coverage={mainPlayer?.fingerprint_coverage} />
                     ) : null}
-                    {!isFeaturedPlayer && mainPlayer?.engine ? (
-                      <EngineCoverage coverage={{ ...mainPlayer.engine, state: engineCoverage?.state }} />
-                    ) : null}
                     {isFeaturedPlayer && featured ? (
                       <div className="workflow-featured-links">
                         {featured.main_race ? <span>{raceLabel(featured.main_race)}</span> : null}
@@ -7516,6 +7514,7 @@ function App() {
                     const games = Array.isArray(mainPlayerLastGames) ? mainPlayerLastGames : [];
                     return (
                       <div className="workflow-card">
+                        {!isFeaturedPlayer ? <PlayerSkillSummary summary={mainPlayer?.skill} name={mainPlayer?.player_name || selectedPlayerKey} /> : null}
                         {showBnet ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.title')}</span></div>
