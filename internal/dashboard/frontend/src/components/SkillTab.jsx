@@ -191,9 +191,11 @@ export function PlayerSkillRow({ summary, onOpen, onHover }) {
       onFocus={() => onHover?.(true)}
       onBlur={() => onHover?.(false)}
     >
-      <span className="skill-player-row-label">{t('game.tabs.skill')}</span>
-      <span className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span>
-      <span className="skill-player-row-basis">{t('skill.player.basis', { count: summary.games })}</span>
+      <span className="skill-player-row-text">
+        <span className="skill-player-row-label">{t('game.tabs.skill')}</span>
+        <span className="skill-player-row-basis">{t('skill.player.basis', { count: summary.games })}</span>
+      </span>
+      <span className={`skill-player-row-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span>
       <span className="skill-player-row-open" aria-hidden="true">›</span>
     </button>
   );

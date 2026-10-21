@@ -7733,11 +7733,13 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 
 
 
-.skill-player-row { display: inline-flex; align-self: flex-start; align-items: center; gap: 10px; padding: 8px 12px 8px 14px; margin-bottom: 18px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: inherit; font: inherit; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.skill-player-row { display: inline-flex; align-self: flex-start; align-items: center; gap: 16px; padding: 12px 14px 12px 18px; margin-bottom: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
 .skill-player-row:hover, .skill-player-row:focus-visible { background: rgba(96,165,250,0.08); border-color: rgba(96,165,250,0.5); outline: none; }
-.skill-player-row-label { font-weight: 600; font-size: 0.9rem; }
-.skill-player-row-basis { color: rgba(255,255,255,0.55); font-size: 0.82rem; }
-.skill-player-row-open { font-size: 1.15rem; line-height: 1; color: rgba(147,197,253,0.85); transition: transform 0.15s; }
+.skill-player-row-text { display: flex; flex-direction: column; gap: 3px; }
+.skill-player-row-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+.skill-player-row-tier { font-size: 1.3rem; font-weight: 700; padding: 6px 14px; border-radius: 8px; border-width: 1px; border-style: solid; white-space: nowrap; }
+.skill-player-row-basis { color: rgba(255,255,255,0.75); font-size: 0.85rem; white-space: nowrap; }
+.skill-player-row-open { font-size: 1.4rem; line-height: 1; color: rgba(147,197,253,0.85); transition: transform 0.15s; }
 .skill-player-row:hover .skill-player-row-open { transform: translateX(3px); }
 .workflow-production-tab--beckon { border-color: rgba(96,165,250,0.7); color: #dbeafe; background: rgba(96,165,250,0.14); animation: skill-tab-beckon 0.9s ease-in-out infinite alternate; }
 @keyframes skill-tab-beckon { from { box-shadow: 0 0 0 0 rgba(96,165,250,0); } to { box-shadow: 0 0 0 3px rgba(96,165,250,0.25); } }
@@ -7745,7 +7747,7 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 
 .skill-player-tab { display: flex; flex-direction: column; gap: 20px; padding: 20px 22px 22px; }
 .skill-hero { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; }
-.skill-hero-tier { font-size: 1.45rem; font-weight: 700; padding: 6px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); color: #fff; letter-spacing: 0.01em; }
+.skill-hero-tier { font-size: 1.45rem; font-weight: 700; padding: 6px 16px; border-radius: 10px; border-width: 1px; border-style: solid; letter-spacing: 0.01em; }
 .skill-hero-facts { display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; color: rgba(255,255,255,0.6); }
 .skill-hero-trend { font-weight: 600; }
 .skill-hero-trend--up { color: #86efac; }
