@@ -8,7 +8,7 @@ import (
 )
 
 // Worker production is measured from 2:00, once making workers stops being automatic (the first two
-// minutes every player trains from one town hall, and Zerg larva is the limit), until a game's outcome
+// minutes every player trains from one base, and Zerg larva is the limit), until a game's outcome
 // starts deciding who can still make workers: 10:00, or 8:00 on money maps, where economies saturate early.
 const (
 	workerWindowFrom        = 120 * framesPerSecond
@@ -17,19 +17,22 @@ const (
 	MoneyMapBankedWindowEnd = 1200
 )
 
-var townHallTypes = map[uint16]bool{
+var baseTypes = map[uint16]bool{
 	uint16(bwgame.UnitTypesTerranCommandCenter): true, uint16(bwgame.UnitTypesProtossNexus): true,
 	uint16(bwgame.UnitTypesZergHatchery): true, uint16(bwgame.UnitTypesZergLair): true, uint16(bwgame.UnitTypesZergHive): true,
 }
 
-// WorkerProduction is how steadily a player made workers between 2:00 and 10:00. Terran and Protoss get
-// HallBusy, the share of town hall time spent training workers; Zerg get LarvaPerHatchery, the larva
-// left waiting per hatchery on average (lower is better). ok is false when the window is not covered.
+// WorkerProduction is how steadily a player made workers between 2:00 and 10:00, counting each Command
+// Center, Nexus or Hatchery (Lair, Hive) from completion until it dies. Terran and Protoss get HallBusy, the
+// share of that time spent training workers; Zerg get LarvaPerHatchery, the larva left waiting per hatchery
+// on average (lower is better). ok is false when the window is not covered.
 type WorkerProduction struct {
 	HallBusy         float64
 	LarvaPerHatchery float64
 	Zerg             bool
 }
+
+type lifetime struct{ ready, gone int32 }
 
 // WorkerProductionOf measures worker production from 2:00 to untilSecond.
 func WorkerProductionOf(d *engine.Digest, slot int8, untilSecond int) (WorkerProduction, bool) {
@@ -37,17 +40,31 @@ func WorkerProductionOf(d *engine.Digest, slot int8, untilSecond int) (WorkerPro
 	if end <= workerWindowFrom {
 		return WorkerProduction{}, false
 	}
-	halls := map[uint32]int32{}
+	died := map[uint32]int32{}
+	for _, x := range d.Deaths {
+		if _, seen := died[x.Unit]; !seen {
+			died[x.Unit] = x.Frame
+		}
+	}
+	halls := map[uint32]lifetime{}
+	addBase := func(unit uint32, ready int32) {
+		if _, ok := halls[unit]; ok {
+			return
+		}
+		gone := end
+		if f, ok := died[unit]; ok {
+			gone = min(gone, f)
+		}
+		halls[unit] = lifetime{ready, gone}
+	}
 	for _, u := range d.Initial {
-		if u.Owner == slot && townHallTypes[u.Type] {
-			halls[u.Unit] = 0
+		if u.Owner == slot && baseTypes[u.Type] {
+			addBase(u.Unit, 0)
 		}
 	}
 	for _, pr := range d.Productions {
-		if pr.Owner == slot && townHallTypes[pr.Type] && pr.Complete != engine.NoFrame {
-			if _, ok := halls[pr.Unit]; !ok {
-				halls[pr.Unit] = pr.Complete
-			}
+		if pr.Owner == slot && baseTypes[pr.Type] && pr.Complete != engine.NoFrame {
+			addBase(pr.Unit, pr.Complete)
 		}
 	}
 	var out WorkerProduction
@@ -59,8 +76,8 @@ func WorkerProductionOf(d *engine.Digest, slot int8, untilSecond int) (WorkerPro
 	overlap := func(a, b int32) float64 { return float64(max(0, min(b, end)-max(a, workerWindowFrom))) }
 	if !out.Zerg {
 		var alive, busy float64
-		for id, ready := range halls {
-			alive += overlap(ready, end)
+		for id, life := range halls {
+			alive += overlap(life.ready, life.gone)
 			for _, pr := range d.Productions {
 				if pr.Producer != id || !slices.Contains(workerTypes, pr.Type) {
 					continue
@@ -72,7 +89,7 @@ func WorkerProductionOf(d *engine.Digest, slot int8, untilSecond int) (WorkerPro
 				if stop == engine.NoFrame {
 					stop = end
 				}
-				busy += overlap(pr.Start, stop)
+				busy += overlap(pr.Start, min(stop, life.gone))
 			}
 		}
 		if alive == 0 {
@@ -87,8 +104,8 @@ func WorkerProductionOf(d *engine.Digest, slot int8, untilSecond int) (WorkerPro
 			continue
 		}
 		count := 0
-		for _, ready := range halls {
-			if ready <= e.Frame {
+		for _, life := range halls {
+			if life.ready <= e.Frame && e.Frame < life.gone {
 				count++
 			}
 		}

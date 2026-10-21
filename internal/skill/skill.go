@@ -3,8 +3,9 @@
 //
 // model.json is written by scripts/skill-fit from scripts/skill-mine's measurements of thousands of 1v1
 // ladder games with known MMR. Only metrics that followed MMR there are in it; each has cut values per race
-// between neighbouring tiers. The combined score is a per-race regression on the three mechanics metrics
-// that worked for every race, and it is only called confident when it sits well away from a cut.
+// between neighbouring tiers. The combined score is a per-race regression on every one of them, with each
+// weight held between 10% and 30% so that no single metric (EAPM above all) decides the tier, and it is
+// only called confident when it sits well away from a cut.
 package skill
 
 import (
@@ -32,12 +33,11 @@ const AllRaces = "all"
 // Metric keys, as the miner names them.
 const (
 	EAPM             = "eapm"
-	HotkeyRecalls    = "hotkey_recalls_per_min"
-	ScreenSwitches   = "viewport_switches_per_min"
-	SpendingQuotient = "spending_quotient"
-	HallBusy         = "hall_worker_busy"
-	LarvaPerHatch    = "larva_per_hatch"
-	BankedShare      = "float_share"
+	UsedRecalls      = "used_recalls_per_min"
+	CheckRecalls     = "check_recalls_per_min"
+	ArmyCadence      = "army_cadence"
+	UnspentPerIncome = "unspent_per_income"
+	ProductionIdle   = "production_idle_share"
 )
 
 // MinGameSeconds and MinAPM bound what the model was fitted on: shorter games and idle players are not
@@ -45,9 +45,6 @@ const (
 const (
 	MinGameSeconds = 480
 	MinAPM         = 20
-	// RecallsFromSecond skips the opening, when players cycle hotkeys to warm up their hands: counted from
-	// 2:00, recalls follow MMR a little better (0.70 against 0.68 for the whole game).
-	RecallsFromSecond = 120
 )
 
 type Model struct {
@@ -57,7 +54,7 @@ type Model struct {
 	Metrics         map[string]MetricCuts `json:"metrics"`
 	Combined        Combined              `json:"combined"`
 	// ContextAdjust maps macro values from team games and money maps onto their 1v1 regular-map
-	// equivalents, keyed by context and metric (see Adjust).
+	// equivalents, keyed by AdjustKey and metric.
 	ContextAdjust map[string]map[string]QuantileMap `json:"context_adjust,omitempty"`
 }
 
@@ -68,6 +65,9 @@ const (
 	ContextTeamRegular = "team_regular"
 	ContextMoney       = "money"
 )
+
+// AdjustKey is the ContextAdjust key of a context and a race.
+func AdjustKey(context, race string) string { return context + "/" + race }
 
 // QuantileMap holds the same quantiles of one metric in a context (From) and in 1v1 regular-map games (To),
 // both among players of the same mechanics level, so a value converts at equal percentile.
@@ -209,6 +209,13 @@ type Result struct {
 // Placement.Value stays the measured value.
 func (m *Model) Evaluate(race, context string, values map[string]float64) Result {
 	res := Result{Metrics: map[string]Placement{}}
+	adjusted := map[string]float64{}
+	for key, v := range values {
+		adjusted[key] = v
+		if q, ok := m.ContextAdjust[AdjustKey(context, race)][key]; ok {
+			adjusted[key] = q.apply(v)
+		}
+	}
 	for key, mc := range m.Metrics {
 		scale := AllRaces
 		if _, ok := mc.Cuts[scale]; !ok {
@@ -219,11 +226,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 		if !ok || !has {
 			continue
 		}
-		adjusted := v
-		if q, ok := m.ContextAdjust[context][key]; ok {
-			adjusted = q.apply(v)
-		}
-		p := place(adjusted, cuts, mc.Ends[scale], mc.HigherIsBetter)
+		p := place(adjusted[key], cuts, mc.Ends[scale], mc.HigherIsBetter)
 		p.Value = v
 		res.Metrics[key] = p
 	}
@@ -233,7 +236,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 	}
 	score := cr.Intercept
 	for i, f := range m.Combined.Features {
-		v, has := values[f]
+		v, has := adjusted[f]
 		if !has {
 			return res
 		}

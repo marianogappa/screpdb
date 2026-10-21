@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/marianogappa/screpdb/internal/crashreport"
-	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/skill"
 )
@@ -21,7 +20,7 @@ const (
 )
 
 // workflowPlayerSkill places one player's game on the four skill tiers. Metrics hold every measured metric;
-// the engine ones (spending quotient, worker production, banked resources) only exist in engine mode.
+// the engine ones (unspent resources against income, idle production) only exist in engine mode.
 type workflowPlayerSkill struct {
 	Combined  *skill.Placement           `json:"combined,omitempty"`
 	Confident bool                       `json:"confident"`
@@ -84,14 +83,12 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 		if race == "" {
 			continue
 		}
-		values := skillValues(p, float64(rec.Duration)/60)
+		values := skillValues(p)
 		if e, ok := engine[p.Slot]; ok {
-			addFinite(values, skill.SpendingQuotient, e.SpendingQuotient)
-			addFinite(values, skill.HallBusy, e.HallBusy)
-			addFinite(values, skill.LarvaPerHatch, e.LarvaPerHatch)
-			if e.Seconds > 0 {
-				values[skill.BankedShare] = float64(e.BankedShare)
+			if e.IncomePerMinute > 0 {
+				addFinite(values, skill.UnspentPerIncome, e.AverageUnspent/e.IncomePerMinute)
 			}
+			addFinite(values, skill.ProductionIdle, e.ProductionIdleShare)
 		}
 		res := model.Evaluate(race, skillContext(rec, len(humans)), values)
 		id := library.PlayerID(rec.ID, uint8(ordinal))
@@ -104,18 +101,12 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 }
 
 // skillValues are the fast-pass metrics, measured as scripts/skill-mine measured them.
-func skillValues(p *library.Player, minutes float64) map[string]float64 {
-	// A player who never switched screens or recalled a hotkey scores 0 there: that is the lowest skill
-	// the metric measures, not a missing value.
-	values := map[string]float64{skill.EAPM: float64(p.EAPM), skill.ScreenSwitches: float64(p.Viewport)}
-	if events, err := hotkeystream.Decode(p.HotkeyStream); err == nil && minutes > skill.RecallsFromSecond/60 {
-		recalls := 0
-		for _, e := range events {
-			if e.Type == hotkeystream.TypeSelect && e.Sec >= skill.RecallsFromSecond {
-				recalls++
-			}
-		}
-		values[skill.HotkeyRecalls] = float64(recalls) / (minutes - skill.RecallsFromSecond/60)
+func skillValues(p *library.Player) map[string]float64 {
+	values := map[string]float64{skill.EAPM: float64(p.EAPM)}
+	if p.Flags.Has(library.PlayerHasSkillCommands) {
+		values[skill.UsedRecalls] = float64(p.UsedRecalls)
+		values[skill.CheckRecalls] = float64(p.CheckRecalls)
+		values[skill.ArmyCadence] = float64(p.ArmyCadence)
 	}
 	return values
 }

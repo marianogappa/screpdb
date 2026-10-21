@@ -328,6 +328,15 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
+  if (playerIsActorForGameEventTypes(events, pid, ['long_supply_block'])) {
+    const supply = { terran: 'supplydepot', protoss: 'pylon', zerg: 'overlord' }[String(player?.race || '').toLowerCase()];
+    positive.push({
+      key: `ge-long-supply-block-${pid}`,
+      icon: supply ? getUnitIcon(supply) : null,
+      label: t('events.longSupplyBlock'),
+      className: 'workflow-pattern-pill',
+    });
+  }
 
   return { positive: elideGenericDropPill(positive), noScout: null };
 };

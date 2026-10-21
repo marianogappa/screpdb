@@ -388,7 +388,7 @@ func fastValues(p *library.Player, minutes float64) map[string]float64 {
 			switch e.Type {
 			case hotkeystream.TypeSelect:
 				recalls++
-				if e.Sec >= skill.RecallsFromSecond {
+				if e.Sec >= skill.MeasuredFromSecond {
 					recallsLate++
 				}
 			case hotkeystream.TypeAssignUnits, hotkeystream.TypeAssignBuilding, hotkeystream.TypeAdd:
@@ -396,7 +396,7 @@ func fastValues(p *library.Player, minutes float64) map[string]float64 {
 				groups[e.Group] = true
 			}
 		}
-		v["hotkey_recalls_per_min"] = float64(recallsLate) / (minutes - skill.RecallsFromSecond/60)
+		v["hotkey_recalls_per_min"] = float64(recallsLate) / (minutes - skill.MeasuredFromSecond/60)
 		v["hotkey_assigns_per_min"] = float64(assigns) / minutes
 		v["hotkey_groups"] = float64(len(groups))
 	}
@@ -415,6 +415,9 @@ func engineValues(m macro.Player) map[string]float64 {
 		"production_idle_share": m.ProductionIdleShare,
 		"seconds_to_40_workers": m.SecondsTo40Workers,
 		"float_share":           float64(m.FloatSeconds) / math.Max(1, float64(m.Seconds)),
+	}
+	if m.IncomePerMinute > 0 {
+		values[skill.UnspentPerIncome] = m.AverageUnspent / m.IncomePerMinute
 	}
 	if m.Seconds >= 360 {
 		values["workers_by_6min"] = float64(m.WorkersBy6Min)
@@ -491,6 +494,11 @@ func actionStats(b []byte) map[uint8]map[string]float64 {
 			"eapm_first6":  n.effective6 / 6,
 			"spam_share":   1 - n.effective/n.all,
 			"hotkey_share": n.hotkeys / n.all,
+		}
+	}
+	for id, c := range skill.CommandsOf(r.Commands.Cmds, int32(r.Header.Frames)) {
+		if v, ok := out[id]; ok {
+			v[skill.UsedRecalls], v[skill.CheckRecalls], v[skill.ArmyCadence] = c.UsedRecalls, c.CheckRecalls, c.ArmyCadence
 		}
 	}
 	return out

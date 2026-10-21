@@ -9,15 +9,13 @@ export const TIER_KEYS = ['beginner', 'intermediate', 'advanced', 'pro'];
 
 const percent = (v) => `${Math.round(v * 100)}%`;
 
-// Worker production is measured differently per race (town halls busy, or larva waiting per hatchery), so
-// its strip shows positions only and names each value on hover.
 const METRICS = [
   { key: 'eapm', format: (v) => Math.round(v) },
-  { key: 'hotkey_recalls_per_min', format: (v) => Math.round(v) },
-  { key: 'viewport_switches_per_min', format: (v) => v.toFixed(1) },
-  { key: 'spending_quotient', format: (v) => Math.round(v) },
-  { key: 'worker_production', inline: false },
-  { key: 'float_share', format: percent },
+  { key: 'used_recalls_per_min', format: (v) => Math.round(v) },
+  { key: 'check_recalls_per_min', format: (v) => Math.round(v) },
+  { key: 'army_cadence', format: percent },
+  { key: 'unspent_per_income', format: (v) => v.toFixed(2) },
+  { key: 'production_idle_share', format: percent },
 ];
 
 const ROW_PX = 22;
@@ -28,11 +26,6 @@ const LABEL_SHARE = 0.16;
 const placementOf = (player, key) => {
   const metrics = player?.skill?.metrics || {};
   if (key === 'combined') return player?.skill?.combined ? { ...player.skill.combined, metric: 'combined' } : null;
-  if (key === 'worker_production') {
-    if (metrics.hall_worker_busy) return { ...metrics.hall_worker_busy, metric: 'hall_worker_busy' };
-    if (metrics.larva_per_hatch) return { ...metrics.larva_per_hatch, metric: 'larva_per_hatch' };
-    return null;
-  }
   return metrics[key] ? { ...metrics[key], metric: key } : null;
 };
 
@@ -131,9 +124,6 @@ export default function SkillTab({ game, players, playerColor }) {
   const rated = (players || []).filter((p) => p.skill);
   const caveats = game?.skill_caveats || [];
   const entriesFor = (key) => rated.map((player) => ({ player, placement: placementOf(player, key) })).filter((e) => e.placement);
-  const describeWorkers = (p) => (p.metric === 'larva_per_hatch'
-    ? t('skill.value.larvaPerHatch', { value: p.value.toFixed(2) })
-    : t('skill.value.hallBusy', { value: percent(p.value) }));
   const combined = entriesFor('combined');
   const range = tierRange(['combined', ...METRICS.map((m) => m.key)].flatMap((k) => entriesFor(k).map((e) => e.placement.position)));
   return (
@@ -170,9 +160,9 @@ export default function SkillTab({ game, players, playerColor }) {
                 entries={entries}
                 range={range}
                 playerColor={playerColor}
-                inline={m.inline !== false}
+                inline
                 tierLabels={index === 0}
-                describe={m.key === 'worker_production' ? describeWorkers : (p) => String(m.format(p.value))}
+                describe={(p) => String(m.format(p.value))}
               />
             </React.Fragment>
           );

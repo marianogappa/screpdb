@@ -168,6 +168,7 @@ const (
 	PlayerResultNotScored
 	TeamResultWon
 	TeamResultLost
+	PlayerHasSkillCommands
 )
 
 func (f PlayerFlags) Has(flag PlayerFlags) bool { return f&flag != 0 }
@@ -373,9 +374,13 @@ type Player struct {
 	LeaveSec            uint16
 	LeaveReason         uint16
 	Viewport            float32
-	HotkeyStream        []byte
-	Fingerprint         *Fingerprint
-	Cadence             *Cadence
+	// UsedRecalls, CheckRecalls and ArmyCadence are skill.Commands, set with PlayerHasSkillCommands.
+	UsedRecalls  float32
+	CheckRecalls float32
+	ArmyCadence  float32
+	HotkeyStream []byte
+	Fingerprint  *Fingerprint
+	Cadence      *Cadence
 }
 
 func (p *Player) IsObserver() bool { return p.Flags.Has(PlayerObserver) }

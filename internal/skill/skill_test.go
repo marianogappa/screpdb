@@ -14,13 +14,34 @@ func TestModelLoadsWithEveryRace(t *testing.T) {
 		if _, ok := m.Combined.Races[race]; !ok {
 			t.Fatalf("no combined score for %s", race)
 		}
-		for _, key := range []string{EAPM, HotkeyRecalls, ScreenSwitches, SpendingQuotient, BankedShare} {
+		for _, key := range []string{EAPM, UsedRecalls, CheckRecalls, ArmyCadence, UnspentPerIncome, ProductionIdle} {
 			c, ok := m.Metrics[key].Cuts[race]
 			if !ok {
 				t.Fatalf("no %s cuts for %s", key, race)
 			}
 			if m.Metrics[key].HigherIsBetter && (c[0] > c[1] || c[1] > c[2]) || !m.Metrics[key].HigherIsBetter && (c[0] < c[1] || c[1] < c[2]) {
 				t.Fatalf("%s %s cuts out of order: %v", key, race, c)
+			}
+		}
+	}
+}
+
+func TestEveryShownMetricCountsTowardTheCombinedScore(t *testing.T) {
+	m, _ := Load()
+	if len(m.Combined.Features) != len(m.Metrics) {
+		t.Fatalf("combined features %v, shown metrics %d", m.Combined.Features, len(m.Metrics))
+	}
+	for race, cr := range m.Combined.Races {
+		total := 0.0
+		for _, w := range cr.Weights {
+			total += math.Abs(w)
+		}
+		for i, w := range cr.Weights {
+			if share := math.Abs(w) / total; share < 0.099 || share > 0.301 {
+				t.Errorf("%s %s carries %.3f of the weight, outside 10%% to 30%%", race, m.Combined.Features[i], share)
+			}
+			if higher := m.Metrics[m.Combined.Features[i]].HigherIsBetter; higher != (w > 0) {
+				t.Errorf("%s %s weight %v has the wrong sign", race, m.Combined.Features[i], w)
 			}
 		}
 	}
@@ -44,8 +65,8 @@ func TestPlaceIsLinearBetweenCuts(t *testing.T) {
 
 func TestEvaluateOrdersPlayers(t *testing.T) {
 	m, _ := Load()
-	slow := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 90, HotkeyRecalls: 10, ScreenSwitches: 8})
-	fast := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 260, HotkeyRecalls: 160, ScreenSwitches: 26})
+	slow := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 90, UsedRecalls: 3, CheckRecalls: 4, ArmyCadence: 0.2, UnspentPerIncome: 0.9, ProductionIdle: 0.6})
+	fast := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 260, UsedRecalls: 45, CheckRecalls: 90, ArmyCadence: 0.6, UnspentPerIncome: 0.25, ProductionIdle: 0.25})
 	if slow.Combined == nil || fast.Combined == nil || slow.Combined.Tier != TierBeginner || fast.Combined.Tier != TierPro {
 		t.Fatalf("slow %+v fast %+v", slow.Combined, fast.Combined)
 	}
@@ -82,8 +103,8 @@ func TestStripsShareOneScaleAcrossRaces(t *testing.T) {
 	if low.Metrics[EAPM].Position <= 0 {
 		t.Fatalf("EAPM 49 should sit inside Beginner, not on its edge: %v", low.Metrics[EAPM].Position)
 	}
-	none := m.Evaluate("T", ContextOneVsOne, map[string]float64{HotkeyRecalls: 0})
-	if none.Metrics[HotkeyRecalls].Position != 0 {
-		t.Fatalf("no recalls at all is the very start of the axis, got %v", none.Metrics[HotkeyRecalls].Position)
+	none := m.Evaluate("T", ContextOneVsOne, map[string]float64{UsedRecalls: 0})
+	if none.Metrics[UsedRecalls].Position != 0 {
+		t.Fatalf("no recalls at all is the very start of the axis, got %v", none.Metrics[UsedRecalls].Position)
 	}
 }

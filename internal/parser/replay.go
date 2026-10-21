@@ -19,6 +19,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/parser/commands"
 	"github.com/marianogappa/screpdb/internal/patterns"
 	"github.com/marianogappa/screpdb/internal/screp"
+	"github.com/marianogappa/screpdb/internal/skill"
 	"github.com/marianogappa/screpdb/internal/umsclassify"
 	"github.com/marianogappa/screpdb/internal/unittags"
 	"github.com/marianogappa/screpdb/internal/utils"
@@ -298,6 +299,9 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 
 	// Encoding needs the raw stream's Select/Hotkey tags, which command extraction
 	// discards, so it runs here rather than in storage.
+	if rep.Commands != nil {
+		data.SkillCommands = skill.CommandsOf(rep.Commands.Cmds, int32(rep.Header.Frames))
+	}
 	data.HotkeyStreams = map[byte][]byte{}
 	for pid, events := range hotkeystream.Extract(rep) {
 		data.HotkeyStreams[pid] = hotkeystream.Encode(events)
