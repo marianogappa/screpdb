@@ -173,8 +173,11 @@
   "skill.pill.nonstop_production.hint": "In {games} of {of} games: started army units in more than half of all 10 second stretches.",
   "skill.pill.banks_resources": "Banks resources",
   "skill.pill.banks_resources.hint": "In {games} of {of} games: usually sat on a full minute of income or more.",
-  "skill.player.average": "Average of rated games",
   "skill.chart.title": "Skill over time",
-  "skill.chart.note": "Each dot is a game. The line averages the last {count}.",
-  "skill.player.none": "Skill shows once a player has 5 games with engine data."
+  "skill.player.none": "Skill shows once a player has 5 games with engine data.",
+  "skill.chart.average": "Average",
+  "skill.chart.trend": "Trend",
+  "skill.trend.up": "Improving",
+  "skill.trend.down": "Declining",
+  "skill.trend.flat": "Steady"
 }

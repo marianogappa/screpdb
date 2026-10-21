@@ -1,6 +1,6 @@
 import React from 'react';
 import { useT } from '../lib/i18nContext';
-import SkillExplainerLink, { SkillExplainerContent } from './SkillExplainer';
+import SkillExplainerLink from './SkillExplainer';
 
 // SkillTab places each player on four tiers fitted to ladder MMR (internal/skill). Positions are on a shared
 // tier axis, 0 to 4, where each whole number is a cut between tiers, so players of different races compare
@@ -177,12 +177,20 @@ export default function SkillTab({ game, players, playerColor }) {
 const PILL_TIER_KEYS = { no_hotkeys: 0, never_checks_hotkeys: 0, banks_resources: 0, hotkey_cycler: 3, nonstop_production: 3 };
 
 // PlayerSkillRow is the player summary's one line of Skill: the average tier and how many games it rests on.
-// It opens the player's Skill tab.
-export function PlayerSkillRow({ summary, onOpen }) {
+// It opens the player's Skill tab; onHover lets the page point at that tab.
+export function PlayerSkillRow({ summary, onOpen, onHover }) {
   const t = useT();
   if (!summary?.combined) return null;
   return (
-    <button type="button" className="skill-player-row" onClick={onOpen}>
+    <button
+      type="button"
+      className="skill-player-row"
+      onClick={onOpen}
+      onMouseEnter={() => onHover?.(true)}
+      onMouseLeave={() => onHover?.(false)}
+      onFocus={() => onHover?.(true)}
+      onBlur={() => onHover?.(false)}
+    >
       <span className="skill-player-row-label">{t('game.tabs.skill')}</span>
       <span className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span>
       <span className="skill-player-row-basis">{t('skill.player.basis', { count: summary.games })}</span>
@@ -191,48 +199,150 @@ export function PlayerSkillRow({ summary, onOpen }) {
   );
 }
 
-// The evolution chart needs this many games: fewer is a handful of dots, not a trend.
+// The chart and its trend need this many games: fewer is a handful of dots, not a direction.
 const MIN_TREND_GAMES = 10;
-const TREND_WINDOW = 10;
+const DAY_MS = 86400000;
+// A trend needs two months of games, and is only called a change when the line moves a third of a tier
+// across them: less is within what one tier's thirds already show.
+const TREND_MIN_DAYS = 60;
+const TREND_MIN_CHANGE = 1 / 3;
 
-// SkillTrend plots every rated game on the tier axis, oldest left, with the average of the last
-// TREND_WINDOW games as a line.
+function useWidth(fallback) {
+  const ref = React.useRef(null);
+  const [width, setWidth] = React.useState(fallback);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    if (el.clientWidth) setWidth(Math.max(320, el.clientWidth));
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.max(320, Math.round(entry.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width];
+}
+
+// trendOf fits a straight line to position over time; slope is in tiers per 30 days.
+const trendOf = (points) => {
+  const n = points.length;
+  const xs = points.map((p) => p.ms / DAY_MS);
+  const mx = xs.reduce((a, b) => a + b, 0) / n;
+  const my = points.reduce((a, p) => a + p.position, 0) / n;
+  let sxy = 0, sxx = 0;
+  points.forEach((p, i) => { sxy += (xs[i] - mx) * (p.position - my); sxx += (xs[i] - mx) ** 2; });
+  const slope = sxx > 0 ? sxy / sxx : 0;
+  const days = n ? (points[n - 1].ms - points[0].ms) / DAY_MS : 0;
+  return { at: (ms) => my + slope * (ms / DAY_MS - mx), days, change: slope * days };
+};
+
+export const skillTrendDirection = (timeline) => {
+  if (!timeline || timeline.length < MIN_TREND_GAMES) return '';
+  const { days, change } = trendOf(timeline.map((p) => ({ ms: Date.parse(p.date), position: p.position })));
+  if (days < TREND_MIN_DAYS) return '';
+  if (change >= TREND_MIN_CHANGE) return 'up';
+  if (change <= -TREND_MIN_CHANGE) return 'down';
+  return 'flat';
+};
+
+const monthTicks = (fromMs, toMs) => {
+  const start = new Date(fromMs);
+  const months = (new Date(toMs).getFullYear() - start.getFullYear()) * 12 + new Date(toMs).getMonth() - start.getMonth();
+  const step = [1, 2, 3, 6, 12].find((s) => months / s <= 7) || 12;
+  const out = [];
+  for (let d = new Date(start.getFullYear(), start.getMonth() + 1, 1); d.getTime() <= toMs; d = new Date(d.getFullYear(), d.getMonth() + step, 1)) {
+    out.push(d);
+  }
+  return out;
+};
+
+const SMOOTH_SAMPLES = 90;
+
+// smoothPath is the running average as a curve over time: a Gaussian-weighted average of nearby games,
+// about a month wide, so a session of ten games on one evening is one point rather than a cliff. It breaks
+// where there are no games nearby.
+function smoothPath(points, first, span, x, y) {
+  const width = Math.max(14 * DAY_MS, span / 10);
+  let d = '';
+  let drawing = false;
+  for (let k = 0; k <= SMOOTH_SAMPLES; k++) {
+    const at = first + (span * k) / SMOOTH_SAMPLES;
+    let sw = 0, sp = 0;
+    for (const p of points) {
+      const w = Math.exp(-0.5 * ((p.ms - at) / width) ** 2);
+      sw += w;
+      sp += w * p.position;
+    }
+    if (sw < 1) {
+      drawing = false;
+      continue;
+    }
+    d += `${drawing ? 'L' : 'M'}${x(at).toFixed(1)},${y(sp / sw).toFixed(1)}`;
+    drawing = true;
+  }
+  return d;
+}
+
+// SkillTrend plots every rated game by date on the tier axis, with a running average and a straight trend
+// line.
 function SkillTrend({ timeline }) {
   const t = useT();
-  const W = 760, H = 200, PAD_L = 92, PAD_R = 12, PAD_T = 8, PAD_B = 24;
-  const n = timeline.length;
-  const x = (i) => PAD_L + (n === 1 ? 0 : (i / (n - 1)) * (W - PAD_L - PAD_R));
-  const [lo, hi] = tierRange(timeline.map((p) => p.position));
-  const y = (pos) => PAD_T + (1 - (Math.max(lo, Math.min(hi, pos)) - lo) / (hi - lo)) * (H - PAD_T - PAD_B);
-  const avg = timeline.map((_, i) => {
-    const from = Math.max(0, i - TREND_WINDOW + 1);
-    const slice = timeline.slice(from, i + 1);
-    return slice.reduce((a, p) => a + p.position, 0) / slice.length;
-  });
-  const path = avg.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  const date = (iso) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
+  const [ref, W] = useWidth(720);
+  const H = 176, L = 84, R = 10, T = 10, B = 24;
+  const points = timeline.map((p) => ({ ...p, ms: Date.parse(p.date) }));
+  const first = points[0].ms, last = points[points.length - 1].ms;
+  const span = Math.max(DAY_MS, last - first);
+  const x = (ms) => L + ((ms - first) / span) * (W - L - R);
+  const [lo, hi] = tierRange(points.map((p) => p.position));
+  const y = (pos) => T + (1 - (Math.max(lo, Math.min(hi, pos)) - lo) / (hi - lo)) * (H - T - B);
+  const avgPath = smoothPath(points, first, span, x, y);
+  const trend = trendOf(points);
+  const lang = typeof document !== 'undefined' ? document.documentElement.lang || undefined : undefined;
+  const tickLabel = (d, i) => d.toLocaleDateString(lang, i === 0 || d.getMonth() === 0 ? { month: 'short', year: 'numeric' } : { month: 'short' });
+  const dateLabel = (ms) => new Date(ms).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
+  const bands = TIER_KEYS.map((key, i) => ({ key, i })).filter(({ i }) => i >= lo && i < hi);
   return (
-    <div className="skill-trend">
-      <div className="workflow-card-title wps-section-title"><span>{t('skill.chart.title')}</span></div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="skill-trend-svg" role="img" aria-label={t('skill.chart.title')}>
-        {TIER_KEYS.map((key, i) => (i < lo || i >= hi ? null : (
-          <g key={key}>
-            <rect x={PAD_L} y={y(i + 1)} width={W - PAD_L - PAD_R} height={y(i) - y(i + 1)} className={`skill-trend-band skill-trend-band--${key}`} />
-            <text x={PAD_L - 8} y={(y(i) + y(i + 1)) / 2} className="skill-trend-label" textAnchor="end" dominantBaseline="middle">{t(`skill.tier.${key}`)}</text>
-          </g>
-        )))}
-        {timeline.map((p, i) => <circle key={`${p.replay_id}-${i}`} cx={x(i)} cy={y(p.position)} r="2.6" className="skill-trend-dot" />)}
-        <path d={path} className="skill-trend-line" />
-        <text x={PAD_L} y={H - 6} className="skill-trend-label">{date(timeline[0].date)}</text>
-        <text x={W - PAD_R} y={H - 6} className="skill-trend-label" textAnchor="end">{date(timeline[n - 1].date)}</text>
-      </svg>
-      <p className="workflow-subtle-note">{t('skill.chart.note', { count: TREND_WINDOW })}</p>
+    <div className="skill-trend-card">
+      <div className="skill-trend-head">
+        <h3>{t('skill.chart.title')}</h3>
+        <div className="skill-trend-legend">
+          <span><i className="skill-trend-key skill-trend-key--avg" />{t('skill.chart.average')}</span>
+          {trend.days >= TREND_MIN_DAYS ? <span><i className="skill-trend-key skill-trend-key--trend" />{t('skill.chart.trend')}</span> : null}
+        </div>
+      </div>
+      <div ref={ref} className="skill-trend-plot">
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('skill.chart.title')}>
+          {bands.map(({ key, i }) => (
+            <rect key={key} x={L} y={y(i + 1)} width={W - L - R} height={y(i) - y(i + 1)} className={`skill-trend-band skill-trend-band--${key}`} />
+          ))}
+          {bands.map(({ key, i }) => (
+            <text key={`l-${key}`} x={L - 10} y={(y(i) + y(i + 1)) / 2} className="skill-trend-axis" textAnchor="end" dominantBaseline="middle">{t(`skill.tier.${key}`)}</text>
+          ))}
+          {Array.from({ length: hi - lo + 1 }, (_, k) => lo + k).map((v) => (
+            <line key={`g-${v}`} x1={L} x2={W - R} y1={y(v)} y2={y(v)} className={v === lo || v === hi ? 'skill-trend-frame' : 'skill-trend-cut'} />
+          ))}
+          {monthTicks(first, last).map((d, i) => (
+            <g key={d.getTime()}>
+              <line x1={x(d.getTime())} x2={x(d.getTime())} y1={H - B} y2={H - B + 4} className="skill-trend-frame" />
+              <text x={x(d.getTime())} y={H - 6} className="skill-trend-axis" textAnchor="middle">{tickLabel(d, i)}</text>
+            </g>
+          ))}
+          {points.map((p, i) => (
+            <circle key={`${p.replay_id}-${i}`} cx={x(p.ms)} cy={y(p.position)} r="2" className="skill-trend-dot">
+              <title>{dateLabel(p.ms)}</title>
+            </circle>
+          ))}
+          <path d={avgPath} className="skill-trend-avg" />
+          {trend.days >= TREND_MIN_DAYS ? (
+            <line x1={x(first)} x2={x(last)} y1={y(trend.at(first))} y2={y(trend.at(last))} className="skill-trend-fit" />
+          ) : null}
+        </svg>
+      </div>
     </div>
   );
 }
 
-// PlayerSkillTab is the player page's Skill tab: how their Skill moved over time, then the average of their
-// rated games with its strips and habits, then how Skill works.
+// PlayerSkillTab is the player page's Skill tab: the player's tier up top, how it moved over time, then the
+// six metrics behind it.
 export function PlayerSkillTab({ summary, name, color }) {
   const t = useT();
   if (!summary?.combined) return null;
@@ -242,47 +352,41 @@ export function PlayerSkillTab({ summary, name, color }) {
   const range = tierRange(placements.map((p) => p.position));
   const plain = () => color || '#9ca3af';
   const timeline = summary.timeline || [];
+  const direction = skillTrendDirection(timeline);
   return (
-    <div className="workflow-card skill-tab skill-player-tab">
-      {timeline.length >= MIN_TREND_GAMES ? <SkillTrend timeline={timeline} /> : null}
-      <div className="wps-section skill-player-summary">
-        <div className="skill-player-summary-head">
-          <div className="workflow-card-title wps-section-title"><span>{t('skill.player.average')}</span></div>
-          <span className="workflow-subtle-note">{t('skill.player.basis', { count: summary.games })}</span>
+    <div className="workflow-card skill-player-tab">
+      <div className="skill-hero">
+        <span className={`skill-hero-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span>
+        <div className="skill-hero-facts">
+          <span>{t('skill.player.basis', { count: summary.games })}</span>
+          {direction ? <span className={`skill-hero-trend skill-hero-trend--${direction}`}>{t(`skill.trend.${direction}`)}</span> : null}
         </div>
-        {summary.pills?.length ? (
-          <div className="skill-player-pills">
-            {summary.pills.map((pill) => (
-              <span
-                key={pill.key}
-                className={`workflow-pattern-pill skill-habit-pill skill-habit-pill--${PILL_TIER_KEYS[pill.key] === 3 ? 'strong' : 'plain'}`}
-                title={t(`skill.pill.${pill.key}.hint`, { games: pill.games, of: pill.of })}
-              >
-                {t(`skill.pill.${pill.key}`)}
-              </span>
-            ))}
-          </div>
-        ) : null}
-        <div className="skill-rows">
-          <div className="skill-row-label skill-row-label--hero">
-            <span>{t('skill.metric.combined.title')}</span>
-            <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
-          </div>
-          <Strip entries={entryFor(summary.combined)} range={range} playerColor={plain} hero tierLabels />
-          {METRICS.filter((m) => summary.metrics?.[m.key]).map((m) => (
-            <React.Fragment key={m.key}>
-              <div className="skill-row-label">
-                <span>{t(`skill.metric.${m.key}.title`)}</span>
-                <Help text={t(`skill.metric.${m.key}.hint`)} />
-              </div>
-              <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline describe={(p) => String(m.format(p.value))} />
-            </React.Fragment>
+        <SkillExplainerLink model={summary.model} className="skill-hero-explain" />
+      </div>
+      {summary.pills?.length ? (
+        <div className="skill-player-pills">
+          {summary.pills.map((pill) => (
+            <span
+              key={pill.key}
+              className={`workflow-pattern-pill skill-habit-pill skill-habit-pill--${PILL_TIER_KEYS[pill.key] === 3 ? 'strong' : 'plain'}`}
+              title={t(`skill.pill.${pill.key}.hint`, { games: pill.games, of: pill.of })}
+            >
+              {t(`skill.pill.${pill.key}`)}
+            </span>
           ))}
         </div>
-      </div>
-      <div className="wps-section skill-player-explainer">
-        <div className="workflow-card-title wps-section-title"><span>{t('skill.explain.title')}</span></div>
-        <SkillExplainerContent model={summary.model} />
+      ) : null}
+      {timeline.length >= MIN_TREND_GAMES ? <SkillTrend timeline={timeline} /> : null}
+      <div className="skill-rows skill-player-breakdown">
+        {METRICS.filter((m) => summary.metrics?.[m.key]).map((m, index) => (
+          <React.Fragment key={m.key}>
+            <div className="skill-row-label">
+              <span>{t(`skill.metric.${m.key}.title`)}</span>
+              <Help text={t(`skill.metric.${m.key}.hint`)} />
+            </div>
+            <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline tierLabels={index === 0} describe={(p) => String(m.format(p.value))} />
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );

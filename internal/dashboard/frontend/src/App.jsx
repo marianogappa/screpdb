@@ -2492,6 +2492,7 @@ function App() {
   const [mainPlayersSortDir, setMainPlayersSortDir] = useState('desc');
   const [mainPlayersTab, setMainPlayersTab] = useState(() => initialMainRoute.playersTab);
   const [mainPlayerTab, setMainPlayerTab] = useState(() => initialMainRoute.playerTab);
+  const [skillTabBeckon, setSkillTabBeckon] = useState(false);
   const [mainPlayerSubtab, setMainPlayerSubtab] = useState(() => initialMainRoute.playerSubtab || '');
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
@@ -7452,7 +7453,7 @@ function App() {
                     </button>
                     {!isFeaturedPlayer && (mainPlayer?.skill || mainPlayerTab === 'skill') ? (
                       <button type="button" role="tab" aria-selected={mainPlayerTab === 'skill'}
-                        className={`workflow-production-tab ${mainPlayerTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
+                        className={`workflow-production-tab ${mainPlayerTab === 'skill' ? 'workflow-production-tab-active' : ''}${skillTabBeckon && mainPlayerTab !== 'skill' ? ' workflow-production-tab--beckon' : ''}`}
                         onClick={() => { setMainPlayerTab('skill'); setMainPlayerSubtab(''); }}>
                         {t('game.tabs.skill')}
                       </button>
@@ -7526,7 +7527,7 @@ function App() {
                     const games = Array.isArray(mainPlayerLastGames) ? mainPlayerLastGames : [];
                     return (
                       <div className="workflow-card">
-                        {!isFeaturedPlayer ? <PlayerSkillRow summary={mainPlayer?.skill} onOpen={() => { setMainPlayerTab('skill'); setMainPlayerSubtab(''); }} /> : null}
+                        {!isFeaturedPlayer ? <PlayerSkillRow summary={mainPlayer?.skill} onHover={setSkillTabBeckon} onOpen={() => { setSkillTabBeckon(false); setMainPlayerTab('skill'); setMainPlayerSubtab(''); }} /> : null}
                         {showBnet ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.title')}</span></div>
