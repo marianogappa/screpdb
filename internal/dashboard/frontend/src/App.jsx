@@ -6,7 +6,7 @@ import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineCoverage from './components/EngineCoverage';
-import SkillTab, { PlayerSkillSummary, TIER_KEYS, tierLabel } from './components/SkillTab';
+import SkillTab, { PlayerSkillRow, PlayerSkillTab, TIER_KEYS, tierLabel } from './components/SkillTab';
 import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
@@ -7450,6 +7450,13 @@ function App() {
                       onClick={() => { setMainPlayerTab('summary'); setMainPlayerSubtab(''); }}>
                       {t('tabs.summary')}
                     </button>
+                    {!isFeaturedPlayer && (mainPlayer?.skill || mainPlayerTab === 'skill') ? (
+                      <button type="button" role="tab" aria-selected={mainPlayerTab === 'skill'}
+                        className={`workflow-production-tab ${mainPlayerTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => { setMainPlayerTab('skill'); setMainPlayerSubtab(''); }}>
+                        {t('game.tabs.skill')}
+                      </button>
+                    ) : null}
                     <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
                       className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
@@ -7478,6 +7485,11 @@ function App() {
                 </div>
 
                 <div className="workflow-cards">
+                  {mainPlayerTab === 'skill' && !isFeaturedPlayer ? (
+                    mainPlayer?.skill
+                      ? <PlayerSkillTab summary={mainPlayer.skill} name={mainPlayer?.player_name || selectedPlayerKey} />
+                      : (mainPlayerLoading ? null : <div className="workflow-card"><div className="chart-empty">{t('skill.player.none')}</div></div>)
+                  ) : null}
                   {mainPlayerTab === 'summary' && (() => {
                     const bnet = mainPlayer?.bnet_profile;
                     // A profile is now also sent for a toon Battle.net does not
@@ -7514,7 +7526,7 @@ function App() {
                     const games = Array.isArray(mainPlayerLastGames) ? mainPlayerLastGames : [];
                     return (
                       <div className="workflow-card">
-                        {!isFeaturedPlayer ? <PlayerSkillSummary summary={mainPlayer?.skill} name={mainPlayer?.player_name || selectedPlayerKey} /> : null}
+                        {!isFeaturedPlayer ? <PlayerSkillRow summary={mainPlayer?.skill} onOpen={() => { setMainPlayerTab('skill'); setMainPlayerSubtab(''); }} /> : null}
                         {showBnet ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.title')}</span></div>

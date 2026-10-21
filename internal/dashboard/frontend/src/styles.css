@@ -7730,3 +7730,21 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-explainer-stack-row { display: grid; grid-template-columns: 70px 1fr; gap: 10px; align-items: center; font-size: 0.84rem; }
 .skill-explainer-stack { display: flex; height: 26px; border-radius: 5px; overflow: hidden; }
 .skill-explainer-stack div { display: flex; align-items: center; justify-content: center; color: #0b1020; font-size: 0.72rem; font-weight: 600; min-width: 0; overflow: hidden; }
+
+.skill-player-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; margin-bottom: 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+.skill-player-row:hover { background: rgba(96,165,250,0.1); border-color: rgba(96,165,250,0.45); }
+.skill-player-row:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.skill-player-row-label { font-weight: 600; }
+.skill-player-row-basis { color: rgba(255,255,255,0.55); font-size: 0.85rem; }
+.skill-player-row-open { margin-left: auto; font-size: 1.4rem; line-height: 1; color: rgba(147,197,253,0.9); }
+.skill-player-tab { gap: 26px; }
+.skill-trend { display: flex; flex-direction: column; gap: 8px; }
+.skill-trend-svg { width: 100%; height: auto; display: block; }
+.skill-trend-band--beginner { fill: rgba(148,163,184,0.06); }
+.skill-trend-band--intermediate { fill: rgba(96,165,250,0.07); }
+.skill-trend-band--advanced { fill: rgba(167,139,250,0.08); }
+.skill-trend-band--pro { fill: rgba(240,198,116,0.09); }
+.skill-trend-label { fill: rgba(255,255,255,0.5); font-size: 11px; }
+.skill-trend-dot { fill: rgba(255,255,255,0.35); }
+.skill-trend-line { fill: none; stroke: #60a5fa; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.skill-player-explainer .skill-explainer-body { padding: 0; }

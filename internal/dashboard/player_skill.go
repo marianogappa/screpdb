@@ -1,6 +1,9 @@
 package dashboard
 
 import (
+	"sort"
+	"time"
+
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/skill"
 )
@@ -17,6 +20,14 @@ type workflowPlayerSkillSummary struct {
 	Metrics  map[string]skill.Placement `json:"metrics"`
 	Pills    []workflowSkillPill        `json:"pills"`
 	Model    *workflowSkillModel        `json:"model"`
+	// Timeline is every rated game, oldest first, for the evolution chart.
+	Timeline []workflowSkillPoint `json:"timeline"`
+}
+
+type workflowSkillPoint struct {
+	ReplayID int64   `json:"replay_id"`
+	Date     string  `json:"date"`
+	Position float64 `json:"position"`
 }
 
 // workflowSkillPill is a habit seen in most of a player's rated games.
@@ -68,18 +79,22 @@ func (d *Dashboard) playerSkill(playerKey string) *workflowPlayerSkillSummary {
 		return nil
 	}
 	var rated []ratedPlayer
+	var timeline []workflowSkillPoint
 	for _, ref := range d.library.lib.View().PlayerGames(playerKey) {
 		if ref.Player().IsObserver() {
 			continue
 		}
 		if r, ok := rateGame(model, ref.Replay).players[int(ref.Ordinal)]; ok && r.result.Combined != nil {
 			rated = append(rated, r)
+			timeline = append(timeline, workflowSkillPoint{ReplayID: ref.Replay.ID, Date: ref.Replay.Date.UTC().Format(time.RFC3339), Position: r.result.Combined.Position})
 		}
 	}
 	out := summarizeSkill(rated)
-	if out != nil {
-		out.Model = skillModelSummary(model)
+	if out == nil {
+		return nil
 	}
+	sort.SliceStable(timeline, func(i, j int) bool { return timeline[i].Date < timeline[j].Date })
+	out.Model, out.Timeline = skillModelSummary(model), timeline
 	return out
 }
 

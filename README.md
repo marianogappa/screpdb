@@ -297,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-21  OK. Player pages show a Skill average from 5 rated engine games with habit pills, a How Skill works explainer opens from every Skill surface, and the player page drops its engine data count; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+2026-10-21  OK. Player Skill becomes one clickable summary row and its own tab: Skill over time, the average breakdown and a shorter How Skill works; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-21  OK. Player pages show a Skill average from 5 rated engine games with habit pills, a How Skill works explainer opens from every Skill surface, and the player page drops its engine data count; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-21  OK. Skill: six metrics that all count toward the estimate (EAPM, hotkey recalls put to use, hotkey checks, army production rhythm, unspent resources against income, idle production), read from the command stream at load and from the engine data; worker production stops counting dead bases; a long supply block pill on engine games. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-18  OK. Frontend only: a player shown under another name in the game title (such as a progamer's) is shown that way on every game tab, and build order sections get bo= permalinks that the summary pills open. No I/O changes.
 2026-10-18  OK. Frontend only: engine games keep an "Enhanced report using the StarCraft engine" notice, and too-short or custom-rules games show a dimmed Skill tab with the reason on hover. No I/O changes.
 2026-10-18  OK. Frontend only: the game summary's Skill column splits Beginner, Intermediate and Advanced into thirds (-, plain, +); Pro stays one band. No I/O changes.
-2026-10-18  OK. The game page says when a game can't be run through the StarCraft engine (the pass failed or drifted from the real game). It reads the existing engine digest cache entry; no new files, reads or writes.
 ```
 
 </details>
