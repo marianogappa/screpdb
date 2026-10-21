@@ -2494,6 +2494,13 @@ function App() {
   const [mainPlayerTab, setMainPlayerTab] = useState(() => initialMainRoute.playerTab);
   const [skillTabBeckon, setSkillTabBeckon] = useState(false);
   const [mainPlayerSubtab, setMainPlayerSubtab] = useState(() => initialMainRoute.playerSubtab || '');
+  // A player with a Skill tab has no Skill proxies tab, so an old link to it lands on Skill.
+  useEffect(() => {
+    if (mainPlayerTab === 'skill-proxies' && mainPlayer?.skill) {
+      setMainPlayerTab('skill');
+      setMainPlayerSubtab('');
+    }
+  }, [mainPlayerTab, mainPlayer?.skill]);
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
     apm: [],
@@ -7406,7 +7413,8 @@ function App() {
 
         {activeView === 'player' && (() => {
           const isFeaturedPlayer = isFeaturedPlayerKey(selectedPlayerKey);
-          const isSkillProxiesTab = mainPlayerTab === 'skill-proxies' && !isFeaturedPlayer;
+          // The Skill tab replaces Skill proxies wherever a player has one.
+          const isSkillProxiesTab = mainPlayerTab === 'skill-proxies' && !isFeaturedPlayer && !mainPlayer?.skill;
           const featured = mainPlayer?.featured || null;
           return (
           <div className="workflow-panel workflow-panel--player">
@@ -7463,7 +7471,7 @@ function App() {
                       onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
                       {t('tabs.hotkeys')}
                     </button>
-                    {!isFeaturedPlayer ? (
+                    {!isFeaturedPlayer && !mainPlayer?.skill ? (
                       <button type="button" role="tab" aria-selected={isSkillProxiesTab}
                         className={`workflow-production-tab ${isSkillProxiesTab ? 'workflow-production-tab-active' : ''}`}
                         onClick={() => {
