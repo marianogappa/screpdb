@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.34.0](https://github.com/marianogappa/screpdb/compare/v1.33.0...v1.34.0) (2026-10-25)
+
+
+### Features
+
+* **skill:** player Skill tab with tiers, habits and Skill over time, replacing Skill proxies ([#463](https://github.com/marianogappa/screpdb/issues/463)) ([0e8d849](https://github.com/marianogappa/screpdb/commit/0e8d84900e42e99830a5f9d539749b28d030c95e))
+
 ## [1.33.0](https://github.com/marianogappa/screpdb/compare/v1.32.0...v1.33.0) (2026-10-20)
 
 
