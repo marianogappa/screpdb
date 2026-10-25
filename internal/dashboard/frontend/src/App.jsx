@@ -6,7 +6,8 @@ import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineCoverage from './components/EngineCoverage';
-import SkillTab, { TIER_KEYS, tierLabel } from './components/SkillTab';
+import SkillTab, { PlayerSkillRow, PlayerSkillTab, TIER_KEYS, tierLabel } from './components/SkillTab';
+import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
 import GamingSessionPanel from './components/GamingSessionPanel';
@@ -89,11 +90,13 @@ import {
   buildMainRouteSearch,
   mainRouteHref,
   mainRouteSnapshotEqual,
+  buildOrderKey,
   shouldLoadPlayerSkillProxyInsights,
   MAIN_GAME_TABS,
   MAIN_PLAYER_TABS,
   MAIN_PLAYER_SKILL_PROXY_SUBTABS,
 } from './lib/mainRoute';
+import { applyShownNames, rawName, shownNamesByPlayerID } from './lib/shownNames';
 import './styles.css';
 
 const buildHistogramSummaryFromPlayers = (players) => {
@@ -324,6 +327,15 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       icon: getUnitIcon('starport'),
       label: t('events.proxyStarport'),
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+  if (playerIsActorForGameEventTypes(events, pid, ['long_supply_block'])) {
+    const supply = { terran: 'supplydepot', protoss: 'pylon', zerg: 'overlord' }[String(player?.race || '').toLowerCase()];
+    positive.push({
+      key: `ge-long-supply-block-${pid}`,
+      icon: supply ? getUnitIcon(supply) : null,
+      label: t('events.longSupplyBlock'),
+      className: 'workflow-pattern-pill',
     });
   }
 
@@ -870,6 +882,15 @@ const proNameEchoesPlayerName = (playerName, proLabel) => {
   const b = normalizeIdentityName(proLabel);
   return b.length >= 3 && (a.includes(b) || b.includes(a));
 };
+
+const shownNamesOf = (players) => shownNamesByPlayerID(
+  (Array.isArray(players) ? players : []).map((p) => ({ ...p, name: rawName(p) })),
+  (p) => identityDisplay(p.name, p.primary_badge).name,
+);
+
+const buildOrderDomId = (key) => `build-order-${String(key).replace(/[^A-Za-z0-9_-]/g, '-')}`;
+
+const gameWithShownNames = (game) => applyShownNames(game, shownNamesOf(game?.players));
 
 // identityDisplay resolves one player's line: which name to print, whether the
 // pro's name still needs saying, and the real name to keep for the tooltip
@@ -2089,7 +2110,7 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
   return indexed.map((entry) => entry.pattern);
 };
 
-const renderPatternPill = (pattern, keyPrefix, team, registry) => {
+const renderPatternPill = (pattern, keyPrefix, team, registry, link) => {
   if (!registry) return null;
   const def = lookupDefinitionForPattern(registry, pattern);
   if (!def) return null;
@@ -2104,13 +2125,35 @@ const renderPatternPill = (pattern, keyPrefix, team, registry) => {
   const legendText = isOpener ? 'pill.buildOrderLegend' : null;
   const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legendText ? 'workflow-pill-legended' : ''}`.trim();
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
-  return (
-    <span key={key} className={className} title={rendered.title || undefined}>
+  const content = (
+    <>
       {legendText ? <span className="workflow-pill-legend">{t(legendText)}</span> : null}
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
       {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
       {rendered.label ? <span>{rendered.label}</span> : null}
       {featureIsBeta(def) ? <BetaTag /> : null}
+    </>
+  );
+  if (link) {
+    return (
+      <a
+        key={key}
+        className={`${className} workflow-pill-link`}
+        title={rendered.title || undefined}
+        href={link.href}
+        onClick={(event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+          event.preventDefault();
+          link.onOpen();
+        }}
+      >
+        {content}
+      </a>
+    );
+  }
+  return (
+    <span key={key} className={className} title={rendered.title || undefined}>
+      {content}
     </span>
   );
 };
@@ -2382,6 +2425,7 @@ function App() {
   const [selectedPlayerKey, setSelectedPlayerKey] = useState(() => initialMainRoute.playerKey || '');
   const [mainGame, setMainGame] = useState(null);
   const [mainGameTab, setMainGameTab] = useState(() => initialMainRoute.gameTab);
+  const [mainGameBuildOrder, setMainGameBuildOrder] = useState(() => initialMainRoute.buildOrder);
   // Which player's name the pointer is on, so the map can pick out their start
   // location. The name column alone carries this: it is the player, so hovering
   // it is the natural gesture, and lighting the map from anywhere in the row
@@ -2448,7 +2492,15 @@ function App() {
   const [mainPlayersSortDir, setMainPlayersSortDir] = useState('desc');
   const [mainPlayersTab, setMainPlayersTab] = useState(() => initialMainRoute.playersTab);
   const [mainPlayerTab, setMainPlayerTab] = useState(() => initialMainRoute.playerTab);
+  const [skillTabBeckon, setSkillTabBeckon] = useState(false);
   const [mainPlayerSubtab, setMainPlayerSubtab] = useState(() => initialMainRoute.playerSubtab || '');
+  // A player with a Skill tab has no Skill proxies tab, so an old link to it lands on Skill.
+  useEffect(() => {
+    if (mainPlayerTab === 'skill-proxies' && mainPlayer?.skill) {
+      setMainPlayerTab('skill');
+      setMainPlayerSubtab('');
+    }
+  }, [mainPlayerTab, mainPlayer?.skill]);
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
     apm: [],
@@ -2615,7 +2667,7 @@ function App() {
   // The open game turns to engine data where it stands: no loading state, tabs and filters kept.
   const refreshOpenGameSilently = async (replayId) => {
     const data = await api.getGame(replayId);
-    if (mainGameRef.current?.replay_id === replayId) setMainGame(data);
+    if (mainGameRef.current?.replay_id === replayId) setMainGame(gameWithShownNames(data));
   };
 
   const applyEngineUpgrades = async (ids) => {
@@ -2741,7 +2793,7 @@ function App() {
       setMainGameSeeNotice('');
       setMainGameSeeNoticeError(false);
       const data = await api.getGame(replayId);
-      setMainGame(data);
+      setMainGame(gameWithShownNames(data));
       setMainGameHotkeys(null);
       setMainGameHotkeysError('');
       setMainGameHotkeysLoading(false);
@@ -2760,6 +2812,7 @@ function App() {
         nextTab = 'summary';
       }
       setMainGameTab(nextTab);
+      setMainGameBuildOrder(nextTab === 'build-orders' ? (options.initialBuildOrder || '') : '');
       setMainEventsPlayerEnabledById(
         Object.fromEntries((data.players || []).map((p) => [String(p.player_id), true])),
       );
@@ -2831,7 +2884,7 @@ function App() {
       setMainGameHotkeysLoading(true);
       setMainGameHotkeysError('');
       const data = await api.getGameHotkeys(replayId);
-      setMainGameHotkeys(data || null);
+      setMainGameHotkeys(applyShownNames(data, shownNamesOf(mainGameRef.current?.players)) || null);
     } catch (err) {
       setMainGameHotkeysError(err.message || t('errors.loadHotkeyStreams'));
       setMainGameHotkeys(null);
@@ -3065,7 +3118,7 @@ function App() {
 
   useEffect(() => {
     if (initialMainRoute.view === 'game' && initialMainRoute.replayId != null) {
-      void openMainGame(initialMainRoute.replayId, { initialGameTab: initialMainRoute.gameTab });
+      void openMainGame(initialMainRoute.replayId, { initialGameTab: initialMainRoute.gameTab, initialBuildOrder: initialMainRoute.buildOrder });
     } else if (initialMainRoute.view === 'player' && initialMainRoute.playerKey) {
       void openMainPlayer(initialMainRoute.playerKey, {
         initialPlayerTab: initialMainRoute.playerTab,
@@ -3302,6 +3355,34 @@ function App() {
     api.quit().catch(() => {}).finally(() => setStopped(true));
   };
 
+  const buildOrderHref = (key) => mainRouteHref(buildMainRouteSearch({
+    activeView: 'game',
+    selectedReplayId,
+    mainGameTab: 'build-orders',
+    mainGameBuildOrder: key,
+  }));
+
+  const openBuildOrder = (key) => {
+    setMainGameBuildOrder(key);
+    setMainGameTab('build-orders');
+  };
+
+  const buildOrderLinkFor = (player, pattern) => {
+    const bo = (mainGame?.build_orders || []).find((b) => b.player_id === player.player_id && b.feature_key === pattern?.event_type);
+    if (!bo) return undefined;
+    const key = buildOrderKey(bo);
+    return { href: buildOrderHref(key), onOpen: () => openBuildOrder(key) };
+  };
+
+  useEffect(() => {
+    if (mainGameTab !== 'build-orders' || !mainGameBuildOrder || !mainGame) return undefined;
+    // Charts size themselves after mount, so the section's final position is only known a moment later.
+    const timer = window.setTimeout(() => {
+      document.getElementById(buildOrderDomId(mainGameBuildOrder))?.scrollIntoView({ block: 'start' });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [mainGameTab, mainGameBuildOrder, mainGame?.replay_id]);
+
   useEffect(() => {
     if (suppressUrlSyncRef.current) return;
     const next = buildMainRouteSearch({
@@ -3309,6 +3390,7 @@ function App() {
       selectedReplayId,
       selectedPlayerKey,
       mainGameTab,
+      mainGameBuildOrder,
       mainPlayersTab,
       mainPlayerTab,
       mainPlayerSubtab,
@@ -3318,7 +3400,7 @@ function App() {
     }
     if (typeof window === 'undefined') return;
     window.history.pushState({ __spa: 1 }, '', mainRouteHref(next));
-  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainPlayersTab, mainPlayerTab, mainPlayerSubtab]);
+  }, [activeView, selectedReplayId, selectedPlayerKey, mainGameTab, mainGameBuildOrder, mainPlayersTab, mainPlayerTab, mainPlayerSubtab]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -3328,6 +3410,7 @@ function App() {
       setSelectedReplayId(r.replayId);
       setSelectedPlayerKey(r.playerKey || '');
       setMainGameTab(r.gameTab);
+      setMainGameBuildOrder(r.buildOrder);
       setMainPlayersTab(r.playersTab);
       setMainPlayerTab(r.playerTab);
       setMainPlayerSubtab(r.playerSubtab || '');
@@ -3335,7 +3418,7 @@ function App() {
         suppressUrlSyncRef.current = false;
       };
       if (r.view === 'game' && r.replayId != null) {
-        const p = openMainGameRef.current?.(r.replayId, { initialGameTab: r.gameTab });
+        const p = openMainGameRef.current?.(r.replayId, { initialGameTab: r.gameTab, initialBuildOrder: r.buildOrder });
         if (p && typeof p.finally === 'function') {
           p.finally(finish);
         } else {
@@ -3962,7 +4045,7 @@ function App() {
                 >
                   {renderWorkerIcon(player.race)}
                   {(() => {
-                    const shown = identityDisplay(player.name, player.primary_badge);
+                    const shown = identityDisplay(rawName(player), player.primary_badge);
                     return (
                       <>
                         <PlayerDisplayName name={shown.name} />
@@ -4299,6 +4382,7 @@ function App() {
   const mainGamePlayers = mainGame?.players || [];
   const mainGameIsEngine = mainGame?.mode === 'engine';
   const mainGameHasSkill = mainGame?.skill_status === 'ok';
+  const mainGameSkillUnratedReason = { too_short: 'skill.status.tooShort', custom_rules: 'skill.status.customRules' }[mainGame?.skill_status];
   const mainGameShowsSkill = mainGame?.skill_status === 'ok' && mainGamePlayers.some((p) => p.skill?.combined);
   // Engine supply is worth its own tab; the command-inferred estimate stays a Timings sub-tab.
   const mainSupplyFromEngine = mainGamePlayers.length > 0
@@ -5187,7 +5271,7 @@ function App() {
   ].filter(Boolean);
   const mainPlayerNameWidthCh = useMemo(() => {
     const longestNameLength = mainGamePlayers.reduce((longest, player) => {
-      const nameLength = String(player?.name || '').trim().length;
+      const nameLength = String(rawName(player)).trim().length;
       return Math.max(longest, nameLength);
     }, 0);
     if (!longestNameLength) return 15;
@@ -6238,6 +6322,18 @@ function App() {
                       >
                         {t('game.tabs.skill')}
                       </button>
+                    ) : mainGameSkillUnratedReason ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={false}
+                        aria-disabled="true"
+                        className="workflow-production-tab workflow-production-tab-disabled"
+                        data-tooltip={t(mainGameSkillUnratedReason)}
+                        aria-label={`${t('game.tabs.skill')}: ${t(mainGameSkillUnratedReason)}`}
+                      >
+                        {t('game.tabs.skill')}
+                      </button>
                     ) : null}
                     {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
                       <button
@@ -6245,7 +6341,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'build-orders'}
                         className={`workflow-production-tab ${mainGameTab === 'build-orders' ? 'workflow-production-tab-active' : ''}`}
-                        onClick={() => setMainGameTab('build-orders')}
+                        onClick={() => { setMainGameBuildOrder(''); setMainGameTab('build-orders'); }}
                       >
                         {t('game.tabs.buildOrders')}
                       </button>
@@ -6301,10 +6397,16 @@ function App() {
                     >
                       {t('tabs.hotkeys')}
                     </button>
-                    {mainGame?.engine_pending || mainEngineReadyFor === mainGame?.replay_id ? (
+                    {mainGame?.engine_unavailable ? (
+                      <span className="engine-notice engine-notice--unavailable" role="status">
+                        {t('game.engineNotice.unavailable')}
+                      </span>
+                    ) : mainGame?.engine_pending || mainEngineReadyFor === mainGame?.replay_id ? (
                       <span className={`engine-notice${mainGame?.engine_pending ? ' engine-notice--running' : ' engine-notice--ready'}`} role="status">
                         {mainGame?.engine_pending ? t('game.engineNotice.running') : t('game.engineNotice.ready')}
                       </span>
+                    ) : mainGame?.mode === 'engine' && mainGame?.engine_confidence === 'high' ? (
+                      <span className="engine-notice engine-notice--active">{t('game.engineNotice.active')}</span>
                     ) : null}
                   </div>
                 </div>
@@ -6433,7 +6535,7 @@ function App() {
                     <div className={`workflow-player-table${mainGameShowsSkill ? ' workflow-player-table--skill' : ''}`} style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
                       <div className="wpt-head">{t('common.name')}</div>
                       <div className="wpt-head">APM</div>
-                      {mainGameShowsSkill ? <div className="wpt-head">{t('game.tabs.skill')}</div> : null}
+                      {mainGameShowsSkill ? <div className="wpt-head">{t('game.tabs.skill')} <SkillExplainerLink model={mainGame?.skill_model} compact /></div> : null}
                       <div className="wpt-head">{t('common.featuring')}</div>
                       <div className="wpt-head wpt-head-comp">
                         <span>{t('game.summary.unitComposition')}</span>
@@ -6468,7 +6570,7 @@ function App() {
                                   <CountryFlag code={player.country_code} playerKey={player.player_key} />
                                 </span>
                                 <span className="wpt-glyph wpt-glyph-colour">
-                                  <PlayerSwatch color={player.color} title={player.name} />
+                                  <PlayerSwatch color={player.color} title={rawName(player)} />
                                 </span>
                                 <span className="wpt-glyph wpt-glyph-crown">
                                   {player.team_won ? <span className="workflow-crown" title={t('common.winner')}>👑</span> : null}
@@ -6481,7 +6583,7 @@ function App() {
                                   title={t('player.analyze')}
                                   onClick={() => openMainPlayer(player.player_key)}
                                 >
-                                  <PlayerDisplayName name={player.name} />
+                                  <PlayerDisplayName name={rawName(player)} />
                                 </button>
                                 {player.primary_badge ? (
                                   <IdentityBadge badge={player.primary_badge} secondaryBadge={player.secondary_badge} />
@@ -6502,7 +6604,7 @@ function App() {
                             ) : null}
                             <div className="wpt-cell wpt-featuring">
                               <div className="workflow-pattern-pills">
-                                {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry))}
+                                {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry, buildOrderLinkFor(player, pattern)))}
                                 {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
                                 {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
                                 <SpellcastsPill spells={collectPlayerSpells(playerPhases)} />
@@ -7245,13 +7347,20 @@ function App() {
                 {mainGameTab === 'build-orders' && (
                   <div className="workflow-timing-charts">
                     {Array.isArray(mainGame?.build_orders) && mainGame.build_orders.length > 0 ? (
-                      mainGame.build_orders.map((bo) => (
-                        <BuildOrderTimelineRows
-                          key={`build-order-${bo.player_id}-${bo.feature_key}`}
-                          group={bo}
-                          beta={featureIsBeta(markerRegistry?.[bo.feature_key])}
-                        />
-                      ))
+                      mainGame.build_orders.map((bo) => {
+                        const key = buildOrderKey(bo);
+                        return (
+                          <BuildOrderTimelineRows
+                            key={`build-order-${key}`}
+                            id={buildOrderDomId(key)}
+                            group={bo}
+                            beta={featureIsBeta(markerRegistry?.[bo.feature_key])}
+                            href={buildOrderHref(key)}
+                            focused={key === mainGameBuildOrder}
+                            onOpen={() => openBuildOrder(key)}
+                          />
+                        );
+                      })
                     ) : (
                       <div className="workflow-card">
                         <div className="chart-empty">{t('buildOrders.none')}</div>
@@ -7304,7 +7413,8 @@ function App() {
 
         {activeView === 'player' && (() => {
           const isFeaturedPlayer = isFeaturedPlayerKey(selectedPlayerKey);
-          const isSkillProxiesTab = mainPlayerTab === 'skill-proxies' && !isFeaturedPlayer;
+          // The Skill tab replaces Skill proxies wherever a player has one.
+          const isSkillProxiesTab = mainPlayerTab === 'skill-proxies' && !isFeaturedPlayer && !mainPlayer?.skill;
           const featured = mainPlayer?.featured || null;
           return (
           <div className="workflow-panel workflow-panel--player">
@@ -7328,9 +7438,6 @@ function App() {
                     {!isFeaturedPlayer && !mainPlayer?.primary_badge && !mainPlayer?.fingerprint_match ? (
                       <FingerprintCoverageNote coverage={mainPlayer?.fingerprint_coverage} />
                     ) : null}
-                    {!isFeaturedPlayer && mainPlayer?.engine ? (
-                      <EngineCoverage coverage={{ ...mainPlayer.engine, state: engineCoverage?.state }} />
-                    ) : null}
                     {isFeaturedPlayer && featured ? (
                       <div className="workflow-featured-links">
                         {featured.main_race ? <span>{raceLabel(featured.main_race)}</span> : null}
@@ -7352,12 +7459,19 @@ function App() {
                       onClick={() => { setMainPlayerTab('summary'); setMainPlayerSubtab(''); }}>
                       {t('tabs.summary')}
                     </button>
+                    {!isFeaturedPlayer && (mainPlayer?.skill || mainPlayerTab === 'skill') ? (
+                      <button type="button" role="tab" aria-selected={mainPlayerTab === 'skill'}
+                        className={`workflow-production-tab ${mainPlayerTab === 'skill' ? 'workflow-production-tab-active' : ''}${skillTabBeckon && mainPlayerTab !== 'skill' ? ' workflow-production-tab--beckon' : ''}`}
+                        onClick={() => { setMainPlayerTab('skill'); setMainPlayerSubtab(''); }}>
+                        {t('game.tabs.skill')}
+                      </button>
+                    ) : null}
                     <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
                       className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
                       onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
                       {t('tabs.hotkeys')}
                     </button>
-                    {!isFeaturedPlayer ? (
+                    {!isFeaturedPlayer && !mainPlayer?.skill ? (
                       <button type="button" role="tab" aria-selected={isSkillProxiesTab}
                         className={`workflow-production-tab ${isSkillProxiesTab ? 'workflow-production-tab-active' : ''}`}
                         onClick={() => {
@@ -7380,6 +7494,11 @@ function App() {
                 </div>
 
                 <div className="workflow-cards">
+                  {mainPlayerTab === 'skill' && !isFeaturedPlayer ? (
+                    mainPlayer?.skill
+                      ? <PlayerSkillTab summary={mainPlayer.skill} name={mainPlayer?.player_name || selectedPlayerKey} />
+                      : (mainPlayerLoading ? null : <div className="workflow-card"><div className="chart-empty">{t('skill.player.none')}</div></div>)
+                  ) : null}
                   {mainPlayerTab === 'summary' && (() => {
                     const bnet = mainPlayer?.bnet_profile;
                     // A profile is now also sent for a toon Battle.net does not
@@ -7416,6 +7535,7 @@ function App() {
                     const games = Array.isArray(mainPlayerLastGames) ? mainPlayerLastGames : [];
                     return (
                       <div className="workflow-card">
+                        {!isFeaturedPlayer ? <PlayerSkillRow summary={mainPlayer?.skill} onHover={setSkillTabBeckon} onOpen={() => { setSkillTabBeckon(false); setMainPlayerTab('skill'); setMainPlayerSubtab(''); }} /> : null}
                         {showBnet ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.title')}</span></div>

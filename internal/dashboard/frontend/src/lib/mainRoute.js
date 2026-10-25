@@ -24,6 +24,7 @@ export const MAIN_PLAYERS_TABS = [
 
 export const MAIN_PLAYER_TABS = [
   'summary',
+  'skill',
   'hotkeys',
   'skill-proxies',
   'chat-summary',
@@ -75,6 +76,7 @@ const pickEnum = (value, allowed, fallback) => {
  *   replayId: number|string|null,
  *   playerKey: string,
  *   gameTab: string,
+ *   buildOrder: string,
  *   playersTab: string,
  *   playerTab: string,
  *   playerSubtab: string,
@@ -87,6 +89,7 @@ export function parseMainRouteSearch(search) {
   const replayRaw = params.get('replay');
   const playerRaw = params.get('player');
   const gameTabRaw = params.get('gameTab');
+  const buildOrderRaw = params.get('bo');
   const playersTabRaw = params.get('playersTab');
   const playerTabRaw = params.get('playerTab');
   const playerSubtabRaw = params.get('playerSubtab');
@@ -96,6 +99,7 @@ export function parseMainRouteSearch(search) {
   // The Skill tab replaced Macro and the Skill proxies views; their old links open it.
   const legacyGameTab = { macro: 'skill', 'first-unit-efficiency': 'skill', 'unit-production-cadence': 'skill', 'viewport-multitasking': 'skill' };
   let gameTab = pickEnum(legacyGameTab[gameTabRaw] || gameTabRaw, MAIN_GAME_TABS, 'summary');
+  let buildOrder = gameTab === 'build-orders' ? String(buildOrderRaw || '').trim() : '';
   let playersTab = pickEnum(playersTabRaw, MAIN_PLAYERS_TABS, 'summary');
   let playerTab = pickEnum(playerTabRaw, MAIN_PLAYER_TABS, 'summary');
   // playerSubtab is contextual: only validated for skill-proxies; race subtabs are dynamic.
@@ -107,6 +111,7 @@ export function parseMainRouteSearch(search) {
   if (view === 'game' && replayId == null) {
     view = 'games';
     gameTab = 'summary';
+    buildOrder = '';
     replayId = null;
   }
   if (view === 'player' && !playerKey) {
@@ -119,6 +124,7 @@ export function parseMainRouteSearch(search) {
     replayId,
     playerKey,
     gameTab,
+    buildOrder,
     playersTab,
     playerTab,
     playerSubtab,
@@ -131,6 +137,7 @@ export function parseMainRouteSearch(search) {
  *   selectedReplayId: number|string|null,
  *   selectedPlayerKey: string,
  *   mainGameTab: string,
+ *   mainGameBuildOrder?: string,
  *   mainPlayersTab: string,
  *   mainPlayerTab: string,
  *   mainPlayerSubtab: string,
@@ -152,6 +159,10 @@ export function buildMainRouteSearch(s) {
     const tab = pickEnum(s.mainGameTab, MAIN_GAME_TABS, 'summary');
     if (tab !== 'summary') {
       params.set('gameTab', tab);
+    }
+    const buildOrder = String(s.mainGameBuildOrder || '').trim();
+    if (tab === 'build-orders' && buildOrder) {
+      params.set('bo', buildOrder);
     }
   }
 
@@ -211,7 +222,11 @@ export function mainRouteSnapshotEqual(searchA, searchB) {
     && String(ra.replayId ?? '') === String(rb.replayId ?? '')
     && ra.playerKey === rb.playerKey
     && ra.gameTab === rb.gameTab
+    && ra.buildOrder === rb.buildOrder
     && ra.playersTab === rb.playersTab
     && ra.playerTab === rb.playerTab
     && ra.playerSubtab === rb.playerSubtab;
 }
+
+/** A build order section's key in the `bo` parameter: one player's one build order. */
+export const buildOrderKey = (bo) => `${bo?.player_id}:${bo?.feature_key}`;

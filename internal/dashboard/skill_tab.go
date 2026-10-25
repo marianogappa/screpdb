@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/marianogappa/screpdb/internal/crashreport"
-	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/skill"
 )
@@ -21,7 +20,7 @@ const (
 )
 
 // workflowPlayerSkill places one player's game on the four skill tiers. Metrics hold every measured metric;
-// the engine ones (spending quotient, worker production, banked resources) only exist in engine mode.
+// the engine ones (unspent resources against income, idle production) only exist in engine mode.
 type workflowPlayerSkill struct {
 	Combined  *skill.Placement           `json:"combined,omitempty"`
 	Confident bool                       `json:"confident"`
@@ -41,6 +40,35 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 	if !ok {
 		return
 	}
+	g := rateGame(model, rec)
+	detail.SkillStatus, detail.SkillCaveats = g.status, g.caveats
+	if g.status == skillStatusOK {
+		detail.SkillModel = skillModelSummary(model)
+	}
+	for ordinal, r := range g.players {
+		id := library.PlayerID(rec.ID, uint8(ordinal))
+		for i := range detail.Players {
+			if detail.Players[i].PlayerID == id {
+				detail.Players[i].Skill = &workflowPlayerSkill{Combined: r.result.Combined, Confident: r.result.Confident, Metrics: r.result.Metrics}
+			}
+		}
+	}
+}
+
+type ratedGame struct {
+	status  string
+	caveats []string
+	players map[int]ratedPlayer
+}
+
+type ratedPlayer struct {
+	values map[string]float64
+	result skill.Result
+}
+
+// rateGame rates every human of a game with trusted engine data; status is empty when the game has no
+// Skill tab at all.
+func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 	var humans []int
 	for i := range rec.Players {
 		if p := &rec.Players[i]; p.IsHuman() && !p.IsObserver() {
@@ -48,32 +76,25 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 		}
 	}
 	// Skill is an engine feature: without trusted engine data the game simply has no Skill tab.
-	if rec.EngineData == nil || rec.EngineData.LowConfidence {
-		return
+	if rec.EngineData == nil || rec.EngineData.LowConfidence || len(humans) < 2 {
+		return ratedGame{}
 	}
 	switch {
-	case len(humans) < 2:
-		return
 	case rec.MapKind == library.MapKindUseMapSettings:
-		detail.SkillStatus = skillStatusCustom
-		return
+		return ratedGame{status: skillStatusCustom}
 	case int(rec.Duration) < skill.MinGameSeconds:
-		detail.SkillStatus = skillStatusTooShort
-		return
+		return ratedGame{status: skillStatusTooShort}
 	}
-	detail.SkillStatus = skillStatusOK
-	detail.SkillCaveats = []string{}
+	g := ratedGame{status: skillStatusOK, caveats: []string{}, players: map[int]ratedPlayer{}}
 	if len(humans) != 2 {
-		detail.SkillCaveats = append(detail.SkillCaveats, skillCaveatTeamGame)
+		g.caveats = append(g.caveats, skillCaveatTeamGame)
 	}
 	if rec.MapKind == library.MapKindMoney {
-		detail.SkillCaveats = append(detail.SkillCaveats, skillCaveatMoneyMap)
+		g.caveats = append(g.caveats, skillCaveatMoneyMap)
 	}
 	engine := map[uint8]library.EnginePlayer{}
-	if rec.EngineData != nil && !rec.EngineData.LowConfidence {
-		for _, p := range rec.EngineData.Players {
-			engine[p.Slot] = p
-		}
+	for _, p := range rec.EngineData.Players {
+		engine[p.Slot] = p
 	}
 	for _, ordinal := range humans {
 		p := &rec.Players[ordinal]
@@ -84,38 +105,25 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 		if race == "" {
 			continue
 		}
-		values := skillValues(p, float64(rec.Duration)/60)
+		values := skillValues(p)
 		if e, ok := engine[p.Slot]; ok {
-			addFinite(values, skill.SpendingQuotient, e.SpendingQuotient)
-			addFinite(values, skill.HallBusy, e.HallBusy)
-			addFinite(values, skill.LarvaPerHatch, e.LarvaPerHatch)
-			if e.Seconds > 0 {
-				values[skill.BankedShare] = float64(e.BankedShare)
+			if e.IncomePerMinute > 0 {
+				addFinite(values, skill.UnspentPerIncome, e.AverageUnspent/e.IncomePerMinute)
 			}
+			addFinite(values, skill.ProductionIdle, e.ProductionIdleShare)
 		}
-		res := model.Evaluate(race, skillContext(rec, len(humans)), values)
-		id := library.PlayerID(rec.ID, uint8(ordinal))
-		for i := range detail.Players {
-			if detail.Players[i].PlayerID == id {
-				detail.Players[i].Skill = &workflowPlayerSkill{Combined: res.Combined, Confident: res.Confident, Metrics: res.Metrics}
-			}
-		}
+		g.players[ordinal] = ratedPlayer{values: values, result: model.Evaluate(race, skillContext(rec, len(humans)), values)}
 	}
+	return g
 }
 
 // skillValues are the fast-pass metrics, measured as scripts/skill-mine measured them.
-func skillValues(p *library.Player, minutes float64) map[string]float64 {
-	// A player who never switched screens or recalled a hotkey scores 0 there: that is the lowest skill
-	// the metric measures, not a missing value.
-	values := map[string]float64{skill.EAPM: float64(p.EAPM), skill.ScreenSwitches: float64(p.Viewport)}
-	if events, err := hotkeystream.Decode(p.HotkeyStream); err == nil && minutes > skill.RecallsFromSecond/60 {
-		recalls := 0
-		for _, e := range events {
-			if e.Type == hotkeystream.TypeSelect && e.Sec >= skill.RecallsFromSecond {
-				recalls++
-			}
-		}
-		values[skill.HotkeyRecalls] = float64(recalls) / (minutes - skill.RecallsFromSecond/60)
+func skillValues(p *library.Player) map[string]float64 {
+	values := map[string]float64{skill.EAPM: float64(p.EAPM)}
+	if p.Flags.Has(library.PlayerHasSkillCommands) {
+		values[skill.UsedRecalls] = float64(p.UsedRecalls)
+		values[skill.CheckRecalls] = float64(p.CheckRecalls)
+		values[skill.ArmyCadence] = float64(p.ArmyCadence)
 	}
 	return values
 }

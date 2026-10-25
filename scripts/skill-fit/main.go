@@ -44,9 +44,19 @@ func (s sample) tier() int {
 	return skill.TierAdvanced
 }
 
-var chartMetrics = []string{skill.EAPM, skill.HotkeyRecalls, skill.ScreenSwitches, skill.SpendingQuotient, skill.HallBusy, skill.LarvaPerHatch, skill.BankedShare}
+// Every metric the Skill tab shows is also in the combined score: one that does not count toward the tier
+// has no business on the page.
+var chartMetrics = []string{skill.EAPM, skill.UsedRecalls, skill.CheckRecalls, skill.ArmyCadence, skill.UnspentPerIncome, skill.ProductionIdle}
 
-var combinedFeatures = []string{skill.EAPM, skill.HotkeyRecalls, skill.ScreenSwitches}
+var combinedFeatures = chartMetrics
+
+// Each metric's share of the combined score's weight stays within these bounds: a regression left alone
+// hands most of the weight to whichever mechanics metric correlates best, and the score turns into a
+// mirror of that one number.
+const (
+	minWeightShare = 0.10
+	maxWeightShare = 0.30
+)
 
 func main() {
 	in := flag.String("in", "", "skill-mine JSONL")
@@ -115,7 +125,7 @@ func main() {
 				rows = append(rows, s)
 			}
 		}
-		cr := fitRace(rows)
+		cr := fitRace(rows, model.Metrics)
 		var scored []scoredTier
 		for _, s := range rows {
 			scored = append(scored, scoredTier{predict(cr, s), s.tier()})
@@ -131,7 +141,7 @@ func main() {
 	}
 
 	if *contextPath != "" {
-		model.ContextAdjust = contextAdjust(&model, readContext(*contextPath))
+		model.ContextAdjust = contextAdjust(&model, readContext(*contextPath), samples)
 	}
 
 	b, err := json.MarshalIndent(model, "", "  ")
@@ -144,10 +154,12 @@ func main() {
 	log.Printf("wrote %s: %d players from %d games", *out, model.Players, model.Games)
 }
 
-var adjustedMetrics = []string{skill.SpendingQuotient, skill.BankedShare, skill.HallBusy, skill.LarvaPerHatch}
+var adjustedMetrics = []string{skill.ArmyCadence, skill.UnspentPerIncome, skill.ProductionIdle}
 
-// adjustedTiers are the mechanics tiers the context tables are built from: money-map and team players are
-// almost all below Advanced, so only there do the contexts have enough players to compare.
+// adjustedTiers are the EAPM tiers the context tables are built from: money-map and team players are
+// almost all below Advanced, so only there do the contexts have enough players to compare. EAPM is the
+// mechanics level here because money and team play do not change it, and the combined score now holds the
+// very macro metrics being adjusted.
 var adjustedTiers = map[int]bool{skill.TierBeginner: true, skill.TierIntermediate: true}
 
 const contextQuantiles = 21
@@ -170,39 +182,49 @@ func readContext(path string) []sample {
 	return out
 }
 
-// contextAdjust builds, per context, quantile tables that convert each macro metric to its 1v1 regular-map
-// value at the same percentile, among players of the same mechanics level (the combined score, which
-// money and team play do not change).
-func contextAdjust(model *skill.Model, rows []sample) map[string]map[string]skill.QuantileMap {
-	byContext := map[string][]sample{}
+// contextAdjust builds, per context and race, quantile tables that convert each macro metric to its 1v1
+// ladder value at the same percentile, among players of the same mechanics level. Per race, because the
+// same metric can live on different scales: idle production is idle buildings for Terran and Protoss but
+// capped larva for Zerg.
+func contextAdjust(model *skill.Model, rows, ladder []sample) map[string]map[string]skill.QuantileMap {
+	matched := func(r sample) bool {
+		res := model.Evaluate(r.Side.Race, skill.ContextOneVsOne, map[string]float64{skill.EAPM: r.Values[skill.EAPM]})
+		p, ok := res.Metrics[skill.EAPM]
+		return ok && adjustedTiers[p.Tier]
+	}
+	from, to := map[string][]sample{}, map[string][]sample{}
 	for _, r := range rows {
-		res := model.Evaluate(r.Side.Race, skill.ContextOneVsOne, r.Values)
-		if res.Combined == nil || !adjustedTiers[res.Combined.Tier] {
+		if !matched(r) {
 			continue
 		}
-		ctx := skill.ContextOneVsOne
 		switch {
 		case r.MapKind == "money":
-			ctx = skill.ContextMoney
+			from[skill.AdjustKey(skill.ContextMoney, r.Side.Race)] = append(from[skill.AdjustKey(skill.ContextMoney, r.Side.Race)], r)
 		case r.Humans != 2:
-			ctx = skill.ContextTeamRegular
+			from[skill.AdjustKey(skill.ContextTeamRegular, r.Side.Race)] = append(from[skill.AdjustKey(skill.ContextTeamRegular, r.Side.Race)], r)
 		}
-		byContext[ctx] = append(byContext[ctx], r)
+	}
+	for _, r := range ladder {
+		if r.Side.Pro == "" && matched(r) {
+			to[r.Side.Race] = append(to[r.Side.Race], r)
+		}
 	}
 	out := map[string]map[string]skill.QuantileMap{}
 	for _, ctx := range []string{skill.ContextTeamRegular, skill.ContextMoney} {
-		for _, metric := range adjustedMetrics {
-			from := quantiles(byContext[ctx], metric)
-			to := quantiles(byContext[skill.ContextOneVsOne], metric)
-			if from == nil || to == nil {
-				log.Printf("%s %s: too few players to adjust", ctx, metric)
-				continue
+		for _, race := range []string{"T", "P", "Z"} {
+			key := skill.AdjustKey(ctx, race)
+			for _, metric := range adjustedMetrics {
+				f, t := quantiles(from[key], metric), quantiles(to[race], metric)
+				if f == nil || t == nil {
+					log.Printf("%s %s: too few players to adjust", key, metric)
+					continue
+				}
+				if out[key] == nil {
+					out[key] = map[string]skill.QuantileMap{}
+				}
+				out[key][metric] = skill.QuantileMap{From: f, To: t}
+				log.Printf("%s %s: median %.3f -> %.3f", key, metric, f[contextQuantiles/2], t[contextQuantiles/2])
 			}
-			if out[ctx] == nil {
-				out[ctx] = map[string]skill.QuantileMap{}
-			}
-			out[ctx][metric] = skill.QuantileMap{From: from, To: to}
-			log.Printf("%s %s: median %.3f -> %.3f", ctx, metric, from[contextQuantiles/2], to[contextQuantiles/2])
 		}
 	}
 	return out
@@ -294,8 +316,10 @@ func equalErrorCuts(scored []scoredTier) [3]float64 {
 	return cuts
 }
 
-// fitRace is a ridge regression of the tier on clamped z-scores of the combined features.
-func fitRace(rows []sample) skill.CombinedForRace {
+// fitRace is a ridge regression of the tier on clamped z-scores of the combined features, with each
+// weight then given the sign its metric has on its own and a share between minWeightShare and
+// maxWeightShare; a last fit rescales the bounded weights onto the tier.
+func fitRace(rows []sample, metrics map[string]skill.MetricCuts) skill.CombinedForRace {
 	n := len(combinedFeatures)
 	cr := skill.CombinedForRace{Mean: make([]float64, n), SD: make([]float64, n), Weights: make([]float64, n)}
 	for i, f := range combinedFeatures {
@@ -333,13 +357,58 @@ func fitRace(rows []sample) skill.CombinedForRace {
 		}
 	}
 	w := solve(a, b)
-	cr.Intercept = round(w[0], 5)
+	signs := make([]float64, n)
+	for i, f := range combinedFeatures {
+		signs[i] = -1
+		if metrics[f].HigherIsBetter {
+			signs[i] = 1
+		}
+	}
+	shares := boundedShares(w[1:], signs)
+	var sx, sy, sxx, sxy float64
+	for _, s := range rows {
+		x := features(cr, s)
+		composite := 0.0
+		for i := range shares {
+			composite += signs[i] * shares[i] * x[i+1]
+		}
+		y := float64(s.tier())
+		sx, sy, sxx, sxy = sx+composite, sy+y, sxx+composite*composite, sxy+composite*y
+	}
+	m := float64(len(rows))
+	scale := (m*sxy - sx*sy) / (m*sxx - sx*sx)
+	cr.Intercept = round((sy-scale*sx)/m, 5)
 	for i := range cr.Weights {
-		cr.Weights[i] = round(w[i+1], 5)
+		cr.Weights[i] = round(scale*signs[i]*shares[i], 5)
 		cr.Mean[i] = round(cr.Mean[i], 4)
 		cr.SD[i] = round(cr.SD[i], 4)
 	}
 	return cr
+}
+
+// boundedShares turns regression weights into shares of the total that respect each metric's own sign and
+// the share bounds: a weight of the wrong sign (a side effect of correlated metrics) starts from zero.
+func boundedShares(w, signs []float64) []float64 {
+	shares := make([]float64, len(w))
+	total := 0.0
+	for i := range w {
+		shares[i] = max(0, w[i]*signs[i])
+		total += shares[i]
+	}
+	for i := range shares {
+		shares[i] /= max(total, 1e-9)
+	}
+	for range 100 {
+		sum := 0.0
+		for i := range shares {
+			shares[i] = min(maxWeightShare, max(minWeightShare, shares[i]))
+			sum += shares[i]
+		}
+		for i := range shares {
+			shares[i] /= sum
+		}
+	}
+	return shares
 }
 
 func features(cr skill.CombinedForRace, s sample) []float64 {

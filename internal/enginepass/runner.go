@@ -255,6 +255,26 @@ func (r *Runner) Pending(replayID int64) bool {
 	return queued || r.running[rec.Checksum]
 }
 
+// Unavailable reports whether the engine pass settled the replay without data the dashboard can use:
+// the engine could not run it, or it drifted from the real game.
+func (r *Runner) Unavailable(replayID int64) bool {
+	rec, ok := r.lib.Snapshot().ByID(replayID)
+	if !ok {
+		return false
+	}
+	if rec.EngineData != nil {
+		return rec.EngineData.LowConfidence
+	}
+	r.mu.Lock()
+	cache, running := r.cache, r.status.State == StateRunning
+	r.mu.Unlock()
+	if !running || cache == nil {
+		return false
+	}
+	entry, ok, err := cache.Get(r.key(rec.Checksum))
+	return err == nil && ok && entry.Failed != ""
+}
+
 func (r *Runner) setState(s State, reason string) {
 	r.mu.Lock()
 	r.status.State, r.status.Reason = s, reason

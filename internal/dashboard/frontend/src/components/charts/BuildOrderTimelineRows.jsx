@@ -40,7 +40,7 @@ const formatTime = (seconds) => {
   return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
 };
 
-function BuildOrderTimelineRows({ group, beta }) {
+function BuildOrderTimelineRows({ group, beta, id, href, focused, onOpen }) {
   const t = useT();
   const wrapperRef = useRef(null);
   const [hover, setHover] = useState(null);
@@ -117,11 +117,21 @@ function BuildOrderTimelineRows({ group, beta }) {
   };
 
   return (
-    <div className="workflow-card timing-chart-card">
+    <div id={id} className={`workflow-card timing-chart-card build-order-section${focused ? ' build-order-section--focused' : ''}`}>
       <div className="workflow-first-unit-title" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-        <span><strong>{group?.name}</strong></span>
-        <span className="workflow-first-unit-title-slash">·</span>
-        <span>{buildOrderLabel(group)}</span>
+        <a
+          className="build-order-permalink"
+          href={href}
+          onClick={(event) => {
+            if (!onOpen || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            event.preventDefault();
+            onOpen();
+          }}
+        >
+          <strong>{group?.name}</strong>
+          <span className="workflow-first-unit-title-slash">·</span>
+          <span>{buildOrderLabel(group)}</span>
+        </a>
         {beta ? (
           <sup
             className="workflow-beta-tag"

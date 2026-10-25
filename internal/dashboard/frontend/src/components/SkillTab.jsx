@@ -1,5 +1,6 @@
 import React from 'react';
 import { useT } from '../lib/i18nContext';
+import SkillExplainerLink from './SkillExplainer';
 
 // SkillTab places each player on four tiers fitted to ladder MMR (internal/skill). Positions are on a shared
 // tier axis, 0 to 4, where each whole number is a cut between tiers, so players of different races compare
@@ -9,15 +10,13 @@ export const TIER_KEYS = ['beginner', 'intermediate', 'advanced', 'pro'];
 
 const percent = (v) => `${Math.round(v * 100)}%`;
 
-// Worker production is measured differently per race (town halls busy, or larva waiting per hatchery), so
-// its strip shows positions only and names each value on hover.
 const METRICS = [
   { key: 'eapm', format: (v) => Math.round(v) },
-  { key: 'hotkey_recalls_per_min', format: (v) => Math.round(v) },
-  { key: 'viewport_switches_per_min', format: (v) => v.toFixed(1) },
-  { key: 'spending_quotient', format: (v) => Math.round(v) },
-  { key: 'worker_production', inline: false },
-  { key: 'float_share', format: percent },
+  { key: 'used_recalls_per_min', format: (v) => Math.round(v) },
+  { key: 'check_recalls_per_min', format: (v) => Math.round(v) },
+  { key: 'army_cadence', format: percent },
+  { key: 'unspent_per_income', format: (v) => v.toFixed(2) },
+  { key: 'production_idle_share', format: percent },
 ];
 
 const ROW_PX = 22;
@@ -28,18 +27,23 @@ const LABEL_SHARE = 0.16;
 const placementOf = (player, key) => {
   const metrics = player?.skill?.metrics || {};
   if (key === 'combined') return player?.skill?.combined ? { ...player.skill.combined, metric: 'combined' } : null;
-  if (key === 'worker_production') {
-    if (metrics.hall_worker_busy) return { ...metrics.hall_worker_busy, metric: 'hall_worker_busy' };
-    if (metrics.larva_per_hatch) return { ...metrics.larva_per_hatch, metric: 'larva_per_hatch' };
-    return null;
-  }
   return metrics[key] ? { ...metrics[key], metric: key } : null;
 };
 
-// The tier the combined score falls in.
+const PRO_TIER = 3;
+
+// The third of a tier the combined score falls in: "-", "" or "+". Pro stays one band.
+export const tierThird = (combined) => {
+  if (!combined || combined.tier >= PRO_TIER) return '';
+  const within = Math.min(1, Math.max(0, combined.position - combined.tier));
+  if (within < 1 / 3) return '-';
+  return within < 2 / 3 ? '' : '+';
+};
+
+// The tier the combined score falls in, with the third of it.
 export const tierLabel = (t, skill) => {
   const combined = skill?.combined;
-  return combined ? t(`skill.tier.${TIER_KEYS[combined.tier]}`) : '';
+  return combined ? `${t(`skill.tier.${TIER_KEYS[combined.tier]}`)}${tierThird(combined)}` : '';
 };
 
 function Help({ text }) {
@@ -121,9 +125,6 @@ export default function SkillTab({ game, players, playerColor }) {
   const rated = (players || []).filter((p) => p.skill);
   const caveats = game?.skill_caveats || [];
   const entriesFor = (key) => rated.map((player) => ({ player, placement: placementOf(player, key) })).filter((e) => e.placement);
-  const describeWorkers = (p) => (p.metric === 'larva_per_hatch'
-    ? t('skill.value.larvaPerHatch', { value: p.value.toFixed(2) })
-    : t('skill.value.hallBusy', { value: percent(p.value) }));
   const combined = entriesFor('combined');
   const range = tierRange(['combined', ...METRICS.map((m) => m.key)].flatMap((k) => entriesFor(k).map((e) => e.placement.position)));
   return (
@@ -131,6 +132,7 @@ export default function SkillTab({ game, players, playerColor }) {
       {caveats.length ? (
         <div className="workflow-section-warning skill-caveat">{t('skill.caveat')}</div>
       ) : null}
+      <SkillExplainerLink model={game?.skill_model} className="skill-explainer-link--corner" />
       <div className="skill-rows">
         {combined.length ? (
           <>
@@ -160,13 +162,233 @@ export default function SkillTab({ game, players, playerColor }) {
                 entries={entries}
                 range={range}
                 playerColor={playerColor}
-                inline={m.inline !== false}
+                inline
                 tierLabels={index === 0}
-                describe={m.key === 'worker_production' ? describeWorkers : (p) => String(m.format(p.value))}
+                describe={(p) => String(m.format(p.value))}
               />
             </React.Fragment>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+const PILL_TIER_KEYS = { no_hotkeys: 0, never_checks_hotkeys: 0, banks_resources: 0, hotkey_cycler: 3, nonstop_production: 3 };
+
+// PlayerSkillRow is the player summary's one line of Skill: the average tier and how many games it rests on.
+// It opens the player's Skill tab; onHover lets the page point at that tab.
+export function PlayerSkillRow({ summary, onOpen, onHover }) {
+  const t = useT();
+  if (!summary?.combined) return null;
+  return (
+    <button
+      type="button"
+      className="skill-player-row"
+      onClick={onOpen}
+      onMouseEnter={() => onHover?.(true)}
+      onMouseLeave={() => onHover?.(false)}
+      onFocus={() => onHover?.(true)}
+      onBlur={() => onHover?.(false)}
+    >
+      <span className="skill-player-row-text">
+        <span className="skill-player-row-label">{t('game.tabs.skill')}</span>
+        <span className="skill-player-row-basis">{t('skill.player.basis', { count: summary.games })}</span>
+      </span>
+      <span className={`skill-player-row-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span>
+      <span className="skill-player-row-open" aria-hidden="true">›</span>
+    </button>
+  );
+}
+
+// The chart and its trend need this many games: fewer is a handful of dots, not a direction.
+const MIN_TREND_GAMES = 10;
+const DAY_MS = 86400000;
+// A trend needs two months of games, and is only called a change when the line moves a third of a tier
+// across them: less is within what one tier's thirds already show.
+const TREND_MIN_DAYS = 60;
+const TREND_MIN_CHANGE = 1 / 3;
+
+function useWidth(fallback) {
+  const ref = React.useRef(null);
+  const [width, setWidth] = React.useState(fallback);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    if (el.clientWidth) setWidth(Math.max(320, el.clientWidth));
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(([entry]) => setWidth(Math.max(320, Math.round(entry.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width];
+}
+
+// trendOf fits a straight line to position over time; slope is in tiers per 30 days.
+const trendOf = (points) => {
+  const n = points.length;
+  const xs = points.map((p) => p.ms / DAY_MS);
+  const mx = xs.reduce((a, b) => a + b, 0) / n;
+  const my = points.reduce((a, p) => a + p.position, 0) / n;
+  let sxy = 0, sxx = 0;
+  points.forEach((p, i) => { sxy += (xs[i] - mx) * (p.position - my); sxx += (xs[i] - mx) ** 2; });
+  const slope = sxx > 0 ? sxy / sxx : 0;
+  const days = n ? (points[n - 1].ms - points[0].ms) / DAY_MS : 0;
+  return { at: (ms) => my + slope * (ms / DAY_MS - mx), days, change: slope * days };
+};
+
+export const skillTrendDirection = (timeline) => {
+  if (!timeline || timeline.length < MIN_TREND_GAMES) return '';
+  const { days, change } = trendOf(timeline.map((p) => ({ ms: Date.parse(p.date), position: p.position })));
+  if (days < TREND_MIN_DAYS) return '';
+  if (change >= TREND_MIN_CHANGE) return 'up';
+  if (change <= -TREND_MIN_CHANGE) return 'down';
+  return 'flat';
+};
+
+const monthTicks = (fromMs, toMs) => {
+  const start = new Date(fromMs);
+  const months = (new Date(toMs).getFullYear() - start.getFullYear()) * 12 + new Date(toMs).getMonth() - start.getMonth();
+  const step = [1, 2, 3, 6, 12].find((s) => months / s <= 7) || 12;
+  const out = [];
+  for (let d = new Date(start.getFullYear(), start.getMonth() + 1, 1); d.getTime() <= toMs; d = new Date(d.getFullYear(), d.getMonth() + step, 1)) {
+    out.push(d);
+  }
+  return out;
+};
+
+const SMOOTH_SAMPLES = 90;
+
+// smoothPath is the running average as a curve over time: a Gaussian-weighted average of nearby games,
+// about a month wide, so a session of ten games on one evening is one point rather than a cliff. It breaks
+// where there are no games nearby.
+function smoothPath(points, first, span, x, y) {
+  const width = Math.max(14 * DAY_MS, span / 10);
+  let d = '';
+  let drawing = false;
+  for (let k = 0; k <= SMOOTH_SAMPLES; k++) {
+    const at = first + (span * k) / SMOOTH_SAMPLES;
+    let sw = 0, sp = 0;
+    for (const p of points) {
+      const w = Math.exp(-0.5 * ((p.ms - at) / width) ** 2);
+      sw += w;
+      sp += w * p.position;
+    }
+    if (sw < 1) {
+      drawing = false;
+      continue;
+    }
+    d += `${drawing ? 'L' : 'M'}${x(at).toFixed(1)},${y(sp / sw).toFixed(1)}`;
+    drawing = true;
+  }
+  return d;
+}
+
+// SkillTrend plots every rated game by date on the tier axis, with a running average and a straight trend
+// line.
+function SkillTrend({ timeline }) {
+  const t = useT();
+  const [ref, W] = useWidth(720);
+  const H = 176, L = 84, R = 10, T = 10, B = 24;
+  const points = timeline.map((p) => ({ ...p, ms: Date.parse(p.date) }));
+  const first = points[0].ms, last = points[points.length - 1].ms;
+  const span = Math.max(DAY_MS, last - first);
+  const x = (ms) => L + ((ms - first) / span) * (W - L - R);
+  const [lo, hi] = tierRange(points.map((p) => p.position));
+  const y = (pos) => T + (1 - (Math.max(lo, Math.min(hi, pos)) - lo) / (hi - lo)) * (H - T - B);
+  const avgPath = smoothPath(points, first, span, x, y);
+  const trend = trendOf(points);
+  const lang = typeof document !== 'undefined' ? document.documentElement.lang || undefined : undefined;
+  const tickLabel = (d, i) => d.toLocaleDateString(lang, i === 0 || d.getMonth() === 0 ? { month: 'short', year: 'numeric' } : { month: 'short' });
+  const dateLabel = (ms) => new Date(ms).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
+  const bands = TIER_KEYS.map((key, i) => ({ key, i })).filter(({ i }) => i >= lo && i < hi);
+  return (
+    <div className="skill-trend-card">
+      <div className="skill-trend-head">
+        <h3>{t('skill.chart.title')}</h3>
+        <div className="skill-trend-legend">
+          <span><i className="skill-trend-key skill-trend-key--avg" />{t('skill.chart.average')}</span>
+          {trend.days >= TREND_MIN_DAYS ? <span><i className="skill-trend-key skill-trend-key--trend" />{t('skill.chart.trend')}</span> : null}
+        </div>
+      </div>
+      <div ref={ref} className="skill-trend-plot">
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('skill.chart.title')}>
+          {bands.map(({ key, i }) => (
+            <rect key={key} x={L} y={y(i + 1)} width={W - L - R} height={y(i) - y(i + 1)} className={`skill-trend-band skill-trend-band--${key}`} />
+          ))}
+          {bands.map(({ key, i }) => (
+            <text key={`l-${key}`} x={L - 10} y={(y(i) + y(i + 1)) / 2} className="skill-trend-axis" textAnchor="end" dominantBaseline="middle">{t(`skill.tier.${key}`)}</text>
+          ))}
+          {Array.from({ length: hi - lo + 1 }, (_, k) => lo + k).map((v) => (
+            <line key={`g-${v}`} x1={L} x2={W - R} y1={y(v)} y2={y(v)} className={v === lo || v === hi ? 'skill-trend-frame' : 'skill-trend-cut'} />
+          ))}
+          {monthTicks(first, last).map((d, i) => (
+            <g key={d.getTime()}>
+              <line x1={x(d.getTime())} x2={x(d.getTime())} y1={H - B} y2={H - B + 4} className="skill-trend-frame" />
+              <text x={x(d.getTime())} y={H - 6} className="skill-trend-axis" textAnchor="middle">{tickLabel(d, i)}</text>
+            </g>
+          ))}
+          {points.map((p, i) => (
+            <circle key={`${p.replay_id}-${i}`} cx={x(p.ms)} cy={y(p.position)} r="2" className="skill-trend-dot">
+              <title>{dateLabel(p.ms)}</title>
+            </circle>
+          ))}
+          <path d={avgPath} className="skill-trend-avg" />
+          {trend.days >= TREND_MIN_DAYS ? (
+            <line x1={x(first)} x2={x(last)} y1={y(trend.at(first))} y2={y(trend.at(last))} className="skill-trend-fit" />
+          ) : null}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// PlayerSkillTab is the player page's Skill tab: the player's tier up top, how it moved over time, then the
+// six metrics behind it.
+export function PlayerSkillTab({ summary, name, color }) {
+  const t = useT();
+  if (!summary?.combined) return null;
+  const player = { player_id: 'player', name, color };
+  const entryFor = (placement) => (placement ? [{ player, placement }] : []);
+  const placements = [summary.combined, ...METRICS.map((m) => summary.metrics?.[m.key]).filter(Boolean)];
+  const range = tierRange(placements.map((p) => p.position));
+  const plain = () => color || '#9ca3af';
+  const timeline = summary.timeline || [];
+  const direction = skillTrendDirection(timeline);
+  return (
+    <div className="workflow-card skill-player-tab">
+      <div className="skill-hero">
+        <span className={`skill-hero-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span>
+        <div className="skill-hero-facts">
+          <span>{t('skill.player.basis', { count: summary.games })}</span>
+          {direction ? <span className={`skill-hero-trend skill-hero-trend--${direction}`}>{t(`skill.trend.${direction}`)}</span> : null}
+        </div>
+        <SkillExplainerLink model={summary.model} className="skill-hero-explain" />
+      </div>
+      {summary.pills?.length ? (
+        <div className="skill-player-pills">
+          {summary.pills.map((pill) => (
+            <span
+              key={pill.key}
+              className={`workflow-pattern-pill skill-habit-pill skill-habit-pill--${PILL_TIER_KEYS[pill.key] === 3 ? 'strong' : 'plain'}`}
+              title={t(`skill.pill.${pill.key}.hint`, { games: pill.games, of: pill.of })}
+            >
+              {t(`skill.pill.${pill.key}`)}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {timeline.length >= MIN_TREND_GAMES ? <SkillTrend timeline={timeline} /> : null}
+      <div className="skill-rows skill-player-breakdown">
+        {METRICS.filter((m) => summary.metrics?.[m.key]).map((m, index) => (
+          <React.Fragment key={m.key}>
+            <div className="skill-row-label">
+              <span>{t(`skill.metric.${m.key}.title`)}</span>
+              <Help text={t(`skill.metric.${m.key}.hint`)} />
+            </div>
+            <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline tierLabels={index === 0} describe={(p) => String(m.format(p.value))} />
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );

@@ -160,6 +160,7 @@ func (d *Dashboard) GameDetail(_ context.Context, request apigen.GameDetailReque
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
 	detail.EnginePending = d.enginePending(int64(request.ReplayID))
+	detail.EngineUnavailable = !detail.EnginePending && d.engineUnavailable(int64(request.ReplayID))
 	return detail, nil
 }
 
@@ -410,6 +411,7 @@ func (d *Dashboard) PlayerDetail(_ context.Context, request apigen.PlayerDetailR
 	if err == nil && !isPro {
 		coverage := d.playerEngineCoverage(playerKey)
 		player.Engine = &coverage
+		player.Skill = d.playerSkill(playerKey)
 	}
 	if err != nil {
 		if errors.Is(err, dashboarddb.ErrNotFound) {
