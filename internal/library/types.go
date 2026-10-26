@@ -144,6 +144,9 @@ const (
 	// is in the corpus. The global filter hides it; the record stays in the
 	// snapshot so the file remains addressable.
 	FlagSuperseded
+	// FlagSaverDisconnect marks a recording that ends with its saver losing
+	// the connection, whose last burst of leaves is not anyone leaving.
+	FlagSaverDisconnect
 )
 
 func (f Flags) Has(flag Flags) bool { return f&flag != 0 }
@@ -225,6 +228,11 @@ type Replay struct {
 
 	// EngineData is nil until the engine pass upgrades the replay ("engine" mode over "fast").
 	EngineData *EngineData
+
+	// parsed keeps the parser's results while the engine's or Battle.net's override them.
+	parsed      *parsedOutcomes
+	bnetResults []BnetResult
+	bnetSource  string
 }
 
 // EngineData is what the library keeps of an engine pass. The full digest stays in the digest cache file
@@ -238,6 +246,10 @@ type EngineData struct {
 	// Features are the game-event types the engine found that the games list shows and filters on
 	// (drop, reaver_drop, dt_drop). Nil means they were not computed, so the command-inferred ones stand.
 	Features []string
+	// ResultsKnown says Results can be trusted to settle who won, which only a pass that kept in step
+	// with the real game can.
+	ResultsKnown bool
+	Results      []EngineResult
 }
 
 // EnginePlayer is one player's macro scorecard; a ratio is NaN when the game gives it no basis.

@@ -338,6 +338,23 @@ func (a *BnetGameArchive) GamesForAccount(auroraID int64) []BnetGame {
 	return out
 }
 
+// GamesWithResults returns every game in which at least one player's result is
+// known, which is to say one their own profile reported.
+func (a *BnetGameArchive) GamesWithResults() []BnetGame {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var out []BnetGame
+	for _, g := range a.games {
+		for _, p := range g.Players {
+			if p.Result != BnetResultUnknown {
+				out = append(out, g)
+				break
+			}
+		}
+	}
+	return out
+}
+
 func (g *BnetGame) reportedBy(auroraID int64) bool {
 	if auroraID == 0 {
 		return false

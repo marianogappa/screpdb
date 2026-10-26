@@ -1,6 +1,7 @@
 package library
 
 import (
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -50,7 +51,7 @@ type Event struct {
 	Version    uint64
 	Added      []int64
 	Removed    []int64
-	// Upgraded lists replays whose EngineData changed, in place, without being added or removed.
+	// Upgraded lists replays whose EngineData or results changed, in place, without being added or removed.
 	Upgraded []int64
 }
 
@@ -148,6 +149,12 @@ func (l *Library) Alias(generation uint64, file FileRef, checksum [32]byte) {
 // staged corpus. A checksum in neither is ignored.
 func (l *Library) SetEngineData(checksum [32]byte, data *EngineData) {
 	l.send(mutation{kind: opEngine, checksum: checksum, engine: data})
+}
+
+// SetBnetResults layers Battle.net's record of a game over the replay holding checksum. It only decides
+// games nothing else could, and nil results take it away again.
+func (l *Library) SetBnetResults(checksum [32]byte, results []BnetResult, source string) {
+	l.send(mutation{kind: opBnet, checksum: checksum, bnet: results, source: source})
 }
 
 // ClearEngineData drops every replay's engine data, for when the engine is switched off.
@@ -266,6 +273,7 @@ const (
 	opFlush
 	opEngine
 	opClearEngine
+	opBnet
 )
 
 type mutation struct {
@@ -276,6 +284,8 @@ type mutation struct {
 	file     FileRef
 	checksum [32]byte
 	engine   *EngineData
+	bnet     []BnetResult
+	source   string
 	done     chan struct{}
 }
 
@@ -338,11 +348,17 @@ func (l *Library) run() {
 				if live.clearEngine() {
 					commit()
 				}
-			case opEngine:
-				if staging != nil {
-					staging.setEngine(m.checksum, m.engine)
+			case opEngine, opBnet:
+				set := func(w *workingSet) bool {
+					if m.kind == opBnet {
+						return w.setBnet(m.checksum, m.bnet, m.source)
+					}
+					return w.setEngine(m.checksum, m.engine)
 				}
-				if !live.setEngine(m.checksum, m.engine) {
+				if staging != nil {
+					set(staging)
+				}
+				if !set(live) {
 					continue
 				}
 				pending++
@@ -426,7 +442,22 @@ func (w *workingSet) setEngine(checksum [32]byte, data *EngineData) bool {
 	if !ok || r.EngineData == data {
 		return false
 	}
-	w.mutate(r, func(r *Replay) { r.EngineData = data })
+	w.mutate(r, func(r *Replay) {
+		r.EngineData = data
+		r.resolveOutcomes()
+	})
+	if _, addedNow := w.added[r.ID]; !addedNow {
+		w.upgraded[r.ID] = struct{}{}
+	}
+	return true
+}
+
+func (w *workingSet) setBnet(checksum [32]byte, results []BnetResult, source string) bool {
+	r, ok := w.byChecksum[checksum]
+	if !ok || (slices.Equal(r.bnetResults, results) && r.bnetSource == source) {
+		return false
+	}
+	w.mutate(r, func(r *Replay) { r.setBnetResults(results, source) })
 	if _, addedNow := w.added[r.ID]; !addedNow {
 		w.upgraded[r.ID] = struct{}{}
 	}

@@ -65,6 +65,13 @@ func (s *LibStore) ListBnetGamesByAccount(_ context.Context, auroraID int64) ([]
 	return s.games.GamesForAccount(auroraID), nil
 }
 
+func (s *LibStore) ListBnetGamesWithResults(_ context.Context) ([]persist.BnetGame, error) {
+	if s.games == nil {
+		return []persist.BnetGame{}, nil
+	}
+	return s.games.GamesWithResults(), nil
+}
+
 func (s *LibStore) BnetFoundProfilesForToon(_ context.Context, toon string) ([]BnetFoundProfile, error) {
 	profiles := s.bnet.FoundProfilesForToon(toon)
 	out := make([]BnetFoundProfile, 0, len(profiles))

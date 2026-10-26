@@ -152,6 +152,7 @@ type Reader interface {
 	ListBnetAuroraIDsByPlayerKeys(ctx context.Context, playerKeys []string) ([]int64, error)
 	UpsertBnetGames(ctx context.Context, games []persist.BnetGame) error
 	ListBnetGamesByAccount(ctx context.Context, auroraID int64) ([]persist.BnetGame, error)
+	ListBnetGamesWithResults(ctx context.Context) ([]persist.BnetGame, error)
 	ListBnetGameTimes(ctx context.Context, auroraID int64, since time.Time) ([]time.Time, error)
 	GetBnetLastGameAtByToons(ctx context.Context, toons []string) (map[string]time.Time, error)
 	GetBnetGatewaysByToons(ctx context.Context, toons []string) (map[string]int64, error)
