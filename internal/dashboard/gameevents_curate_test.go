@@ -17,8 +17,11 @@ func TestCurateWeighsOutcomeAndSteadiesRegions(t *testing.T) {
 	if !detail.GameEvents[heavy].Key {
 		t.Fatal("a town-hall kill with a big trade is not key")
 	}
-	if got := *detail.GameEvents[heavy].Engine.Region; got != (workflowEngineRegion{X: 700, Y: 1000, W: 1200, H: 900}) {
+	if got := *detail.GameEvents[heavy].Engine.Region; got != (workflowEngineRegion{X: 276, Y: 682, W: 2048, H: 1536}) {
 		t.Fatalf("region = %+v", got)
+	}
+	if got := *detail.GameEvents[heavy].Engine.Focus; got != (workflowEngineRegion{X: 1000, Y: 1000, W: 600, H: 900}) {
+		t.Fatalf("focus = %+v", got)
 	}
 	key := 0
 	for _, e := range detail.GameEvents {

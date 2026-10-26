@@ -8,9 +8,10 @@ func TestSteadyRegionKeepsOneShapeInsideTheMap(t *testing.T) {
 		in   workflowEngineRegion
 		want workflowEngineRegion
 	}{
-		{"tall widens", workflowEngineRegion{X: 1000, Y: 1000, W: 600, H: 900}, workflowEngineRegion{X: 700, Y: 1000, W: 1200, H: 900}},
-		{"wide grows taller", workflowEngineRegion{X: 1000, Y: 1000, W: 1200, H: 300}, workflowEngineRegion{X: 1000, Y: 700, W: 1200, H: 900}},
-		{"slides off the corner", workflowEngineRegion{X: -200, Y: -100, W: 800, H: 600}, workflowEngineRegion{X: 0, Y: 0, W: 800, H: 600}},
+		{"tall widens", workflowEngineRegion{X: 1000, Y: 1000, W: 2400, H: 3000}, workflowEngineRegion{X: 96, Y: 1000, W: 4000, H: 3000}},
+		{"wide grows taller", workflowEngineRegion{X: 1000, Y: 1000, W: 3000, H: 750}, workflowEngineRegion{X: 1000, Y: 250, W: 3000, H: 2250}},
+		{"small grows to the minimum around its centre", workflowEngineRegion{X: 2000, Y: 2000, W: 600, H: 900}, workflowEngineRegion{X: 1276, Y: 1682, W: 2048, H: 1536}},
+		{"slides off the corner", workflowEngineRegion{X: -200, Y: -100, W: 800, H: 600}, workflowEngineRegion{X: 0, Y: 0, W: 2048, H: 1536}},
 		{"shrinks to the map", workflowEngineRegion{X: 0, Y: 0, W: 8000, H: 6000}, workflowEngineRegion{X: 0, Y: 1024, W: 4096, H: 3072}},
 	}
 	for _, c := range cases {

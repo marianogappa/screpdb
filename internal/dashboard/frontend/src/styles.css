@@ -4175,19 +4175,120 @@ button.workflow-nav-update-available:disabled {
 }
 
 .workflow-events-layout {
+  --events-title-h: 72px;
   display: grid;
   grid-template-columns: 70% minmax(0, 1fr);
   gap: 10px;
+  height: 100vh;
+  scroll-snap-align: start;
 }
 
-/* Game Events filter bar: two stacked rows (event types, then players) on the
-   left, with the warning(s) on the right spanning both rows. Sits above the
-   map/list grid so the map and the events list top-align. */
-.workflow-events-controls {
+/* Snap points while the events tab is open: the page top and the map with its title, which holds the
+   view while the reader browses events. */
+html.events-snap {
+  scroll-snap-type: y mandatory;
+}
+
+html.events-snap .workflow-nav-app {
+  scroll-snap-align: start;
+  scroll-margin-top: 100px;
+}
+
+/* The map sits in a stage of fixed height, letterboxed, so its size never changes between events. */
+.workflow-event-stage {
+  height: calc(100vh - var(--events-title-h));
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #05070a;
+  border-radius: 8px;
+}
+
+.workflow-event-stage-title {
+  height: var(--events-title-h);
+  display: flex;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  padding: 0 6px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+}
+
+.workflow-event-stage-time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.workflow-events-column {
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workflow-events-column .workflow-events {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.workflow-events-column .workflow-events-filters {
+  flex: 0 0 auto;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.workflow-events-column .workflow-events-warnings {
+  width: auto;
+}
+
+.workflow-events-column .workflow-events-warning {
+  margin: 0;
+  max-width: none;
+}
+
+.workflow-events-column .workflow-events-player-filters {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.workflow-events-player-bulk {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.workflow-events-filter-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+  fill: rgba(255, 255, 255, 0.55);
+  flex: 0 0 auto;
+}
+
+.workflow-events-filter-chip {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.workflow-events-filter-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.72rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .workflow-events-filters {
@@ -4235,18 +4336,6 @@ button.workflow-nav-update-available:disabled {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.workflow-events-view-switch {
-  display: inline-flex;
-  gap: 4px;
-  padding-right: 8px;
-  margin-right: 4px;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.workflow-events-view-switch .workflow-events-filter-chip {
-  font: inherit;
-}
-
 .workflow-events-filter-chip--active,
 .workflow-events-filter-chip--active:hover {
   background: rgba(100, 150, 255, 0.18);
@@ -4271,20 +4360,11 @@ button.workflow-nav-update-available:disabled {
   gap: 8px;
 }
 
-.workflow-events-controls .workflow-events-warning {
-  margin: 0;
-  flex: none;
-  max-width: none;
-  width: 100%;
-}
-
 .workflow-event-map-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  position: sticky;
-  top: 10px;
-  align-self: start;
+  min-width: 0;
 }
 
 .workflow-event-map-frame {
@@ -5241,6 +5321,11 @@ button.workflow-nav-update-available:disabled {
 
   .workflow-events-layout {
     grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .workflow-events-column {
+    height: 70vh;
   }
 }
 
@@ -7702,6 +7787,7 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .engine-notice--unavailable::before { background: #94a3b8; }
 .engine-notice--active { color: rgba(187,247,208,0.75); background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.18); }
 .engine-notice--active::before { background: rgba(74,222,128,0.7); }
+.engine-notice + .engine-notice { margin-left: 8px; }
 @keyframes engine-notice-pulse { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
 @keyframes engine-notice-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .engine-notice--running::before, .engine-notice--ready { animation: none; } }
@@ -7795,3 +7881,108 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-trend-dot { fill: rgba(203,213,225,0.45); }
 .skill-trend-avg { fill: none; stroke: #60a5fa; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
 .skill-trend-fit { stroke: rgba(253,230,138,0.9); stroke-width: 1.5; stroke-dasharray: 5 4; }
+
+/* Engine event map: who holds which base, and a dim around what the event is about. */
+.engine-snapshot {
+  position: relative;
+}
+
+.engine-base {
+  fill-opacity: 0.16;
+  stroke-opacity: 0.9;
+  stroke-linejoin: round;
+}
+
+.engine-base--building {
+  fill-opacity: 0.08;
+}
+
+.engine-base-hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.engine-focus-dim {
+  pointer-events: none;
+}
+
+.engine-snapshot .game-map-whole {
+  pointer-events: none;
+}
+
+.engine-base-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* The one look of text on an event map: a dark see-through pill, white text, and the player's colour
+   on the dot and the border, legible over any terrain, unit or player colour. */
+.map-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px 2px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(8, 10, 16, 0.78);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  color: #f4f6fa;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+.map-pill--block {
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 9px;
+  border-radius: 10px;
+}
+
+.map-pill--block {
+  white-space: normal;
+}
+
+.workflow-event-map-bo-label-name {
+  white-space: nowrap;
+}
+
+.workflow-event-map-narration.map-pill {
+  flex-direction: row;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.workflow-event-map-leave-name.map-pill {
+  font-size: 0.9rem;
+}
+
+.engine-leave-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.map-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+  flex: 0 0 auto;
+}
+
+.engine-base-tooltip-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.engine-base-tooltip-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}

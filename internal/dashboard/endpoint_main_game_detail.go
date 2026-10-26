@@ -15,6 +15,7 @@ import (
 	"github.com/marianogappa/scfingerprint"
 	"github.com/marianogappa/screpdb/internal/cmdenrich"
 	db "github.com/marianogappa/screpdb/internal/dashboard/db"
+	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
 	"github.com/samber/lo"
@@ -38,6 +39,11 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	// it; naming it lets the frontend offer both for watching.
 	if ownPath, completePath, err := d.dbStore.GetReplayWatchFiles(d.ctx, replayID); err == nil && completePath != "" && ownPath != "" {
 		detail.OwnCopyFileName = filepath.Base(ownPath)
+	}
+	if d.library != nil {
+		if r, ok := d.library.lib.Snapshot().ByID(replayID); ok {
+			detail.CompleteCopy = r.Flags.Has(library.FlagIsCompleteCopy)
+		}
 	}
 	detail.MapName = summary.MapName
 	detail.MapKind = summary.MapKind
