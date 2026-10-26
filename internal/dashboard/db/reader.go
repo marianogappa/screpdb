@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
@@ -65,6 +66,11 @@ type BnetFoundProfile struct {
 // library-backed implementation can be built and swapped in per use case
 // without the SQL store and the endpoints having to change together.
 type Reader interface {
+	// CorpusView identifies the corpus state reads are served from. It changes
+	// whenever replays arrive or leave or the global filter moves, so derived
+	// per-player state cached outside the view can tell it has gone stale.
+	CorpusView() *library.View
+
 	// Per game: the game detail page and its tabs.
 	GetReplaySummary(ctx context.Context, replayID int64) (*ReplaySummaryRow, error)
 	GetReplayFilePathByID(ctx context.Context, replayID int64) (string, error)

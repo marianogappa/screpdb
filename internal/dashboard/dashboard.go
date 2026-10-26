@@ -25,6 +25,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/dashboard/apigen"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	dashboardservice "github.com/marianogappa/screpdb/internal/dashboard/service"
+	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/netfacade"
 )
 
@@ -47,7 +48,7 @@ type Dashboard struct {
 	fpDataset           *scfingerprint.Dataset
 	fpDatasetErr        error
 	fpMatchCacheMu      sync.RWMutex
-	fpMatchCacheVersion uint64
+	fpMatchCacheView    *library.View
 	fpMatchCache        map[string]fingerprintOutcome
 	bnetState           atomic.Value // stores bnetStatus
 	bnetAddr            atomic.Value // stores string
@@ -176,7 +177,7 @@ func (d *Dashboard) Close() {
 func (d *Dashboard) invalidateFingerprintCache() {
 	d.fpMatchCacheMu.Lock()
 	d.fpMatchCache = nil
-	d.fpMatchCacheVersion = 0
+	d.fpMatchCacheView = nil
 	d.fpMatchCacheMu.Unlock()
 }
 
