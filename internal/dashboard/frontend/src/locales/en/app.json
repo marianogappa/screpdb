@@ -313,7 +313,7 @@
   "events.base.natural": "Natural",
   "events.base.naturalOf": "{player}'s natural",
   "events.base.since": "Taken at {time}",
-  "events.stageTitle.openers": "Player teams, shown by thick border colour, and starting build orders",
+  "events.stageTitle.openers": "Player teams and starting build orders",
   "events.sentence.attacks": "{actor} attacks {target} {locationClause}",
   "events.sentence.attacksNoLocation": "{actor} attacks {target}",
   "events.sentence.attacksAt": "{actor} attacks {location}",
@@ -462,6 +462,7 @@
   "events.sentence.reaverDrops": "{actor} Reaver drops{icon}{count}{from} on {target} at {location}",
   "events.sentence.dtDrops": "{actor} DT drops{icon}{count}{from} on {target} at {location}",
   "game.engineNotice.running": "Running this game through the StarCraft engine for an enhanced report",
+  "game.completeNotice": "Downloaded complete replay",
   "game.engineNotice.ready": "Enhanced report ready",
   "game.engineNotice.active": "Enhanced report using the StarCraft engine",
   "game.engineNotice.unavailable": "This game can’t be run through the StarCraft engine"

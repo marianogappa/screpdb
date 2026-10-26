@@ -4859,16 +4859,20 @@ function App() {
   }, [selectedMainGameEvent, mainGame?.game_events, mainEventMapBounds]);
   // Leave / stop-playing: the player's territory vanishes and a prominent flag
   // (left) or zzz (stopped) marker takes its place at their last-known base.
-  const selectedLeaveInfo = useMemo(() => {
+  const selectedLeaveMarker = useMemo(() => {
     const nt = normalizeEventType(selectedMainGameEvent?.type);
     const leaveTypes = ['leave_game', 'player_dropped', 'mass_disconnect', 'player_stopped_playing'];
-    if (!leaveTypes.includes(nt) || !selectedActorLastBasePoint) return null;
+    if (!leaveTypes.includes(nt)) return null;
     const actorID = Number(selectedMainGameEvent?.actor?.player_id || 0);
     const actorRow = mainGamePlayers.find((p) => Number(p?.player_id || 0) === actorID);
     const name = actorRow?.name || selectedMainGameEvent?.actor?.name || t('events.playerFallback');
     const emoji = nt === 'player_stopped_playing' ? '💤' : (nt === 'player_dropped' || nt === 'mass_disconnect') ? '🔌' : '🏳️';
-    return { name, emoji, point: selectedActorLastBasePoint, color: playerColorToCss(actorRow?.color) };
-  }, [selectedMainGameEvent, selectedActorLastBasePoint, mainGamePlayers, t]);
+    const label = nt === 'player_stopped_playing' ? t('events.stoppedPlaying') : t('events.leftGame');
+    return { playerID: actorID, name, emoji, label, color: playerColorToCss(actorRow?.color) };
+  }, [selectedMainGameEvent, mainGamePlayers, t]);
+  const selectedLeaveInfo = useMemo(() => (
+    selectedLeaveMarker && selectedActorLastBasePoint ? { ...selectedLeaveMarker, point: selectedActorLastBasePoint } : null
+  ), [selectedLeaveMarker, selectedActorLastBasePoint]);
   // Became Terran/Zerg (mind control): a Dark Archon icon planted prominently at
   // the mind-controlled player's last-known base.
   const selectedBecameOverlay = useMemo(() => {
@@ -6359,6 +6363,9 @@ function App() {
                     >
                       {t('tabs.hotkeys')}
                     </button>
+                    {mainGame?.complete_copy ? (
+                      <span className="engine-notice engine-notice--active">{t('game.completeNotice')}</span>
+                    ) : null}
                     {mainGame?.engine_unavailable ? (
                       <span className="engine-notice engine-notice--unavailable" role="status">
                         {t('game.engineNotice.unavailable')}
@@ -6603,6 +6610,7 @@ function App() {
                               mapHeight={mainGame.map_height_pixels}
                               colorByPlayerId={new Map(mainGamePlayers.map((p) => [p.player_id, playerColorToCss(p.color)]))}
                               nameByPlayerId={new Map(mainGamePlayers.map((p) => [p.player_id, p.name]))}
+                              leaveMarker={selectedLeaveMarker}
                               teamColorByPlayerId={isTeamGame ? new Map(mainGamePlayers.map((p) => [p.player_id, getTeamColor(p.team)])) : null}
                               mapAlt={t('events.mapAlt', { map: mainGame.map_name })}
                             />
@@ -6947,9 +6955,6 @@ function App() {
                                       borderColor: playerColorToCss(selectedMainGameEvent?.actor?.color) || undefined,
                                     }}
                                   >
-                                    {selectedMainGameEvent?.actor?.color ? (
-                                      <span className="map-pill-dot" style={{ background: playerColorToCss(selectedMainGameEvent.actor.color) }} />
-                                    ) : null}
                                     <span className="workflow-event-map-narration-text">
                                       {renderGameEventDescription(selectedMainGameEvent, markerRegistry, mainEventRaceByPlayerID)}
                                     </span>

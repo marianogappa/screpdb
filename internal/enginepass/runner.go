@@ -374,6 +374,13 @@ func (r *Runner) onEvent(ev library.Event) {
 			}
 		}
 	}
+	for _, rec := range added {
+		if ownPath, ok := library.CompleteBasePath(rec.Path()); ok {
+			if own, ok := snap.ByPath(ownPath); ok {
+				r.queue.remove(own.Checksum)
+			}
+		}
+	}
 	r.mu.Unlock()
 	r.enqueue(added)
 }
@@ -383,6 +390,11 @@ func (r *Runner) enqueue(records []*library.Replay) {
 	queued := 0
 	for _, rec := range records {
 		if rec.EngineData != nil && rec.EngineData.EngineVersion == engine.EngineVersion {
+			continue
+		}
+		// The user's own copy of a game whose complete copy is in the library is hidden: its pass would be
+		// work nobody sees.
+		if rec.Flags.Has(library.FlagSuperseded) {
 			continue
 		}
 		if r.applyCached(rec.Checksum) {

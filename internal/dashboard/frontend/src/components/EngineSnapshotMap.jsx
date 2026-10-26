@@ -290,7 +290,7 @@ function BaseTooltip({ hover, color, nameOf }) {
 // bar with a wrench while it is being built), every unit at its real size and place. It opens zoomed to the event.
 // eventSeconds are the snapshot seconds of every event of this game: the first exact request computes
 // them all in one engine pass, so moving between events afterwards is instant.
-export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUrl, mapWidth, mapHeight, colorByPlayerId, nameByPlayerId, teamColorByPlayerId, mapAlt }) {
+export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUrl, mapWidth, mapHeight, colorByPlayerId, nameByPlayerId, teamColorByPlayerId, leaveMarker, mapAlt }) {
   const t = useT();
   const [hover, setHover] = useState(null);
   const rootRef = useRef(null);
@@ -354,6 +354,11 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
     return placeLabels({ labels, obstacles, avoid: focus ? [focus] : [], view, width, height });
   }, [snapshot, region, focus, width, height, frameWidth, nameByPlayerId]);
   if (!width || !height) return null;
+  // A player who left or stopped playing is marked on their main, else their first base, else where the
+  // event says.
+  const leaveBases = leaveMarker ? (snapshot?.bases || []).filter((b) => b.player_id === leaveMarker.playerID && (b.polygon || []).length >= 3) : [];
+  const leaveBase = leaveBases.find((b) => b.kind === 'main') || leaveBases[0] || null;
+  const leavePoint = leaveBase ? polygonCentroid(leaveBase.polygon) : event?.base?.center || null;
   const showZoomed = Boolean(region);
   // Terrain, then creep on the floor, then minerals and geysers, then everything else.
   const crop = showZoomed ? terrainCrop(replayId, region, width, height) : null;
@@ -507,9 +512,23 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
           </>
         )}
       >
+        {leaveMarker && leavePoint ? (
+          <div className="workflow-event-map-leave-marker" style={{ left: `${(leavePoint.x / width) * 100}%`, top: `${(leavePoint.y / height) * 100}%` }}>
+            <div
+              className="engine-leave-marker"
+              style={{ transform: `translateX(${leavePoint.x < width * 0.15 ? '50%' : leavePoint.x > width * 0.85 ? '-50%' : '0'})` }}
+            >
+              <span className="workflow-event-map-leave-emoji" role="img" aria-label={leaveMarker.label}>{leaveMarker.emoji}</span>
+              <span className="workflow-event-map-leave-name map-pill" style={{ borderColor: leaveMarker.color }}>
+                <span className="map-pill-dot" style={{ background: leaveMarker.color }} />
+                {leaveMarker.name}
+              </span>
+            </div>
+          </div>
+        ) : null}
         {bases.map((b) => {
           const c = labelSpots.get(baseKey(b));
-          return c && nameOf(b.player_id) ? (
+          return c && nameOf(b.player_id) && b !== leaveBase ? (
             <span
               key={`base-label-${baseKey(b)}`}
               className="engine-base-label map-pill"

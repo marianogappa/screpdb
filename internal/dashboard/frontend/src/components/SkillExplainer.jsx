@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useT } from '../lib/i18nContext';
+import { createPortal } from 'react-dom';
 
 const RACES = [['T', 'race.terran'], ['P', 'race.protoss'], ['Z', 'race.zerg']];
 const COLORS = ['#60a5fa', '#2dd4bf', '#4ade80', '#a78bfa', '#f87171', '#f0c674'];
@@ -111,7 +112,7 @@ export default function SkillExplainerLink({ model, className = '', compact = fa
       >
         {compact ? 'ⓘ' : t('skill.explain.open')}
       </button>
-      {open ? <SkillExplainer model={model} onClose={() => setOpen(false)} /> : null}
+      {open ? createPortal(<SkillExplainer model={model} onClose={() => setOpen(false)} />, document.body) : null}
     </>
   );
 }

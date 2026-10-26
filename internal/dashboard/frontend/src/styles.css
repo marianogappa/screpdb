@@ -7766,6 +7766,7 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .engine-notice--unavailable::before { background: #94a3b8; }
 .engine-notice--active { color: rgba(187,247,208,0.75); background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.18); }
 .engine-notice--active::before { background: rgba(74,222,128,0.7); }
+.engine-notice + .engine-notice { margin-left: 8px; }
 @keyframes engine-notice-pulse { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
 @keyframes engine-notice-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .engine-notice--running::before, .engine-notice--ready { animation: none; } }
@@ -7936,6 +7937,13 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 
 .workflow-event-map-leave-name.map-pill {
   font-size: 0.9rem;
+}
+
+.engine-leave-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
 }
 
 .map-pill-dot {
