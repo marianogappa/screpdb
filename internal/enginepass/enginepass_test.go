@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/engine"
+	"github.com/marianogappa/screpdb/internal/engine/digestcache"
 	"github.com/marianogappa/screpdb/internal/gamedata"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/librarytest"
@@ -162,6 +163,40 @@ func TestNothingStartsBeforeTheLibraryHasLoaded(t *testing.T) {
 	case <-opened:
 	case <-time.After(5 * time.Second):
 		t.Fatal("the engine did not start once the library had loaded")
+	}
+}
+
+func TestHiddenOwnCopiesAreNotQueued(t *testing.T) {
+	lib := library.New(library.Options{})
+	defer lib.Close()
+	cache, err := digestcache.Open(filepath.Join(t.TempDir(), "digests.bin"), func(digestcache.Key) bool { return true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := New(Options{Library: lib, CachePath: filepath.Join(t.TempDir(), "unused.bin")})
+	r.cache = cache
+	dir := t.TempDir()
+
+	own := librarytest.Replay(librarytest.WithPath(filepath.Join(dir, "a.rep"), time.Now()))
+	lib.Add(0, own)
+	lib.Flush()
+	r.enqueue(lib.Snapshot().Replays)
+	complete := librarytest.Replay(librarytest.WithPath(filepath.Join(dir, "a-complete.rep"), time.Now()))
+	lib.Add(0, complete)
+	lib.Flush()
+	got, _ := lib.Snapshot().ByPath(complete.Path())
+	r.onEvent(library.Event{Kind: library.EventCorpus, Added: []int64{got.ID}})
+	if _, queued := r.queue.byChecksum[own.Checksum]; queued {
+		t.Fatal("the own copy stayed queued after its complete copy arrived")
+	}
+	if _, queued := r.queue.byChecksum[complete.Checksum]; !queued {
+		t.Fatal("the complete copy was not queued")
+	}
+
+	r.queue = newQueue()
+	r.enqueue(lib.Snapshot().Replays)
+	if _, queued := r.queue.byChecksum[own.Checksum]; queued || r.queue.len() != 1 {
+		t.Fatalf("a restart queued %d passes, the hidden own copy among them: %v", r.queue.len(), queued)
 	}
 }
 

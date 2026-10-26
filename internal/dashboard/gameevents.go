@@ -30,6 +30,10 @@ func (d *Dashboard) populateGameEvents(detail *workflowGameDetail, mapLayout *mo
 // shape from event to event instead of jumping between tall and wide.
 const regionAspect = 4.0 / 3.0
 
+// minRegionWidth keeps every event view wide enough to show where on the map it is and what is around
+// it, and coarse enough that the terrain image is never stretched into a blur.
+const minRegionWidth = 64 * 32
+
 // curateGameEvents runs last, once every event (the openers included) is on the list.
 func curateGameEvents(detail *workflowGameDetail) {
 	humans := len(detail.Players)
@@ -50,12 +54,15 @@ func curateGameEvents(detail *workflowGameDetail) {
 		e := &detail.GameEvents[i]
 		e.Key = key[i]
 		if e.Engine != nil && e.Engine.Region != nil {
+			focus := *e.Engine.Region
+			e.Engine.Focus = &focus
 			e.Engine.Region = steadyRegion(*e.Engine.Region, detail.MapWidthPixels, detail.MapHeightPixels)
 		}
 	}
 }
 
-// steadyRegion widens a region to regionAspect around its centre, then slides it inside the map.
+// steadyRegion widens a region to regionAspect and at least minRegionWidth around its centre, then
+// slides it inside the map: near an edge the region cannot be centred.
 func steadyRegion(r workflowEngineRegion, mapW, mapH int64) *workflowEngineRegion {
 	cx, cy := float64(r.X)+float64(r.W)/2, float64(r.Y)+float64(r.H)/2
 	w, h := float64(r.W), float64(r.H)
@@ -63,6 +70,9 @@ func steadyRegion(r workflowEngineRegion, mapW, mapH int64) *workflowEngineRegio
 		w = h * regionAspect
 	} else {
 		h = w / regionAspect
+	}
+	if w < minRegionWidth {
+		w, h = minRegionWidth, minRegionWidth/regionAspect
 	}
 	if mapW > 0 && mapH > 0 {
 		scale := math.Min(1, math.Min(float64(mapW)/w, float64(mapH)/h))

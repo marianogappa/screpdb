@@ -380,12 +380,14 @@ type workflowGameDetail struct {
 	// SkillModel feeds the Skill explainer; set with SkillStatus ok.
 	SkillModel *workflowSkillModel `json:"skill_model,omitempty"`
 	// SkillCaveats are why the tiers may be off for this game: team_game, money_map.
-	SkillCaveats                     []string                                 `json:"skill_caveats,omitempty"`
-	ReplayID                         int64                                    `json:"replay_id"`
-	ReplayDate                       string                                   `json:"replay_date"`
-	FileName                         string                                   `json:"file_name"`
-	FilePath                         string                                   `json:"file_path"`
-	OwnCopyFileName                  string                                   `json:"own_copy_file_name,omitempty"`
+	SkillCaveats    []string `json:"skill_caveats,omitempty"`
+	ReplayID        int64    `json:"replay_id"`
+	ReplayDate      string   `json:"replay_date"`
+	FileName        string   `json:"file_name"`
+	FilePath        string   `json:"file_path"`
+	OwnCopyFileName string   `json:"own_copy_file_name,omitempty"`
+	// CompleteCopy is a game whose full recording was downloaded from a co-player (issue #341).
+	CompleteCopy                     bool                                     `json:"complete_copy,omitempty"`
 	MapName                          string                                   `json:"map_name"`
 	MapKind                          string                                   `json:"map_kind,omitempty"`
 	GameSource                       string                                   `json:"game_source"`
@@ -575,10 +577,12 @@ type workflowGameEventOutcome struct {
 }
 
 type workflowEngineEvent struct {
-	SnapshotSecond int64                   `json:"snapshot_second"`
-	EndSecond      int64                   `json:"end_second"`
-	Region         *workflowEngineRegion   `json:"region,omitempty"`
-	Point          *workflowGameEventPoint `json:"point,omitempty"`
+	SnapshotSecond int64                 `json:"snapshot_second"`
+	EndSecond      int64                 `json:"end_second"`
+	Region         *workflowEngineRegion `json:"region,omitempty"`
+	// Focus is the part of Region the event is about; the map dims around it.
+	Focus *workflowEngineRegion   `json:"focus,omitempty"`
+	Point *workflowGameEventPoint `json:"point,omitempty"`
 }
 
 // workflowEngineRegion is a rectangle of the map in pixels.
