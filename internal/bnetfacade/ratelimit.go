@@ -17,13 +17,15 @@ import (
 )
 
 // Priority orders waiters on the rate-limiter queues. A user-initiated call
-// (someone clicked a player) is always served before any queued background
-// sweep.
+// (someone clicked a player) is always served first, then a call that settles
+// who won a game, then any queued background sweep.
 type Priority int
 
 const (
 	PriorityBackground Priority = iota
+	PriorityOutcome
 	PriorityUser
+	priorities
 )
 
 var (
@@ -64,7 +66,7 @@ type limiter struct {
 	burst         float64
 	tokens        float64
 	last          time.Time
-	queues        [2][]chan struct{}
+	queues        [priorities][]chan struct{}
 	timer         *time.Timer
 }
 
@@ -108,10 +110,12 @@ func (l *limiter) acquire(ctx context.Context, prio Priority) error {
 }
 
 func (l *limiter) hasWaitersAheadLocked(prio Priority) bool {
-	if prio == PriorityUser {
-		return len(l.queues[PriorityUser]) > 0
+	for p := prio; p < priorities; p++ {
+		if len(l.queues[p]) > 0 {
+			return true
+		}
 	}
-	return len(l.queues[PriorityUser]) > 0 || len(l.queues[PriorityBackground]) > 0
+	return false
 }
 
 func (l *limiter) dispatch() {
@@ -119,15 +123,15 @@ func (l *limiter) dispatch() {
 	defer l.mu.Unlock()
 	l.refillLocked(time.Now())
 	for l.tokens >= 1 {
-		var ch chan struct{}
-		switch {
-		case len(l.queues[PriorityUser]) > 0:
-			ch, l.queues[PriorityUser] = l.queues[PriorityUser][0], l.queues[PriorityUser][1:]
-		case len(l.queues[PriorityBackground]) > 0:
-			ch, l.queues[PriorityBackground] = l.queues[PriorityBackground][0], l.queues[PriorityBackground][1:]
-		default:
+		p := priorities - 1
+		for p >= 0 && len(l.queues[p]) == 0 {
+			p--
+		}
+		if p < 0 {
 			return
 		}
+		ch := l.queues[p][0]
+		l.queues[p] = l.queues[p][1:]
 		l.tokens--
 		close(ch)
 	}
@@ -135,7 +139,7 @@ func (l *limiter) dispatch() {
 }
 
 func (l *limiter) scheduleDispatchLocked() {
-	if len(l.queues[PriorityUser])+len(l.queues[PriorityBackground]) == 0 {
+	if !l.hasWaitersAheadLocked(PriorityBackground) {
 		return
 	}
 	wait := max(time.Duration((1-l.tokens)*float64(l.tokenInterval)), time.Millisecond)

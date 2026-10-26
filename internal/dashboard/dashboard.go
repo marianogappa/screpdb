@@ -57,6 +57,9 @@ type Dashboard struct {
 	// endpoint can tell a polling page whether more flags are still on the way.
 	bnetBackfillActive atomic.Int64
 
+	// bnetOutcomesKick asks for undecided games to be checked against the Battle.net archive again.
+	bnetOutcomesKick chan struct{}
+
 	// regularsRefresh dedupes the session view's Battle.net freshness sweep.
 	regularsRefresh regularsRefreshState
 	// youKeys holds the set of replay names that are the user, derived from
@@ -105,6 +108,7 @@ func New(ctx context.Context, opts Options) (*Dashboard, error) {
 	dashboard := &Dashboard{
 		ctx:               ctx,
 		libraryHub:        newLibraryHub(),
+		bnetOutcomesKick:  make(chan struct{}, 1),
 		headless:          opts.Headless,
 		debug:             opts.Debug,
 		enginePassEnabled: opts.EnginePass,
@@ -420,6 +424,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 		log.Println("Backend server is ready")
 		d.startBnetMonitor(d.ctx)
 		d.startBnetEnrich(d.ctx)
+		d.startBnetOutcomes(d.ctx)
 		d.startBnetCacheMaintenance(d.ctx)
 		select {
 		case errChan <- nil:

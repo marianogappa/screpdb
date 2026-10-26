@@ -95,6 +95,8 @@ func (d *Dashboard) fetchAndCacheBnetProfile(ctx context.Context, toon string, g
 	}
 	if err := d.dbStore.UpsertBnetGames(ctx, games); err != nil {
 		log.Printf("[bnet-profile] archiving games for %q: %v", toon, err)
+	} else if len(games) > 0 {
+		d.kickBnetOutcomes()
 	}
 	// Only a found profile is an observation of anyone: a miss dates nothing
 	// and is indexed nowhere, and a gateway sweep is mostly misses.

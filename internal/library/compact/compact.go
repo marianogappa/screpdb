@@ -100,6 +100,9 @@ func FromReplayData(data *models.ReplayData, file FileMeta) (*library.Replay, er
 	if library.IsAutosavePath(file.Path) {
 		r.Flags |= library.FlagIsAutosave
 	}
+	if data.SaverDisconnect != nil {
+		r.Flags |= library.FlagSaverDisconnect
+	}
 
 	ords := newOrdinals(data.Players)
 	r.Players = compactPlayers(data, ords)
