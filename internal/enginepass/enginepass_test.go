@@ -199,3 +199,28 @@ func TestHiddenOwnCopiesAreNotQueued(t *testing.T) {
 		t.Fatalf("a restart queued %d passes, the hidden own copy among them: %v", r.queue.len(), queued)
 	}
 }
+
+func TestSummarizeNamesResultsByReplayPlayerAndTrustsOnlyAPassInStep(t *testing.T) {
+	d := &engine.Digest{
+		Players: []engine.Player{{Slot: 2, PlayerID: 7}, {Slot: 7, PlayerID: 0}, {Slot: 5, PlayerID: -1}},
+		Outcomes: []engine.Outcome{
+			{Frame: 25112, Owner: 2, Kind: engine.OutcomeDefeated},
+			{Frame: 25143, Owner: 7, Kind: engine.OutcomeWon},
+			{Frame: 100, Owner: 5, Kind: engine.OutcomeLeft},
+		},
+		Drift: engine.Drift{ErrorFrame: engine.NoFrame, DesyncFrame: engine.NoFrame},
+	}
+	data := Summarize(d, false)
+	want := []library.EngineResult{
+		{ReplayPlayerID: 7, Kind: library.EngineDefeated, Frame: 25112},
+		{ReplayPlayerID: 0, Kind: library.EngineWon, Frame: 25143},
+	}
+	if !data.ResultsKnown || len(data.Results) != 2 || data.Results[0] != want[0] || data.Results[1] != want[1] {
+		t.Fatalf("results %+v known %v", data.Results, data.ResultsKnown)
+	}
+
+	d.Drift.DesyncFrame = 20000
+	if Summarize(d, false).ResultsKnown {
+		t.Fatal("a desynced pass settled the winner")
+	}
+}

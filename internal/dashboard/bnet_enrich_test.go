@@ -57,7 +57,7 @@ func newEnrichHarness(t *testing.T) *enrichHarness {
 		youKeys:           func() map[string]struct{} { return map[string]struct{}{"me": {}} },
 		snapshot:          func() *library.Snapshot { return lib.Snapshot() },
 		complete:          func() bool { return true },
-		profile: func(context.Context, string, int64) (enrichProfile, error) {
+		profile: func(context.Context, string, int64, profileRequest) (enrichProfile, error) {
 			return h.profile, h.prfErr
 		},
 		gameInfo: func(context.Context, string, string) (*bnetfacade.GameInfo, error) {
@@ -158,6 +158,12 @@ func TestEnrichEligibility(t *testing.T) {
 			for i := range r.Players {
 				r.Players[i].Type = library.PlayerTypeHuman
 			}
+			return r
+		}(),
+		"settled by the engine": func() *library.Replay {
+			r := librarytest.Replay(librarytest.WithPlayer("me", librarytest.Loser()), librarytest.WithPlayer("b", librarytest.Winner()), librarytest.WithPlayer("c", librarytest.Loser()))
+			r.GameSource = library.Strings.Intern(bnetGameSourceName)
+			r.EngineData = &library.EngineData{ResultsKnown: true}
 			return r
 		}(),
 		"too old": func() *library.Replay {
@@ -516,7 +522,7 @@ func TestEnrichDepsWiring(t *testing.T) {
 	if deps.snapshot() == nil || deps.complete() {
 		t.Fatal("snapshot/progress wiring")
 	}
-	if _, err := deps.profile(context.Background(), "me", 30); err == nil {
+	if _, err := deps.profile(context.Background(), "me", 30, gameIDRequest); err == nil {
 		t.Fatal("profile fetch should fail with no bridge")
 	}
 	if _, err := deps.gameInfo(context.Background(), "127.0.0.1:1", "MM-1"); err == nil {
@@ -538,7 +544,7 @@ func TestEnrichGatewaySweepFindsOwnAccount(t *testing.T) {
 	// only the qualifying gateway's profile carries md5+url.
 	var fetched []int64
 	h.worker.deps.gatewayCandidates = func() []int64 { return []int64{10, 30, 11} }
-	h.worker.deps.profile = func(_ context.Context, _ string, gateway int64) (enrichProfile, error) {
+	h.worker.deps.profile = func(_ context.Context, _ string, gateway int64, _ profileRequest) (enrichProfile, error) {
 		fetched = append(fetched, gateway)
 		if gateway != 11 {
 			return enrichProfile{FetchedAt: h.now}, nil
@@ -577,7 +583,7 @@ func TestEnrichGatewaySweepBacksOffWhenNothingQualifies(t *testing.T) {
 	h.eligibleReplay(t)
 	h.worker.deps.gatewayCandidates = func() []int64 { return []int64{10, 11} }
 	calls := 0
-	h.worker.deps.profile = func(context.Context, string, int64) (enrichProfile, error) {
+	h.worker.deps.profile = func(context.Context, string, int64, profileRequest) (enrichProfile, error) {
 		calls++
 		return enrichProfile{FetchedAt: h.now}, nil
 	}
@@ -601,9 +607,12 @@ func TestEnrichDisabledFlagIsInert(t *testing.T) {
 	h := newEnrichHarness(t)
 	h.eligibleReplay(t)
 	h.worker.deps.enabled = func() bool { return false }
-	h.worker.deps.profile = func(context.Context, string, int64) (enrichProfile, error) {
-		t.Fatal("profile fetched while the flag is off")
-		return enrichProfile{}, nil
+	h.worker.deps.profile = func(_ context.Context, _ string, _ int64, req profileRequest) (enrichProfile, error) {
+		// Settling the game's winner is not part of the feature the flag turns off.
+		if req.prio != bnetfacade.PriorityOutcome {
+			t.Fatal("profile fetched for complete replays while the flag is off")
+		}
+		return enrichProfile{FetchedAt: h.now}, nil
 	}
 	h.worker.tick(context.Background())
 	if _, ok, _ := h.queue.Get("ownmd5"); ok {

@@ -555,6 +555,8 @@ func Summarize(d *engine.Digest, moneyMap bool) *library.EngineData {
 		LowConfidence: d.Confidence() == engine.ConfidenceLow,
 		TrustedUntil:  uint32(max(d.TrustedUntil(), 0)),
 	}
+	data.ResultsKnown = !data.LowConfidence
+	data.Results = engineResults(d)
 	workersUntil, banked := macro.WorkerWindowEnd, map[int8]float32{}
 	if moneyMap {
 		workersUntil = macro.MoneyMapWorkerWindowEnd
@@ -579,6 +581,31 @@ func Summarize(d *engine.Digest, moneyMap bool) *library.EngineData {
 		data.Players = append(data.Players, ep)
 	}
 	return data
+}
+
+func engineResults(d *engine.Digest) []library.EngineResult {
+	playerIDs := map[int8]int32{}
+	for _, p := range d.Players {
+		playerIDs[p.Slot] = p.PlayerID
+	}
+	var results []library.EngineResult
+	for _, o := range d.Outcomes {
+		id, ok := playerIDs[o.Owner]
+		if !ok || id < 0 {
+			continue
+		}
+		kind := library.EngineLeft
+		switch o.Kind {
+		case engine.OutcomeDropped:
+			kind = library.EngineDropped
+		case engine.OutcomeDefeated:
+			kind = library.EngineDefeated
+		case engine.OutcomeWon:
+			kind = library.EngineWon
+		}
+		results = append(results, library.EngineResult{ReplayPlayerID: uint8(id), Kind: kind, Frame: uint32(max(o.Frame, 0))})
+	}
+	return results
 }
 
 func clampU16s(values []int) []uint16 {

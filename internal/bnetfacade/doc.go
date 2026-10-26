@@ -23,7 +23,8 @@
 // user's Blizzard session (disconnection risk — conservative token bucket,
 // persisted daily cap, exponential cooldown on the bridge's explicit "Rate
 // Limited" signal), while GCS downloads only cost bandwidth (separate, looser
-// budget). Both buckets serve PriorityUser waiters before background sweeps.
+// budget). Both buckets serve PriorityUser waiters first, then PriorityOutcome,
+// then background sweeps.
 // ProbeBridge is deliberately unmetered: it is a local liveness check.
 // EnableBudgetPersistence makes the daily counters survive restarts.
 //
