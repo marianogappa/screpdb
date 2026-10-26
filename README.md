@@ -297,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-21  OK. Frontend only: a player with a Skill tab no longer shows Skill proxies, and old Skill proxies links open Skill. No I/O changes.
+2026-10-26  OK. Fingerprint outcomes per player refresh when the corpus changes instead of serving a stale cache; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-21  OK. Frontend only: a player with a Skill tab no longer shows Skill proxies, and old Skill proxies links open Skill. No I/O changes.
 2026-10-21  OK. Frontend only: the player summary Skill row is taller and leads with a large tier badge in its tier colour. No I/O changes.
 2026-10-21  OK. Frontend only: the player Skill tab leads with the tier and trend, a dated Skill over time chart with tier lines, a smoothed average and a trend line, then the breakdown; How Skill works is a modal again, and the summary row is compact and points at the tab. No I/O changes.
 2026-10-21  OK. Player Skill becomes one clickable summary row and its own tab: Skill over time, the average breakdown and a shorter How Skill works; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-21  OK. Player pages show a Skill average from 5 rated engine games with habit pills, a How Skill works explainer opens from every Skill surface, and the player page drops its engine data count; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-2026-10-21  OK. Skill: six metrics that all count toward the estimate (EAPM, hotkey recalls put to use, hotkey checks, army production rhythm, unspent resources against income, idle production), read from the command stream at load and from the engine data; worker production stops counting dead bases; a long supply block pill on engine games. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 </details>
