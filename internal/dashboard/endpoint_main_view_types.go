@@ -575,10 +575,12 @@ type workflowGameEventOutcome struct {
 }
 
 type workflowEngineEvent struct {
-	SnapshotSecond int64                   `json:"snapshot_second"`
-	EndSecond      int64                   `json:"end_second"`
-	Region         *workflowEngineRegion   `json:"region,omitempty"`
-	Point          *workflowGameEventPoint `json:"point,omitempty"`
+	SnapshotSecond int64                 `json:"snapshot_second"`
+	EndSecond      int64                 `json:"end_second"`
+	Region         *workflowEngineRegion `json:"region,omitempty"`
+	// Focus is the part of Region the event is about; the map dims around it.
+	Focus *workflowEngineRegion   `json:"focus,omitempty"`
+	Point *workflowGameEventPoint `json:"point,omitempty"`
 }
 
 // workflowEngineRegion is a rectangle of the map in pixels.

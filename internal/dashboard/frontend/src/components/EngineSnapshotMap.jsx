@@ -1,7 +1,9 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useT } from '../lib/i18nContext';
 import { api } from '../api';
 import { getUnitIcon, normalizeUnitName, spriteKeyOf } from '../lib/gameAssets';
+import { formatDuration } from '../lib/formatters';
+import { placeLabels } from '../lib/labelPlacement';
 import GameMap from './GameMap';
 
 const TILE = 32;
@@ -196,12 +198,110 @@ const clampRegion = (region, width, height) => {
   return { x, y, w: Math.min(region.w, width - x), h: Math.min(region.h, height - y) };
 };
 
+const polygonCentroid = (polygon) => {
+  const n = (polygon || []).length;
+  if (n === 0) return null;
+  return {
+    x: polygon.reduce((sum, p) => sum + p.x, 0) / n,
+    y: polygon.reduce((sum, p) => sum + p.y, 0) / n,
+  };
+};
+
+// simplify drops the small cliff-hugging steps of a base outline.
+const simplify = (points, tolerance) => {
+  if (points.length < 3) return points;
+  const [a, b] = [points[0], points[points.length - 1]];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  let far = 0;
+  let farIdx = 0;
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const d = Math.abs(dy * points[i].x - dx * points[i].y + b.x * a.y - b.y * a.x) / len;
+    if (d > far) {
+      far = d;
+      farIdx = i;
+    }
+  }
+  if (far <= tolerance) return [a, b];
+  return [...simplify(points.slice(0, farIdx + 1), tolerance).slice(0, -1), ...simplify(points.slice(farIdx), tolerance)];
+};
+
+// The layout's base outlines interleave their vertices in places, which draws as hatching once zoomed
+// in. Keeping the farthest vertex in each direction from the centre gives a clean outline.
+const OUTLINE_DIRECTIONS = 96;
+
+const polygonOutline = (polygon) => {
+  const c = polygonCentroid(polygon);
+  const farthest = new Map();
+  for (const p of polygon) {
+    const angle = Math.atan2(p.y - c.y, p.x - c.x);
+    const dir = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * OUTLINE_DIRECTIONS) % OUTLINE_DIRECTIONS;
+    const r = Math.hypot(p.x - c.x, p.y - c.y);
+    if (!farthest.has(dir) || farthest.get(dir).r < r) farthest.set(dir, { ...p, r });
+  }
+  const ring = [...farthest.keys()].sort((a, b) => a - b).map((dir) => farthest.get(dir));
+  const half = Math.floor(ring.length / 2);
+  return [...simplify(ring.slice(0, half + 1), TILE / 2).slice(0, -1), ...simplify([...ring.slice(half), ring[0]], TILE / 2).slice(0, -1)];
+};
+
+const polygonPoints = (polygon) => polygonOutline(polygon).map((p) => `${p.x},${p.y}`).join(' ');
+
+// The label's size on screen, in CSS pixels: the pill's padding, dot and gap, then the name.
+const labelCssSize = (name) => ({ w: 30 + 7.2 * name.length, h: 22 });
+
+const baseKey = (b) => `${b.name}-${b.clock}-${b.polygon[0].x}`;
+
+const baseKindLabel = (t, base, nameOf) => {
+  if (base.kind === 'main') return t('events.base.main');
+  if (base.kind === 'natural') {
+    return base.natural_of && base.natural_of !== base.player_id
+      ? t('events.base.naturalOf', { player: nameOf(base.natural_of) })
+      : t('events.base.natural');
+  }
+  return t('events.expansion');
+};
+
+function BaseTooltip({ hover, color, nameOf }) {
+  const t = useT();
+  const { base } = hover;
+  const icon = getUnitIcon(base.town_hall);
+  return (
+    <div className="workflow-event-map-tooltip engine-base-tooltip" style={{ left: `${hover.x}px`, top: `${hover.y}px` }}>
+      <span className="workflow-event-map-tooltip-dot" style={{ background: color(base.player_id) }} />
+      <span className="workflow-event-map-tooltip-text">
+        <strong>{nameOf(base.player_id)}</strong>
+        <span className="workflow-event-map-tooltip-base engine-base-tooltip-kind">
+          {icon ? <img src={icon} alt="" className="engine-base-tooltip-icon" /> : null}
+          {baseKindLabel(t, base, nameOf)}
+        </span>
+        {base.complete ? null : (
+          <span className="workflow-event-map-tooltip-base">{t('snapshot.underConstruction', { unit: base.town_hall })}</span>
+        )}
+        {base.since != null ? (
+          <span className="workflow-event-map-tooltip-base">{t('events.base.since', { time: formatDuration(base.since) })}</span>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
 // EngineSnapshotMap draws the game as the engine had it at one moment: creep, shadows, every building (a
 // bar with a wrench while it is being built), every unit at its real size and place. It opens zoomed to the event.
 // eventSeconds are the snapshot seconds of every event of this game: the first exact request computes
 // them all in one engine pass, so moving between events afterwards is instant.
-export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUrl, mapWidth, mapHeight, colorByPlayerId, mapAlt }) {
+export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUrl, mapWidth, mapHeight, colorByPlayerId, nameByPlayerId, teamColorByPlayerId, mapAlt }) {
   const t = useT();
+  const [hover, setHover] = useState(null);
+  const rootRef = useRef(null);
+  const [frameWidth, setFrameWidth] = useState(0);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(([entry]) => setFrameWidth(Math.round(entry.contentRect.width / 20) * 20));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mapWidth, mapHeight]);
   const ids = useId().replace(/:/g, '');
   const engine = event?.engine;
   const second = engine?.snapshot_second ?? event?.second ?? 0;
@@ -226,6 +326,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const width = Number(mapWidth) || 0;
   const height = Number(mapHeight) || 0;
   const region = useMemo(() => (engine?.region && width && height ? clampRegion(engine.region, width, height) : null), [engine, width, height]);
+  const focus = useMemo(() => (engine?.focus && width && height ? clampRegion(engine.focus, width, height) : null), [engine, width, height]);
   const creep = useMemo(() => creepPath(snapshot?.creep), [snapshot?.creep]);
   const tileset = snapshot?.creep?.tileset || '';
   const edgesWidth = useNaturalWidth(tileset ? `/api/custom/game-assets/creep?tileset=${encodeURIComponent(tileset)}&kind=edges` : '');
@@ -234,16 +335,41 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
     ...(snapshot?.units || []).map((u) => metricKey(u.unit_type, u.burrowed)),
   ])].filter(Boolean).sort(), [snapshot]);
   const metricOf = useSpriteMetrics(metricKeys);
+  // Owner labels go where they cover the least of the map; placed once per snapshot and frame size, so
+  // they hold still while the event is on screen.
+  const labelSpots = useMemo(() => {
+    if (!width || !height || !frameWidth) return new Map();
+    const view = region || { x: 0, y: 0, w: width, h: height };
+    const mapPerCss = view.w / frameWidth;
+    const labels = (snapshot?.bases || [])
+      .filter((b) => (b.polygon || []).length >= 3 && nameByPlayerId?.get(b.player_id))
+      .map((b) => {
+        const size = labelCssSize(nameByPlayerId.get(b.player_id));
+        return { key: baseKey(b), outline: polygonOutline(b.polygon), w: size.w * mapPerCss, h: size.h * mapPerCss };
+      });
+    const obstacles = [
+      ...(snapshot?.buildings || []).map((b) => ({ x: b.x - b.w / 2, y: b.y - b.h / 2, w: b.w, h: b.h })),
+      ...(snapshot?.units || []).map((u) => ({ x: u.x - 14, y: u.y - 14, w: 28, h: 28 })),
+    ];
+    return placeLabels({ labels, obstacles, avoid: focus ? [focus] : [], view, width, height });
+  }, [snapshot, region, focus, width, height, frameWidth, nameByPlayerId]);
   if (!width || !height) return null;
   const showZoomed = Boolean(region);
   // Terrain, then creep on the floor, then minerals and geysers, then everything else.
   const crop = showZoomed ? terrainCrop(replayId, region, width, height) : null;
   const color = (id) => colorByPlayerId?.get(id) || '#e2e8f0';
+  const nameOf = (id) => nameByPlayerId?.get(id) || '';
+  const bases = (snapshot?.bases || []).filter((b) => (b.polygon || []).length >= 3);
   // Bars and icons keep a readable size on screen whether the view is a base or the whole map.
   const uiScale = showZoomed ? Math.max(1, region.w / 1100) : Math.max(2.5, width / 1100);
   const segmentsId = `${ids}-seg`;
   const creepId = `${ids}-creep`;
   const warpId = `${ids}-warp`;
+  const focusId = `${ids}-focus`;
+  const hoverBase = (e, base) => {
+    const box = rootRef.current?.getBoundingClientRect();
+    if (box) setHover({ base, x: e.clientX - box.left + 14, y: e.clientY - box.top + 14 });
+  };
 
   // place puts an image so its anchor lands on (x, y), at the given map-pixel scale.
   const place = (m, x, y, scale) => ({
@@ -318,7 +444,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   air.sort(byY);
 
   return (
-    <div className="engine-snapshot">
+    <div className="engine-snapshot" ref={rootRef}>
       <GameMap
         className="engine-snapshot-frame"
         mapUrl={mapUrl}
@@ -326,7 +452,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
         mapHeight={height}
         view={showZoomed ? region : null}
         detail={crop}
-        maxHeight="100vh - 28px"
+        maxHeight="100vh - var(--events-title-h)"
         alt={mapAlt}
         mapLayers={(
           <>
@@ -339,16 +465,63 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
               <filter id={warpId} colorInterpolationFilters="sRGB">
                 <feColorMatrix type="matrix" values="0.25 0.25 0.1 0 0.12  0.3 0.35 0.15 0 0.25  0.35 0.4 0.25 0 0.45  0 0 0 0.85 0" />
               </filter>
+              {focus ? (
+                <radialGradient
+                  id={focusId}
+                  gradientUnits="userSpaceOnUse"
+                  cx={0}
+                  cy={0}
+                  r={1}
+                  gradientTransform={`translate(${focus.x + focus.w / 2} ${focus.y + focus.h / 2}) scale(${focus.w * 0.75 + 2 * TILE} ${focus.h * 0.75 + 2 * TILE})`}
+                >
+                  <stop offset="0.55" stopColor="#05070c" stopOpacity="0" />
+                  <stop offset="1" stopColor="#05070c" stopOpacity="0.5" />
+                </radialGradient>
+              ) : null}
             </defs>
             {creep && tileset ? <CreepTiles id={creepId} creep={snapshot.creep} path={creep} edgesWidth={showZoomed ? edgesWidth : 0} /> : null}
             {creep && !tileset ? <path d={creep} fill="#000" filter={`url(#${creepId})`} opacity={0.92} /> : null}
             {crop ? <image href={crop.resourcesUrl} x={crop.x} y={crop.y} width={crop.w} height={crop.h} preserveAspectRatio="none" /> : null}
+            {bases.map((b) => (
+              <polygon
+                key={`base-${b.name}-${b.clock}-${b.polygon[0].x}`}
+                className={`engine-base${b.complete ? '' : ' engine-base--building'}`}
+                points={polygonPoints(b.polygon)}
+                style={{ fill: color(b.player_id), stroke: teamColorByPlayerId?.get(b.player_id) || color(b.player_id), strokeWidth: (teamColorByPlayerId ? 7 : 3) * uiScale, strokeDasharray: b.complete ? undefined : `${12 * uiScale} ${8 * uiScale}` }}
+              />
+            ))}
             {shadows}
             {ground.map((g) => g.node)}
             {air.map((a) => a.node)}
+            {focus ? <rect className="engine-focus-dim" width={width} height={height} fill={`url(#${focusId})`} /> : null}
+            {bases.map((b) => (
+              <polygon
+                key={`base-hit-${b.name}-${b.clock}-${b.polygon[0].x}`}
+                className="engine-base-hit"
+                points={polygonPoints(b.polygon)}
+                onMouseEnter={(e) => hoverBase(e, b)}
+                onMouseMove={(e) => hoverBase(e, b)}
+                onMouseLeave={() => setHover(null)}
+              />
+            ))}
           </>
         )}
-      />
+      >
+        {bases.map((b) => {
+          const c = labelSpots.get(baseKey(b));
+          return c && nameOf(b.player_id) ? (
+            <span
+              key={`base-label-${baseKey(b)}`}
+              className="engine-base-label map-pill"
+              style={{ left: `${(c.x / width) * 100}%`, top: `${(c.y / height) * 100}%`, borderColor: color(b.player_id) }}
+            >
+              <span className="map-pill-dot" style={{ background: color(b.player_id) }} />
+              {nameOf(b.player_id)}
+            </span>
+          ) : null;
+        })}
+      </GameMap>
+      {hover ? <BaseTooltip hover={hover} color={color} nameOf={nameOf} /> : null}
     </div>
   );
 }
