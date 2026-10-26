@@ -89,6 +89,14 @@ const (
 
 const bnetGameSourceName = "AssumedBattleNet"
 
+// profileRequest says how urgently a profile is wanted and how old a cached one may be.
+type profileRequest struct {
+	prio   bnetfacade.Priority
+	maxAge time.Duration
+}
+
+var gameIDRequest = profileRequest{prio: bnetfacade.PriorityBackground, maxAge: enrichProfileMinInterval / 2}
+
 // enrichProfile is what the worker needs from one own-profile fetch.
 type enrichProfile struct {
 	Replays   []bnetfacade.ProfileReplay
@@ -119,7 +127,7 @@ type enrichDeps struct {
 	// resolvesWinner reports whether a placed copy actually names a winner,
 	// which is the thing the download exists to achieve.
 	resolvesWinner func(path string) bool
-	profile        func(ctx context.Context, toon string, gateway int64) (enrichProfile, error)
+	profile        func(ctx context.Context, toon string, gateway int64, req profileRequest) (enrichProfile, error)
 	gameInfo       func(ctx context.Context, addr, gameID string) (*bnetfacade.GameInfo, error)
 	headSize       func(ctx context.Context, gcsPath string) (int64, error)
 	download       func(ctx context.Context, gcsPath string) ([]byte, error)
@@ -135,6 +143,10 @@ type enrichWorker struct {
 	// fetches and backs off after a fruitless full sweep.
 	resolvedGateway    map[string]int64
 	nextProfileAttempt map[string]time.Time
+	// outcomeAttempt is when each toon's profile was last asked to settle a game's winner, and
+	// prefetched holds what that fetch returned for the rest of the tick.
+	outcomeAttempt map[string]time.Time
+	prefetched     map[string]enrichProfile
 	// amnestied is set once the first active tick has cleared persisted poll
 	// schedules: a restart retries promptly instead of honouring backoff
 	// decisions a previous run made under conditions that may be gone.
@@ -147,6 +159,8 @@ func newEnrichWorker(queue *persist.EnrichQueue, deps enrichDeps) *enrichWorker 
 		deps:               deps,
 		resolvedGateway:    map[string]int64{},
 		nextProfileAttempt: map[string]time.Time{},
+		outcomeAttempt:     map[string]time.Time{},
+		prefetched:         map[string]enrichProfile{},
 	}
 }
 
@@ -207,8 +221,8 @@ func (d *Dashboard) enrichDeps() enrichDeps {
 		snapshot:       func() *library.Snapshot { return d.library.lib.Snapshot() },
 		complete:       func() bool { return d.library.lib.Progress().Complete() },
 		resolvesWinner: d.replayNamesAWinner,
-		profile: func(ctx context.Context, toon string, gateway int64) (enrichProfile, error) {
-			res, err := d.getOrFetchBnetProfile(ctx, toon, gateway, bnetfacade.PriorityBackground, enrichProfileMinInterval/2)
+		profile: func(ctx context.Context, toon string, gateway int64, req profileRequest) (enrichProfile, error) {
+			res, err := d.getOrFetchBnetProfile(ctx, toon, gateway, req.prio, req.maxAge)
 			if err != nil {
 				return enrichProfile{}, err
 			}
@@ -265,12 +279,14 @@ func (d *Dashboard) startBnetEnrich(ctx context.Context) {
 }
 
 func (w *enrichWorker) tick(ctx context.Context) {
-	if !w.deps.enabled() {
-		return
-	}
 	now := w.deps.now()
 	addr, connected := w.deps.bridgeAddr()
 	if !connected {
+		return
+	}
+	w.resolveOwnOutcomes(ctx, now)
+	defer clear(w.prefetched)
+	if !w.deps.enabled() {
 		return
 	}
 	if err := w.queue.Prune(now); err != nil {
@@ -346,6 +362,10 @@ func enrichEligible(r *library.Replay, youKeys map[string]struct{}, snap *librar
 	if now.Sub(r.Date) > enrichMaxAge {
 		return "", false
 	}
+	// The engine watched this recording to its end and named the winner, so a longer copy has nothing to add.
+	if r.EngineData != nil && r.EngineData.ResultsKnown && !r.WinnerUndecided() {
+		return "", false
+	}
 	humans := 0
 	winnerDetermined := false
 	var you *library.Player
@@ -404,12 +424,14 @@ func (w *enrichWorker) resolveGameIDs(ctx context.Context, now time.Time) {
 		byToon[entry.Toon] = append(byToon[entry.Toon], entry)
 	}
 	for toon, entries := range byToon {
-		if now.Before(w.nextProfileAttempt[toon]) {
-			continue
-		}
-		profile, ok := w.ownProfile(ctx, now, toon)
+		profile, ok := w.prefetched[toon]
 		if !ok {
-			continue
+			if now.Before(w.nextProfileAttempt[toon]) {
+				continue
+			}
+			if profile, ok = w.ownProfile(ctx, now, toon, gameIDRequest); !ok {
+				continue
+			}
 		}
 		repByMD5 := map[string]bnetfacade.ProfileReplay{}
 		for _, rep := range profile.Replays {
@@ -480,10 +502,10 @@ func nearestGameRef(refs []bnetfacade.ProfileGameRef, createTime int64) string {
 // session is on — but only the logged-in account's own profile carries md5+url
 // in replays[], so qualification is decided from the payload, never guessed.
 // The qualifying gateway is remembered; a fruitless full sweep backs off.
-func (w *enrichWorker) ownProfile(ctx context.Context, now time.Time, toon string) (enrichProfile, bool) {
+func (w *enrichWorker) ownProfile(ctx context.Context, now time.Time, toon string, req profileRequest) (enrichProfile, bool) {
 	w.nextProfileAttempt[toon] = now.Add(enrichProfileMinInterval)
 	if gw, known := w.resolvedGateway[toon]; known {
-		profile, err := w.fetchProfile(ctx, now, toon, gw)
+		profile, err := w.fetchProfile(ctx, now, toon, gw, req)
 		if err != nil {
 			return enrichProfile{}, false
 		}
@@ -499,7 +521,7 @@ func (w *enrichWorker) ownProfile(ctx context.Context, now time.Time, toon strin
 			// Out of budget mid-sweep: retry from the top next interval.
 			return enrichProfile{}, false
 		}
-		profile, err := w.fetchProfile(ctx, now, toon, gw)
+		profile, err := w.fetchProfile(ctx, now, toon, gw, req)
 		if err != nil {
 			// Bridge trouble is not gateway-specific; stop the sweep.
 			return enrichProfile{}, false
@@ -515,11 +537,11 @@ func (w *enrichWorker) ownProfile(ctx context.Context, now time.Time, toon strin
 	return enrichProfile{}, false
 }
 
-func (w *enrichWorker) fetchProfile(ctx context.Context, now time.Time, toon string, gateway int64) (enrichProfile, error) {
+func (w *enrichWorker) fetchProfile(ctx context.Context, now time.Time, toon string, gateway int64, req profileRequest) (enrichProfile, error) {
 	if !w.allowCall(now) {
 		return enrichProfile{}, fmt.Errorf("bnet-enrich: daily call cap reached")
 	}
-	profile, err := w.deps.profile(ctx, toon, gateway)
+	profile, err := w.deps.profile(ctx, toon, gateway, req)
 	if err != nil {
 		w.deps.logf("[bnet-enrich] fetching profile for %q on gateway %d: %v", toon, gateway, err)
 		return enrichProfile{}, err

@@ -85,6 +85,40 @@ func TestLimiterUserBeatsBackground(t *testing.T) {
 	}
 }
 
+func TestLimiterServesOutcomeBetweenUserAndBackground(t *testing.T) {
+	l := newLimiter(30*time.Millisecond, 1)
+	ctx := context.Background()
+	if err := l.acquire(ctx, PriorityBackground); err != nil {
+		t.Fatalf("drain token: %v", err)
+	}
+
+	var mu sync.Mutex
+	var order []string
+	var wg sync.WaitGroup
+	for _, w := range []struct {
+		name string
+		prio Priority
+	}{{"background", PriorityBackground}, {"outcome", PriorityOutcome}, {"user", PriorityUser}} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := l.acquire(ctx, w.prio); err != nil {
+				t.Errorf("%s acquire: %v", w.name, err)
+				return
+			}
+			mu.Lock()
+			order = append(order, w.name)
+			mu.Unlock()
+		}()
+		time.Sleep(5 * time.Millisecond)
+	}
+	wg.Wait()
+
+	if fmt.Sprint(order) != "[user outcome background]" {
+		t.Fatalf("want user, then outcome, then background; got %v", order)
+	}
+}
+
 func TestLimiterAcquireHonoursContextCancel(t *testing.T) {
 	l := newLimiter(time.Hour, 1)
 	if err := l.acquire(context.Background(), PriorityUser); err != nil {
