@@ -5,6 +5,7 @@ package dashboard
 import (
 	"encoding/base64"
 	"encoding/json"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -157,6 +158,22 @@ type engineSnapshot struct {
 	Buildings  []engineSnapshotBuilding `json:"buildings"`
 	Units      []engineSnapshotUnit     `json:"units"`
 	Creep      *engineSnapshotCreep     `json:"creep,omitempty"`
+	Bases      []engineSnapshotBase     `json:"bases"`
+}
+
+// engineSnapshotBase is a base someone holds at the snapshot's second. Kind is main, natural or expansion;
+// NaturalOf is the player whose main the natural belongs to.
+type engineSnapshotBase struct {
+	Name        string                   `json:"name"`
+	Kind        string                   `json:"kind"`
+	Clock       int64                    `json:"clock,omitempty"`
+	NaturalOf   int64                    `json:"natural_of,omitempty"`
+	MineralOnly bool                     `json:"mineral_only,omitempty"`
+	Polygon     []workflowGameEventPoint `json:"polygon"`
+	PlayerID    int64                    `json:"player_id"`
+	TownHall    string                   `json:"town_hall"`
+	Complete    bool                     `json:"complete"`
+	Since       *int64                   `json:"since,omitempty"`
 }
 
 // engineSnapshotCreep is the map's creep, one bit per tile, row by row, least significant bit first.
@@ -280,6 +297,7 @@ func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, r *http.Request
 		playerBySlot[int8(p.Slot)] = library.PlayerID(rec.ID, uint8(ordinal))
 	}
 	var out engineSnapshot
+	exact := false
 	if r.URL.Query().Get("exact") == "1" {
 		seconds := []int{sec}
 		for _, field := range strings.Split(r.URL.Query().Get("seconds"), ",") {
@@ -297,10 +315,83 @@ func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, r *http.Request
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		out = exactSnapshotWire(snaps[sec], playerBySlot)
-	} else {
-		out = coarseSnapshotWire(moments.SnapshotAt(dg, sec), playerBySlot)
+		// A second past the engine's last frame has no exact snapshot; the digest still has one.
+		if snap, ok := snaps[sec]; ok {
+			out = exactSnapshotWire(snap, playerBySlot)
+			out.Bases = snapshotBases(dg, rec, sec, exactHalls(snap), playerBySlot)
+			exact = true
+		}
+	}
+	if !exact {
+		coarse := moments.SnapshotAt(dg, sec)
+		out = coarseSnapshotWire(coarse, playerBySlot)
+		out.Bases = snapshotBases(dg, rec, sec, coarseHalls(coarse), playerBySlot)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)
+}
+
+func exactHalls(snap engine.Snapshot) []moments.Hall {
+	var halls []moments.Hall
+	for _, u := range snap.Units {
+		if moments.IsTownHall(u.Type) {
+			halls = append(halls, moments.Hall{Type: u.Type, Owner: u.Owner, X: u.X, Y: u.Y, Complete: u.Completed, Lifted: u.Lifted})
+		}
+	}
+	return halls
+}
+
+func coarseHalls(snap moments.Snapshot) []moments.Hall {
+	var halls []moments.Hall
+	for _, b := range snap.Buildings {
+		if moments.IsTownHall(b.Type) {
+			halls = append(halls, moments.Hall{Type: b.Type, Owner: b.Owner, X: b.X, Y: b.Y, Complete: b.Complete})
+		}
+	}
+	return halls
+}
+
+// snapshotBases says who holds which base at the snapshot's second, from the town halls it shows.
+func snapshotBases(dg *engine.Digest, rec *library.Replay, sec int, halls []moments.Hall, playerBySlot map[int8]int64) []engineSnapshotBase {
+	out := []engineSnapshotBase{}
+	if rec.Layout == nil {
+		return out
+	}
+	layout := rec.Layout.Bases
+	naturalOf := map[string]int64{}
+	naturals := map[string]bool{}
+	for _, b := range layout {
+		if !isStartKind(b.Kind) || b.NaturalExpansion == "" {
+			continue
+		}
+		naturals[b.NaturalExpansion] = true
+		for ordinal, p := range rec.Players {
+			if !p.IsObserver() && math.Hypot(float64(p.StartX)-float64(b.CenterX), float64(p.StartY)-float64(b.CenterY)) < 10*32 {
+				naturalOf[b.NaturalExpansion] = library.PlayerID(rec.ID, uint8(ordinal))
+			}
+		}
+	}
+	for _, o := range moments.BaseOwners(dg, libraryBases(rec.Layout), sec, halls) {
+		id, ok := playerBySlot[o.Owner]
+		if !ok {
+			continue
+		}
+		b := layout[o.Base]
+		wire := engineSnapshotBase{Name: b.Name, Kind: "expansion", Clock: int64(b.Clock), MineralOnly: b.MineralOnly, PlayerID: id, TownHall: unitName(o.TownHall), Complete: o.Complete}
+		switch {
+		case isStartKind(b.Kind):
+			wire.Kind = "main"
+		case naturals[b.Name]:
+			wire.Kind, wire.NaturalOf = "natural", naturalOf[b.Name]
+		}
+		for _, pt := range b.Polygon {
+			wire.Polygon = append(wire.Polygon, workflowGameEventPoint{X: float64(pt.X), Y: float64(pt.Y)})
+		}
+		if o.Since >= 0 {
+			since := int64(o.Since)
+			wire.Since = &since
+		}
+		out = append(out, wire)
+	}
+	return out
 }
