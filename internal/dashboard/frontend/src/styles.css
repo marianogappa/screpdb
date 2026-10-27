@@ -7792,30 +7792,52 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   transform: translateX(-1px);
 }
 
-.skill-dot {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  padding: 0;
-  border: 1px solid rgba(0, 0, 0, 0.55);
-  border-radius: 50%;
-  background: rgba(147, 197, 253, 0.8);
-  transform: translateX(-4px);
-  cursor: pointer;
-}
-
-.skill-dot:hover {
-  background: #fff;
-  z-index: 2;
-}
-
-.skill-marker--star {
+.skill-marker--population {
   border: none;
   background: none;
   padding: 0;
   color: inherit;
   font: inherit;
   cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.skill-marker--population {
+  height: 19px;
+  z-index: 1;
+}
+
+.skill-marker--population .skill-player-label {
+  text-shadow: 0 0 3px #0d0e12, 0 0 3px #0d0e12, 0 0 2px #0d0e12;
+}
+
+.skill-library-dot {
+  width: 9px;
+  height: 9px;
+  background: #8fb3e8;
+}
+
+.skill-marker--star .skill-player-label {
+  color: rgba(240, 198, 116, 0.92);
+}
+
+.skill-strip--focus .skill-marker--population {
+  opacity: 0.22;
+}
+
+.skill-strip--focus .skill-marker--focused {
+  opacity: 1;
+  z-index: 3;
+}
+
+.skill-marker--focused .skill-player-label {
+  color: #fff;
+  font-weight: 600;
+}
+
+.skill-marker--focused .skill-player-value {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
 }
 
 .skill-star {
@@ -7824,10 +7846,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   font-size: 14px;
   line-height: 1;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
-}
-
-.skill-marker--star:hover .skill-player-label {
-  color: #f0c674;
 }
 
 .skill-players-legend {
