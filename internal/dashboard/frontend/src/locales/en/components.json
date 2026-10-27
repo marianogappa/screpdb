@@ -163,6 +163,7 @@
   "skill.explain.oneGame.title": "One game is a rough guess",
   "skill.explain.oneGame.body": "It gets the exact tier right about 6 times in 10. An average over many games is steadier.",
   "skill.player.basis": "Based on {count} games",
+  "skill.players.median": "Median of {count} players",
   "skill.pill.no_hotkeys": "No hotkeys",
   "skill.pill.no_hotkeys.hint": "In {games} of {of} games: under one hotkey recall a minute.",
   "skill.pill.never_checks_hotkeys": "Never checks hotkeys",

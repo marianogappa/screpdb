@@ -53,11 +53,6 @@ func TestReadOnlyEndpointSweep(t *testing.T) {
 		"/last-games",
 		"/chat-summary",
 		"/hotkey-signature",
-		"/insights/apm-histogram",
-		"/insights/unit-production-cadence",
-		"/insight?type=apm",
-		"/insight?type=unit-production-cadence",
-		"/insight?type=viewport-switch-rate",
 	}
 	seen := 0
 	for _, p := range playersPayload.Items {
@@ -78,7 +73,7 @@ func TestReadOnlyEndpointSweep(t *testing.T) {
 	}
 
 	for _, path := range []string{
-		"/api/players/insights/viewport-multitasking",
+		"/api/custom/players/skill",
 		"/api/custom/markers/definitions",
 		"/api/custom/update/status",
 	} {

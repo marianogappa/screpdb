@@ -17,36 +17,15 @@ export const MAIN_GAME_TABS = [
 
 export const MAIN_PLAYERS_TABS = [
   'summary',
-  'apm-histogram',
-  'unit-production-cadence',
-  'viewport-multitasking',
+  'skill',
 ];
 
 export const MAIN_PLAYER_TABS = [
   'summary',
   'skill',
   'hotkeys',
-  'skill-proxies',
   'chat-summary',
 ];
-
-export const MAIN_PLAYER_SKILL_PROXY_SUBTABS = ['summary', 'usage-signals'];
-
-/**
- * Whether the player Skill-proxies "Population comparison" insights should be
- * fetched for the current view state. Gated on the tab alone — the player
- * Skill-proxies surface renders the same population cards for every subtab, so
- * the loader must not hinge on a specific subtab value. (Regression #147: the
- * in-page tab button set the subtab to '' while the loader required 'summary',
- * leaving the panel permanently empty.)
- * @param {{ activeView: string, selectedPlayerKey: string, mainPlayerTab: string }} s
- * @returns {boolean}
- */
-export function shouldLoadPlayerSkillProxyInsights(s) {
-  if (!s || s.activeView !== 'player') return false;
-  if (!s.selectedPlayerKey) return false;
-  return s.mainPlayerTab === 'skill-proxies';
-}
 
 const normalizeSearch = (search) => {
   if (!search || search === '?') return '';
@@ -96,17 +75,16 @@ export function parseMainRouteSearch(search) {
 
   let replayId = view === 'game' ? parseReplayIdParam(replayRaw) : null;
   let playerKey = view === 'player' ? normalizePlayerKeyParam(playerRaw) : '';
-  // The Skill tab replaced Macro and the Skill proxies views; their old links open it.
+  // The Skill tab replaced Macro and the Skill proxies views; their old links open it, on the game, the
+  // Players page and the player page alike.
   const legacyGameTab = { macro: 'skill', 'first-unit-efficiency': 'skill', 'unit-production-cadence': 'skill', 'viewport-multitasking': 'skill' };
   let gameTab = pickEnum(legacyGameTab[gameTabRaw] || gameTabRaw, MAIN_GAME_TABS, 'summary');
   let buildOrder = gameTab === 'build-orders' ? String(buildOrderRaw || '').trim() : '';
-  let playersTab = pickEnum(playersTabRaw, MAIN_PLAYERS_TABS, 'summary');
-  let playerTab = pickEnum(playerTabRaw, MAIN_PLAYER_TABS, 'summary');
-  // playerSubtab is contextual: only validated for skill-proxies; race subtabs are dynamic.
-  let playerSubtab = String(playerSubtabRaw || '').trim().toLowerCase();
-  if (playerTab === 'skill-proxies') {
-    playerSubtab = MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(playerSubtab) ? playerSubtab : 'summary';
-  }
+  const legacyPlayersTab = { 'apm-histogram': 'skill', 'unit-production-cadence': 'skill', 'viewport-multitasking': 'skill' };
+  let playersTab = pickEnum(legacyPlayersTab[playersTabRaw] || playersTabRaw, MAIN_PLAYERS_TABS, 'summary');
+  let playerTab = pickEnum(playerTabRaw === 'skill-proxies' ? 'skill' : playerTabRaw, MAIN_PLAYER_TABS, 'summary');
+  // playerSubtab is a race subtab of the summary: dynamic, so kept as given.
+  let playerSubtab = playerTab === 'summary' ? String(playerSubtabRaw || '').trim().toLowerCase() : '';
 
   if (view === 'game' && replayId == null) {
     view = 'games';
@@ -173,12 +151,7 @@ export function buildMainRouteSearch(s) {
       params.set('playerTab', tab);
     }
     const sub = String(s.mainPlayerSubtab || '').trim().toLowerCase();
-    if (tab === 'skill-proxies') {
-      const validated = MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(sub) ? sub : 'summary';
-      if (validated !== 'summary') {
-        params.set('playerSubtab', validated);
-      }
-    } else if (tab === 'summary' && sub) {
+    if (tab === 'summary' && sub) {
       // Race subtab — opaque; persist only when set.
       params.set('playerSubtab', sub);
     }

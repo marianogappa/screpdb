@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/marianogappa/screpdb/internal/gamerules"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/librarytest"
 	"github.com/marianogappa/screpdb/internal/library/load"
@@ -538,132 +537,6 @@ func TestLibStoreListUnitSliceCommandRows(t *testing.T) {
 	}
 }
 
-func TestLibStoreListFirstUnitCommandRows(t *testing.T) {
-	r := librarytest.Replay(
-		librarytest.WithPlayer("Flash"),
-		librarytest.WithPlayer("Bisu"),
-		librarytest.WithProd(1, 40, library.ProdBuild, "Protoss Gateway"),
-		librarytest.WithProd(0, 200, library.ProdTrain, "Terran Marine"),
-		librarytest.WithProd(0, 60, library.ProdBuildingMorph, "Lair"),
-		librarytest.WithProdCount(0, 100, library.ProdUnitMorph, "Zergling", 3),
-	)
-	s := newTestLibStore(t, r)
-
-	rows, err := s.ListFirstUnitCommandRows(context.Background(), r.ID)
-	if err != nil {
-		t.Fatalf("ListFirstUnitCommandRows: %v", err)
-	}
-	if len(rows) != 3 {
-		t.Fatalf("got %d rows, want Build/Train/Unit Morph only: %+v", len(rows), rows)
-	}
-	if rows[0].PlayerID != rowPlayerID(r, 0) || rows[0].Second != 100 || rows[0].ActionType != "Unit Morph" {
-		t.Fatalf("first row = %+v", rows[0])
-	}
-	// A three-larva morph is still one command, exactly as the SQL stored it.
-	if rows[0].UnitType == nil || *rows[0].UnitType != "Zergling" || rows[0].UnitTypes != nil {
-		t.Fatalf("morph row = %+v", rows[0])
-	}
-	if rows[1].Second != 200 || rows[1].ActionType != "Train" {
-		t.Fatalf("second row = %+v", rows[1])
-	}
-	if rows[2].PlayerID != rowPlayerID(r, 1) || rows[2].ActionType != "Build" {
-		t.Fatalf("third row = %+v", rows[2])
-	}
-}
-
-func TestLibStoreListGameUnitCadenceRowsUsesThePrecomputedCadence(t *testing.T) {
-	r := melee("cadence",
-		librarytest.WithCadence(0, library.Cadence{
-			WindowSec: 300, Units: 10, Gaps: 9,
-			RatePerMinute: 2, CVGap: 0.5, Burstiness: -1.0 / 3.0, Idle20Ratio: 0.25, Score: 4.0 / 3.0,
-		}),
-		librarytest.WithCadence(1, library.Cadence{
-			WindowSec: 300, Units: 1, Gaps: 0, RatePerMinute: 0.2, Score: 0.2 / 10000.0,
-		}),
-	)
-	s := newTestLibStore(t, r)
-
-	rows, err := s.ListGameUnitCadenceRows(
-		context.Background(), r.ID, int64(r.Duration),
-		gamerules.UnitCadenceExcludedUnits,
-		gamerules.UnitCadenceStartSeconds, gamerules.UnitCadenceEndFraction, gamerules.UnitCadenceIdleGapSeconds,
-	)
-	if err != nil {
-		t.Fatalf("ListGameUnitCadenceRows: %v", err)
-	}
-	if len(rows) != 2 {
-		t.Fatalf("got %d rows, want one per scored player", len(rows))
-	}
-	scored := rows[0]
-	if scored.PlayerID != rowPlayerID(r, 0) || scored.WindowSeconds != 300 || scored.UnitsProduced != 10 || scored.GapCount != 9 {
-		t.Fatalf("scored row = %+v", scored)
-	}
-	if scored.CVGap == nil || *scored.CVGap != 0.5 || scored.Burstiness == nil || scored.Idle20Ratio == nil {
-		t.Fatalf("scored row nullability = %+v", scored)
-	}
-	single := rows[1]
-	if single.GapCount != 0 {
-		t.Fatalf("single-unit row = %+v", single)
-	}
-	if single.CVGap != nil || single.Burstiness != nil || single.Idle20Ratio != nil {
-		t.Fatalf("a gapless row must report NULL deviations, got %+v", single)
-	}
-	if single.RatePerMinute == nil || single.CadenceScore == nil {
-		t.Fatalf("rate and score are never NULL, got %+v", single)
-	}
-
-	// A player the loader never scored yields no row at all.
-	bare := melee("unscored")
-	rows, err = s.ListGameUnitCadenceRows(
-		context.Background(), bare.ID, int64(bare.Duration),
-		gamerules.UnitCadenceExcludedUnits,
-		gamerules.UnitCadenceStartSeconds, gamerules.UnitCadenceEndFraction, gamerules.UnitCadenceIdleGapSeconds,
-	)
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("a replay outside the store must be ErrNotFound, got %v (%d rows)", err, len(rows))
-	}
-}
-
-func TestLibStoreListGameUnitCadenceRowsRecomputesForOtherTuning(t *testing.T) {
-	r := librarytest.Replay(
-		librarytest.WithPlayer("Flash"),
-		librarytest.WithPlayer("Bisu"),
-		librarytest.WithDuration(900),
-		librarytest.WithProd(0, 50, library.ProdTrain, "SCV"),
-		librarytest.WithProd(0, 100, library.ProdTrain, "Terran Marine"),
-		librarytest.WithProd(0, 130, library.ProdTrain, "Terran Marine"),
-		librarytest.WithProd(0, 200, library.ProdUnitMorph, "Lurker"),
-	)
-	s := newTestLibStore(t, r)
-
-	rows, err := s.ListGameUnitCadenceRows(context.Background(), r.ID, 900, []string{"SCV"}, 0, 1.0, 20)
-	if err != nil {
-		t.Fatalf("ListGameUnitCadenceRows: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Fatalf("got %d rows, want only the producing player: %+v", len(rows), rows)
-	}
-	row := rows[0]
-	if row.PlayerID != rowPlayerID(r, 0) || row.WindowSeconds != 900 || row.UnitsProduced != 3 || row.GapCount != 2 {
-		t.Fatalf("row = %+v", row)
-	}
-	// Gaps are 30 and 70: mean 50, population variance 400, cv 0.4.
-	assertNullFloat(t, "rate", row.RatePerMinute, 0.2)
-	assertNullFloat(t, "cv", row.CVGap, 0.4)
-	assertNullFloat(t, "burstiness", row.Burstiness, (0.4-1.0)/(0.4+1.0))
-	assertNullFloat(t, "idle", row.Idle20Ratio, 1.0)
-	assertNullFloat(t, "score", row.CadenceScore, 0.2/1.4)
-
-	// A window that never opens produces nothing at all.
-	empty, err := s.ListGameUnitCadenceRows(context.Background(), r.ID, 900, []string{"SCV"}, 5000, 0.8, 20)
-	if err != nil {
-		t.Fatalf("ListGameUnitCadenceRows(empty window): %v", err)
-	}
-	if empty == nil || len(empty) != 0 {
-		t.Fatalf("empty window = %+v, want an empty non-nil slice", empty)
-	}
-}
-
 func assertNullFloat(t *testing.T, label string, got *float64, want float64) {
 	t.Helper()
 	if got == nil {
@@ -769,38 +642,6 @@ func TestLibStoreLoadEarlyZergTimings(t *testing.T) {
 	}
 	if empty == nil || len(empty) != 0 {
 		t.Fatalf("no Zerg = %+v, want an empty non-nil slice", empty)
-	}
-}
-
-func TestLibStoreListViewportGameRows(t *testing.T) {
-	r := melee("viewport",
-		librarytest.WithMarker("viewport_multitasking", 0, 10, `{"switches_per_minute":12.5}`),
-		librarytest.WithMarker("viewport_multitasking", 1, 20, "   "),
-		librarytest.WithMarker("viewport_multitasking", library.NoPlayer, 30, `{"switches_per_minute":1}`),
-		librarytest.WithMarker("other_marker", 0, 40, `{"x":1}`),
-	)
-	s := newTestLibStore(t, r)
-
-	rows, err := s.ListViewportGameRows(context.Background(), r.ID, "viewport_multitasking")
-	if err != nil {
-		t.Fatalf("ListViewportGameRows: %v", err)
-	}
-	if len(rows) != 2 {
-		t.Fatalf("got %d rows, want the two non-blank payloads: %+v", len(rows), rows)
-	}
-	if rows[0].PlayerID != rowPlayerID(r, 0) || rows[0].RawValue != `{"switches_per_minute":12.5}` {
-		t.Fatalf("first row = %+v", rows[0])
-	}
-	if rows[1].PlayerID != 0 {
-		t.Fatalf("a replay-level marker must report player id 0, got %d", rows[1].PlayerID)
-	}
-
-	none, err := s.ListViewportGameRows(context.Background(), r.ID, "no_such_marker")
-	if err != nil {
-		t.Fatalf("ListViewportGameRows(missing): %v", err)
-	}
-	if none == nil || len(none) != 0 {
-		t.Fatalf("unknown marker = %+v, want an empty non-nil slice", none)
 	}
 }
 
@@ -916,14 +757,6 @@ func TestLibStoreGameReadsRejectUnknownReplayIDs(t *testing.T) {
 			_, err := s.ListUnitSliceCommandRows(ctx, missing)
 			return err
 		},
-		"ListFirstUnitCommandRows": func() error {
-			_, err := s.ListFirstUnitCommandRows(ctx, missing)
-			return err
-		},
-		"ListGameUnitCadenceRows": func() error {
-			_, err := s.ListGameUnitCadenceRows(ctx, missing, 900, gamerules.UnitCadenceExcludedUnits, 420, 0.8, 20)
-			return err
-		},
 		"ListGasTimingRows": func() error {
 			_, err := s.ListGasTimingRows(ctx, missing)
 			return err
@@ -938,10 +771,6 @@ func TestLibStoreGameReadsRejectUnknownReplayIDs(t *testing.T) {
 		},
 		"LoadEarlyZergTimings": func() error {
 			_, err := s.LoadEarlyZergTimings(ctx, missing)
-			return err
-		},
-		"ListViewportGameRows": func() error {
-			_, err := s.ListViewportGameRows(ctx, missing, "viewport_multitasking")
 			return err
 		},
 		"ListReplayLeaveReasons": func() error {
@@ -1156,62 +985,6 @@ func TestLibStoreGameReadsOverTheRealCorpus(t *testing.T) {
 		}
 		totals["slices"] += len(slices)
 
-		firsts, err := s.ListFirstUnitCommandRows(ctx, r.ID)
-		if err != nil {
-			t.Fatalf("ListFirstUnitCommandRows(%d): %v", r.ID, err)
-		}
-		for i, row := range firsts {
-			if !ids[row.PlayerID] || row.UnitType == nil || *row.UnitType == "" {
-				t.Fatalf("first-unit row %d = %+v", i, row)
-			}
-			if i > 0 && (firsts[i-1].PlayerID > row.PlayerID ||
-				(firsts[i-1].PlayerID == row.PlayerID && firsts[i-1].Second > row.Second)) {
-				t.Fatalf("first-unit rows are not ordered in %s", summary.FileName)
-			}
-		}
-		totals["firsts"] += len(firsts)
-
-		cadence, err := s.ListGameUnitCadenceRows(
-			ctx, r.ID, int64(r.Duration),
-			gamerules.UnitCadenceExcludedUnits,
-			gamerules.UnitCadenceStartSeconds, gamerules.UnitCadenceEndFraction, gamerules.UnitCadenceIdleGapSeconds,
-		)
-		if err != nil {
-			t.Fatalf("ListGameUnitCadenceRows(%d): %v", r.ID, err)
-		}
-		recomputed, err := s.ListGameUnitCadenceRows(
-			ctx, r.ID, int64(r.Duration),
-			append([]string{}, gamerules.UnitCadenceExcludedUnits...),
-			gamerules.UnitCadenceStartSeconds, gamerules.UnitCadenceEndFraction, gamerules.UnitCadenceIdleGapSeconds+1,
-		)
-		if err != nil {
-			t.Fatalf("ListGameUnitCadenceRows(recomputed, %d): %v", r.ID, err)
-		}
-		if len(cadence) != len(recomputed) {
-			t.Fatalf("cadence row count differs between paths in %s: %d vs %d", summary.FileName, len(cadence), len(recomputed))
-		}
-		for i, row := range cadence {
-			if !ids[row.PlayerID] {
-				t.Fatalf("cadence row %d has an unresolvable player id %d", i, row.PlayerID)
-			}
-			if row.WindowSeconds <= 0 || row.UnitsProduced <= 0 {
-				t.Fatalf("cadence row %d = %+v", i, row)
-			}
-			if row.GapCount != row.UnitsProduced-1 {
-				t.Fatalf("cadence row %d gaps = %d for %d units", i, row.GapCount, row.UnitsProduced)
-			}
-			// Only the idle threshold changed, so everything but the idle
-			// ratio has to agree between the stored and recomputed paths.
-			other := recomputed[i]
-			if other.PlayerID != row.PlayerID || other.WindowSeconds != row.WindowSeconds || other.UnitsProduced != row.UnitsProduced {
-				t.Fatalf("cadence row %d differs between paths: %+v vs %+v", i, row, other)
-			}
-			if (row.CVGap == nil) != (other.CVGap == nil) || (row.CVGap != nil && math.Abs(*row.CVGap-*other.CVGap) > 1e-9) {
-				t.Fatalf("cadence row %d cv differs between paths: %+v vs %+v", i, row.CVGap, other.CVGap)
-			}
-		}
-		totals["cadence"] += len(cadence)
-
 		for name, list := range map[string]func(context.Context, int64) ([]TimingRow, error){
 			"gas":      s.ListGasTimingRows,
 			"upgrades": s.ListUpgradeTimingRows,
@@ -1247,20 +1020,6 @@ func TestLibStoreGameReadsOverTheRealCorpus(t *testing.T) {
 		}
 		totals["zerg"] += len(zerg)
 
-		viewport, err := s.ListViewportGameRows(ctx, r.ID, "viewport_multitasking")
-		if err != nil {
-			t.Fatalf("ListViewportGameRows(%d): %v", r.ID, err)
-		}
-		for i, row := range viewport {
-			if row.RawValue == "" {
-				t.Fatalf("viewport row %d has an empty payload", i)
-			}
-			if row.PlayerID != 0 && !ids[row.PlayerID] {
-				t.Fatalf("viewport row %d has an unresolvable player id %d", i, row.PlayerID)
-			}
-		}
-		totals["viewport"] += len(viewport)
-
 		leaves, err := s.ListReplayLeaveReasons(ctx, r.ID)
 		if err != nil {
 			t.Fatalf("ListReplayLeaveReasons(%d): %v", r.ID, err)
@@ -1289,7 +1048,7 @@ func TestLibStoreGameReadsOverTheRealCorpus(t *testing.T) {
 	}
 
 	t.Logf("corpus row totals: %v", totals)
-	for _, key := range []string{"detail", "replay_patterns", "player_patterns", "events", "production", "slices", "firsts", "cadence", "gas", "upgrades"} {
+	for _, key := range []string{"detail", "replay_patterns", "player_patterns", "events", "production", "slices", "gas", "upgrades"} {
 		if totals[key] == 0 {
 			t.Errorf("the corpus produced no %s rows at all", key)
 		}

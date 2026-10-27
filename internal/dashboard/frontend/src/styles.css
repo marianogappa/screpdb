@@ -2255,12 +2255,6 @@ button.workflow-nav-update-available:disabled {
   margin-top: 0;
 }
 
-.workflow-skill-proxy-tab-info {
-  align-self: flex-start;
-  text-align: left;
-  max-width: 100%;
-}
-
 /* Player report: single-column full-width cards (one visible per tab). */
 .workflow-panel--player .workflow-cards {
   grid-template-columns: minmax(0, 1fr);
@@ -3149,14 +3143,6 @@ button.workflow-nav-update-available:disabled {
   margin-bottom: 10px;
 }
 
-.workflow-insight-chart {
-  min-height: 280px;
-}
-
-.workflow-insight-chart-tall {
-  min-height: 620px;
-}
-
 .workflow-slider-row {
   align-items: center;
   gap: 12px;
@@ -3184,10 +3170,6 @@ button.workflow-nav-update-available:disabled {
 .workflow-race-behaviour-section:last-child {
   border-bottom: none;
   padding-bottom: 0;
-}
-
-.workflow-card-fingerprints {
-  grid-column: span 2;
 }
 
 .workflow-card-recent-games {
@@ -3839,155 +3821,6 @@ button.workflow-nav-update-available:disabled {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.workflow-insight-grid {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.workflow-insight-card {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  text-align: left;
-  color: inherit;
-  font: inherit;
-}
-
-.workflow-insight-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.workflow-insight-score-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.workflow-insight-score {
-  font-size: 1.05rem;
-  font-weight: 800;
-}
-
-.workflow-insight-grade {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 3px 8px;
-  font-size: 0.74rem;
-  font-weight: 700;
-}
-
-.workflow-insight-value {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.96);
-}
-
-.workflow-insight-unavailable {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.workflow-insight-card-link {
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
-}
-
-.workflow-insight-card-link:hover {
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-1px);
-}
-
-.workflow-insight-footer {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.workflow-insight-link-hint {
-  font-size: 0.76rem;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.workflow-insight-info-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.72rem;
-  align-self: flex-end;
-}
-
-.workflow-insight-details {
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-height 0.18s ease, opacity 0.18s ease, padding-top 0.18s ease;
-  padding-top: 0;
-}
-
-.workflow-insight-card-link:hover .workflow-insight-details,
-.workflow-insight-card-link:focus-visible .workflow-insight-details {
-  max-height: 240px;
-  opacity: 1;
-  padding-top: 4px;
-}
-
-.workflow-insight-detail-list {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Static card (player Skill proxies > Summary): no hover/click affordance. */
-.workflow-insight-card-static {
-  cursor: default;
-}
-
-.workflow-insight-description {
-  margin-top: 6px;
-}
-
-.workflow-insight-card-footer {
-  margin-top: auto;
-  padding-top: 8px;
-  display: flex;
-  justify-content: flex-start;
-}
-
-.workflow-insight-detail-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.86);
-}
-
-.workflow-insight-detail-row span:last-child {
-  color: rgba(255, 255, 255, 0.96);
 }
 
 .workflow-low-usage-pill {
@@ -5980,22 +5813,10 @@ h2 .identity-badge--game-title .identity-badge-icon {
   .workflow-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .workflow-card-fingerprints {
-    grid-column: span 1;
-  }
-
-  .workflow-insight-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 900px) {
   .workflow-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .workflow-insight-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -6635,7 +6456,6 @@ span[data-tip],
   height: 20px;
   object-fit: contain;
 }
-
 
 .session-toon-pills {
   display: inline-flex;
@@ -7437,7 +7257,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .workflow-featured-toggle {
   display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--e-quiet); cursor: pointer;
 }
-.workflow-featured-toggle-row { display: flex; justify-content: flex-end; margin-top: 8px; }
 .workflow-featured-toggle input { accent-color: var(--e-accent); }
 .workflow-featured-expand { justify-self: start; align-self: center; font-size: 11.5px; padding: 5px 8px; }
 .workflow-panel--player .workflow-title-row.workflow-player-title-featured { justify-content: flex-start; }
@@ -7729,9 +7548,9 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 
 .skill-tab { display: flex; flex-direction: column; gap: 18px; padding: 18px 20px; }
 .skill-caveat { margin: 0; max-width: none; flex: none; }
-.skill-rows { display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); column-gap: 16px; row-gap: 0; align-items: stretch; }
-.skill-rows > .skill-row-label { border-bottom: 1px solid rgba(255,255,255,0.05); }
-.skill-rows > .skill-strip:not(.skill-strip--hero) { border-radius: 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.skill-rows { display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); column-gap: 16px; row-gap: 14px; align-items: stretch; }
+.skill-rows > .skill-row-label { border-bottom: 1px solid rgba(255,255,255,0.18); padding-bottom: 6px; color: rgba(255,255,255,0.82); font-weight: 600; }
+.skill-rows > .skill-strip:not(.skill-strip--hero) { border-radius: 0; border-bottom: 1px solid rgba(255,255,255,0.18); }
 .skill-rows > .skill-row-label--hero { border-bottom: none; margin-bottom: 10px; }
 .skill-row-label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: rgba(255,255,255,0.68); }
 .skill-help .workflow-help-bubble { max-width: 320px; white-space: normal; font-weight: 400; }
@@ -7816,8 +7635,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-explainer-stack-row { display: grid; grid-template-columns: 70px 1fr; gap: 10px; align-items: center; font-size: 0.84rem; }
 .skill-explainer-stack { display: flex; height: 26px; border-radius: 5px; overflow: hidden; }
 .skill-explainer-stack div { display: flex; align-items: center; justify-content: center; color: #0b1020; font-size: 0.72rem; font-weight: 600; min-width: 0; overflow: hidden; }
-
-
 
 .skill-player-row { display: inline-flex; align-self: flex-start; align-items: center; gap: 16px; padding: 12px 14px 12px 18px; margin-bottom: 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
 .skill-player-row:hover, .skill-player-row:focus-visible { background: rgba(96,165,250,0.08); border-color: rgba(96,165,250,0.5); outline: none; }
@@ -7964,4 +7781,74 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   width: 16px;
   height: 16px;
   object-fit: contain;
+}
+
+/* Players page Skill tab: the library's median on each metric and the built-in progamers as stars. */
+.skill-median {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px dotted rgba(255, 255, 255, 0.55);
+  transform: translateX(-1px);
+}
+
+.skill-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-radius: 50%;
+  background: rgba(147, 197, 253, 0.8);
+  transform: translateX(-4px);
+  cursor: pointer;
+}
+
+.skill-dot:hover {
+  background: #fff;
+  z-index: 2;
+}
+
+.skill-marker--star {
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.skill-star {
+  width: 10px;
+  color: #f0c674;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+
+.skill-marker--star:hover .skill-player-label {
+  color: #f0c674;
+}
+
+.skill-players-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.skill-players-legend-median::before {
+  content: '';
+  display: inline-block;
+  height: 12px;
+  margin-right: 6px;
+  border-left: 2px dotted rgba(255, 255, 255, 0.55);
+  vertical-align: -2px;
+}
+
+.skill-players-legend-toggle {
+  margin-left: auto;
 }

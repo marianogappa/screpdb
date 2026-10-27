@@ -211,28 +211,6 @@ func TestBuildWorkflowPatternValue(t *testing.T) {
 	}
 }
 
-func TestPerformancePercentileFromSortedValues_EdgeCases(t *testing.T) {
-	if got := performancePercentileFromSortedValues(nil, 5, false); got != 0 {
-		t.Errorf("empty slice should be 0, got %v", got)
-	}
-	if got := performancePercentileFromSortedValues([]float64{5}, 5, false); got != 100 {
-		t.Errorf("single value should be 100, got %v", got)
-	}
-	sorted := []float64{10, 20, 30, 40, 50}
-	if got := performancePercentileFromSortedValues(sorted, 50, false); got != 100 {
-		t.Errorf("max value higher-is-better should be 100, got %v", got)
-	}
-	if got := performancePercentileFromSortedValues(sorted, 10, false); got != 0 {
-		t.Errorf("min value higher-is-better should be 0, got %v", got)
-	}
-	if got := performancePercentileFromSortedValues(sorted, 10, true); got != 100 {
-		t.Errorf("min value lower-is-better should be 100, got %v", got)
-	}
-	if got := performancePercentileFromSortedValues(sorted, 30, false); got != 50 {
-		t.Errorf("median higher-is-better should be 50, got %v", got)
-	}
-}
-
 func TestMatchupConfidenceForGames(t *testing.T) {
 	cases := []struct {
 		games int64
@@ -408,20 +386,6 @@ func TestFormatWorkflowPlayersLabelFromList(t *testing.T) {
 	}
 	if got := formatWorkflowPlayersLabelFromList(teamGame); got != "A, B vs C, D" {
 		t.Fatalf("2v2 = %q, want \"A, B vs C, D\"", got)
-	}
-}
-
-func TestParseWorkflowUnitCadenceFilterMode(t *testing.T) {
-	strict, err := parseWorkflowUnitCadenceFilterMode("")
-	if err != nil || strict != workflowUnitCadenceFilterStrict {
-		t.Fatalf("empty should default to strict, got %v err=%v", strict, err)
-	}
-	broad, err := parseWorkflowUnitCadenceFilterMode("BROAD")
-	if err != nil || broad != workflowUnitCadenceFilterBroad {
-		t.Fatalf("case-insensitive broad failed, got %v err=%v", broad, err)
-	}
-	if _, err := parseWorkflowUnitCadenceFilterMode("garbage"); err == nil {
-		t.Fatal("expected error for invalid filter mode")
 	}
 }
 

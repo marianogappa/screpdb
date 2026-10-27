@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
+	"github.com/marianogappa/screpdb/internal/skill"
 )
 
 //go:embed data
@@ -43,20 +44,10 @@ func IDFromKey(key string) (string, bool) {
 	return id, id != ""
 }
 
-// Metric is one skill-proxy aggregate baked from a pro's sampled games.
+// Metric is one aggregate baked from a pro's sampled games.
 type Metric struct {
 	Value float64 `json:"value"`
 	Games int     `json:"games"`
-}
-
-// Cadence mirrors the dashboard's unit-production-cadence player aggregate.
-type Cadence struct {
-	Score      float64 `json:"score"`
-	RatePerMin float64 `json:"rate_per_min"`
-	CVGap      float64 `json:"cv_gap"`
-	Burstiness float64 `json:"burstiness"`
-	Idle20     float64 `json:"idle20_ratio"`
-	Games      int     `json:"games"`
 }
 
 // Toon is one Battle.net account the pro is known to play on. The dashboard
@@ -88,10 +79,17 @@ type Pro struct {
 	Races        map[string]int `json:"races,omitempty"`
 	GamesSampled int            `json:"games_sampled"`
 
-	APM                *Metric                   `json:"apm,omitempty"`
-	Cadence            *Cadence                  `json:"cadence,omitempty"`
-	ViewportSwitchRate *Metric                   `json:"viewport_switch_rate,omitempty"`
-	Hotkeys            []*hotkeystream.Signature `json:"hotkeys,omitempty"`
+	APM     *Metric                   `json:"apm,omitempty"`
+	Hotkeys []*hotkeystream.Signature `json:"hotkeys,omitempty"`
+	// Skill is the pro's average place on the skill tiers over their rated games, measured as the dashboard
+	// measures a local player.
+	Skill *Skill `json:"skill,omitempty"`
+}
+
+type Skill struct {
+	Games    int                        `json:"games"`
+	Combined skill.Placement            `json:"combined"`
+	Metrics  map[string]skill.Placement `json:"metrics"`
 }
 
 // Key returns the pro's player key.

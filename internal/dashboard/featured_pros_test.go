@@ -116,17 +116,7 @@ func TestFeaturedProEndpoints(t *testing.T) {
 		t.Fatalf("hotkey cards %d, want %d", len(sig.Cards), len(pro.Hotkeys))
 	}
 
-	for _, insightType := range []string{"apm", "unit-production-cadence", "viewport-switch-rate"} {
-		var insight workflowPlayerAsyncInsight
-		if err := json.Unmarshal(getJSON(base+"/insight?type="+insightType, http.StatusOK), &insight); err != nil {
-			t.Fatal(err)
-		}
-		if insight.PlayerKey != pro.Key() || insight.PlayerName != pro.Label {
-			t.Errorf("%s: identity %q/%q", insightType, insight.PlayerKey, insight.PlayerName)
-		}
-	}
-
-	for _, suffix := range []string{"/last-games", "/chat-summary", "/insights/apm-histogram", "/insights/unit-production-cadence"} {
+	for _, suffix := range []string{"/last-games", "/chat-summary"} {
 		getJSON(base+suffix, http.StatusNotFound)
 	}
 	getJSON("/api/players/pro:definitely-not-a-pro", http.StatusNotFound)
@@ -140,29 +130,37 @@ func TestFeaturedProEndpoints(t *testing.T) {
 	}
 }
 
-func TestFeaturedPointsRideTheDistributions(t *testing.T) {
-	loadPackForTest(t)
+// The Players page Skill tab draws the built-in progamers who carry Skill as stars beside the library's
+// medians.
+func TestPlayersSkillCarriesTheProgamers(t *testing.T) {
+	pack := loadPackForTest(t)
 	d := newTestDashboard(t)
 	r := d.setupRouter()
-	for _, path := range []string{
-		"/api/players/insights/apm-histogram",
-		"/api/players/insights/unit-production-cadence",
-		"/api/players/insights/viewport-multitasking",
-	} {
-		rec := httptest.NewRecorder()
-		r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
-		if rec.Code != http.StatusOK {
-			t.Fatalf("%s: %d", path, rec.Code)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/custom/players/skill", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	var payload workflowPlayersSkill
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	withSkill := 0
+	for _, pro := range pack.Pros {
+		if pro.Skill != nil {
+			withSkill++
 		}
-		var payload struct {
-			Featured []workflowFeaturedPoint `json:"featured_players"`
+	}
+	if withSkill > 0 && len(payload.Featured) == 0 {
+		t.Fatalf("%d pros carry Skill but none are drawn", withSkill)
+	}
+	for _, f := range payload.Featured {
+		if f.PlayerKey == "" || f.Games == 0 || f.Combined.Position <= 0 {
+			t.Errorf("featured %+v", f)
 		}
-		if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
-			t.Fatal(err)
-		}
-		if len(payload.Featured) == 0 {
-			t.Errorf("%s: no featured points", path)
-		}
+	}
+	if payload.Model == nil || payload.MinGames != minSkillGames {
+		t.Fatalf("model %v min games %d", payload.Model, payload.MinGames)
 	}
 }
 
@@ -224,58 +222,26 @@ func TestFeaturedProsOrderedByCuratedRank(t *testing.T) {
 	}
 }
 
-// The skill-proxy overlays draw a capped, race-balanced slice of the pack, not
-// all of it: an unbounded overlay buries the local population it is meant to
-// give a reference for.
+// The Skill overlay draws a capped, race-balanced slice of the pack, not all of it: an unbounded overlay
+// buries the local players it is meant to give a reference for.
 func TestFeaturedOverlayIsCappedAndRaceBalanced(t *testing.T) {
 	loadPackForTest(t)
 	d := newTestDashboard(t)
-	for name, points := range map[string][]workflowFeaturedPoint{
-		"apm":      d.featuredApmPoints(),
-		"cadence":  d.featuredCadencePoints(),
-		"viewport": d.featuredViewportPoints(),
-	} {
-		if len(points) == 0 {
-			t.Errorf("%s: no featured points", name)
-			continue
-		}
-		if len(points) > featuredOverlayLimit {
-			t.Errorf("%s: %d featured points, want at most %d", name, len(points), featuredOverlayLimit)
-		}
-		perRace := map[string]int{}
-		for _, point := range points {
-			perRace[point.Race]++
-		}
-		for race, count := range perRace {
-			if count > featuredOverlayPerRace {
-				t.Errorf("%s: %d %s pros, want at most %d", name, count, race, featuredOverlayPerRace)
-			}
-		}
-		for _, race := range []string{"Zerg", "Terran", "Protoss"} {
-			if perRace[race] == 0 {
-				t.Errorf("%s: overlay has no %s pro", name, race)
-			}
-		}
+	pros := d.featuredOverlayPros(func(p *propack.Pro) bool { return p.APM != nil })
+	if len(pros) == 0 || len(pros) > featuredOverlayLimit {
+		t.Fatalf("%d overlay pros, want 1 to %d", len(pros), featuredOverlayLimit)
 	}
-}
-
-// Capping the overlay must not hide anyone: every pro the overlay leaves out
-// still resolves to their own player page.
-func TestFeaturedProsOutsideTheOverlayKeepTheirPages(t *testing.T) {
-	loadPackForTest(t)
-	d := newTestDashboard(t)
-	overlay := map[string]bool{}
-	for _, point := range d.featuredApmPoints() {
-		overlay[point.PlayerKey] = true
+	perRace := map[string]int{}
+	for _, pro := range pros {
+		perRace[pro.MainRace]++
+	}
+	for _, race := range []string{"Zerg", "Terran", "Protoss"} {
+		if perRace[race] == 0 || perRace[race] > featuredOverlayPerRace {
+			t.Errorf("%d %s pros, want 1 to %d", perRace[race], race, featuredOverlayPerRace)
+		}
 	}
 	all := d.featuredPros()
-	if len(all) <= len(overlay) {
-		t.Skip("pack is smaller than the overlay cap")
-	}
 	for _, pro := range all {
-		if overlay[pro.Key()] {
-			continue
-		}
 		if d.featuredPro(pro.Key()) == nil {
 			t.Fatalf("pro %s dropped off its own page", pro.ID)
 		}

@@ -90,13 +90,8 @@ func TestResolveAcceptsExposedPaths(t *testing.T) {
 		"/api/players/flash",
 		"/api/players/flash/last-games",
 		"/api/players/flash/chat-summary",
-		"/api/players/flash/insight?type=build_orders",
 		"/api/players/flash/hotkey-signature",
-		"/api/players/flash/insights/apm-histogram",
-		"/api/players/flash/insights/unit-production-cadence?filter=all",
-		"/api/players/insights/apm-histogram",
-		"/api/players/insights/unit-production-cadence?min_games=5",
-		"/api/players/insights/viewport-multitasking",
+		"/api/custom/players/skill",
 		"/api/custom/markers/definitions",
 		"/api/health",
 		"api/games",
@@ -263,7 +258,7 @@ func TestHandleGetSchema(t *testing.T) {
 	for _, want := range []string{
 		"42 replays from /replays",
 		"GET /api/games",
-		"GET /api/players/{playerKey}/insight",
+		"GET /api/custom/players/skill",
 		"query: duration, featuring, limit, map, map_kind, matchup, offset, player",
 		"There is no raw command stream",
 	} {

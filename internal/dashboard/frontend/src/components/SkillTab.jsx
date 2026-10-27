@@ -393,3 +393,140 @@ export function PlayerSkillTab({ summary, name, color }) {
     </div>
   );
 }
+
+const FULL_RANGE = [0, 4];
+
+const DOT_SHARE = 0.012;
+const DOT_ROW_PX = 9;
+const DOT_ROWS = 4;
+
+// PopulationStrip is one Skill metric across the library: the four tiers, a dot per library player, a dotted
+// line at the median of their averages and a star per built-in progamer.
+function PopulationStrip({ median, dots, stars, describe, hero, tierLabels, onOpenPlayer }) {
+  const t = useT();
+  const [lo, hi] = FULL_RANGE;
+  const band = (pos) => (pos - lo) / (hi - lo);
+  const share = (pos) => 0.015 + 0.97 * band(pos);
+  const rows = [];
+  const placed = [...stars].sort((a, b) => a.placement.position - b.placement.position).map((s) => {
+    const x = share(s.placement.position);
+    let row = 0;
+    while (rows[row] !== undefined && x - rows[row] < LABEL_SHARE) row += 1;
+    rows[row] = x;
+    return { ...s, x, row };
+  });
+  const dotRows = [];
+  const placedDots = [...dots].sort((a, b) => a.placement.position - b.placement.position).map((d) => {
+    const x = share(d.placement.position);
+    let row = 0;
+    while (row < DOT_ROWS - 1 && dotRows[row] !== undefined && x - dotRows[row] < DOT_SHARE) row += 1;
+    dotRows[row] = x;
+    return { ...d, x, row };
+  });
+  const labelTop = tierLabels ? BAND_LABEL_PX : 4;
+  const dotLane = dotRows.length ? dotRows.length * DOT_ROW_PX + 4 : 0;
+  const top = labelTop + dotLane;
+  const medianText = median ? t('skill.players.median', { count: median.players }) : '';
+  return (
+    <div className={`skill-strip skill-strip--population${hero ? ' skill-strip--hero' : ''}`} style={{ height: `${top + (rows.length || (dotLane ? 0 : 1)) * ROW_PX + 4}px` }}>
+      {TIER_KEYS.map((key, i) => (
+        <div key={key} className={`skill-band skill-band-${key}`} style={{ left: `${band(i) * 100}%`, width: `${(band(i + 1) - band(i)) * 100}%` }}>
+          {tierLabels ? <span className="skill-band-label">{t(`skill.tier.${key}`)}</span> : null}
+        </div>
+      ))}
+      {median ? (
+        <div
+          className="skill-median"
+          style={{ left: `${share(median.position) * 100}%` }}
+          title={describe ? `${medianText}: ${describe(median)}` : medianText}
+        />
+      ) : null}
+      {placedDots.map(({ key, name, placement, x, row }) => {
+        const value = describe ? describe(placement) : '';
+        return (
+          <button
+            type="button"
+            key={key}
+            className="skill-dot"
+            style={{ left: `${x * 100}%`, top: `${labelTop + 2 + row * DOT_ROW_PX}px` }}
+            title={value ? `${name}: ${value}` : name}
+            aria-label={name}
+            onClick={() => onOpenPlayer?.(key)}
+          />
+        );
+      })}
+      {placed.map(({ key, name, placement, x, row }) => {
+        const right = x > 1 - LABEL_SHARE;
+        const value = describe ? describe(placement) : '';
+        return (
+          <button
+            type="button"
+            key={key}
+            className={`skill-marker skill-marker--star${right ? ' skill-marker--right' : ''}`}
+            style={{ left: `${x * 100}%`, top: `${top + row * ROW_PX}px` }}
+            title={value ? `${name}: ${value}` : name}
+            onClick={() => onOpenPlayer?.(key)}
+          >
+            <span className="skill-star" aria-hidden="true">★</span>
+            <span className="skill-player-label">{name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// PlayersSkillTab is the Players page Skill tab: where each of the library's players sits on the Skill tiers,
+// with the median of their averages, beside the built-in progamers.
+export function PlayersSkillTab({ data, loading, error, emptyNotice, showFeatured, featuredToggle, onOpenPlayer }) {
+  const t = useT();
+  if (loading && !data) return <div className="workflow-card skill-tab"><div className="chart-empty">{t('players.loading')}</div></div>;
+  if (error) return <div className="workflow-card skill-tab"><div className="chart-empty">{error}</div></div>;
+  const featured = data?.featured_players || [];
+  const pros = showFeatured ? featured : [];
+  const starsFor = (key) => pros
+    .map((p) => ({ key: p.player_key, name: p.player_name, placement: key === 'combined' ? p.combined : p.metrics?.[key] }))
+    .filter((s) => s.placement);
+  const dotsFor = (key) => (data?.library_players || [])
+    .map((p) => ({ key: p.player_key, name: p.player_name, placement: key === 'combined' ? p.combined : p.metrics?.[key] }))
+    .filter((d) => d.placement);
+  const metrics = METRICS.filter((m) => data?.metrics?.[m.key] || starsFor(m.key).length);
+  if (!data?.combined && !pros.length) {
+    return <div className="workflow-card skill-tab"><div className="chart-empty">{emptyNotice || t('skill.player.none')}</div></div>;
+  }
+  return (
+    <div className="workflow-card skill-tab skill-players-tab">
+      <SkillExplainerLink model={data?.model} className="skill-explainer-link--corner" />
+      <div className="skill-rows">
+        <div className="skill-row-label skill-row-label--hero">
+          <span>{t('skill.metric.combined.title')}</span>
+          <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
+        </div>
+        <PopulationStrip median={data?.combined} dots={dotsFor('combined')} stars={starsFor('combined')} hero tierLabels onOpenPlayer={onOpenPlayer} />
+        {metrics.map((m, index) => (
+          <React.Fragment key={m.key}>
+            <div className="skill-row-label">
+              <span>{t(`skill.metric.${m.key}.title`)}</span>
+              <Help text={t(`skill.metric.${m.key}.hint`)} />
+            </div>
+            <PopulationStrip
+              median={data?.metrics?.[m.key]}
+              dots={dotsFor(m.key)}
+              stars={starsFor(m.key)}
+              tierLabels={index === 0}
+              describe={(p) => String(m.format(p.value))}
+              onOpenPlayer={onOpenPlayer}
+            />
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="skill-players-legend">
+        {data?.combined ? (
+          <span className="skill-players-legend-median">{t('skill.players.median', { count: data.combined.players })}</span>
+        ) : null}
+        {pros.length ? <span>{t('players.featuredNote')}</span> : null}
+        {featured.length ? <span className="skill-players-legend-toggle">{featuredToggle(featured.length)}</span> : null}
+      </div>
+    </div>
+  );
+}

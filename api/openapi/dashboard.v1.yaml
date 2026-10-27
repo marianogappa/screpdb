@@ -522,47 +522,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/players/insights/apm-histogram:
+  /api/custom/players/skill:
     get:
-      operationId: playersApmHistogram
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/insights/unit-production-cadence:
-    get:
-      operationId: playersUnitCadence
-      parameters:
-        - name: filter
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: min_games
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/insights/viewport-multitasking:
-    get:
-      operationId: playersViewportMultitasking
+      operationId: playersSkill
       responses:
         "200":
           description: OK
@@ -606,57 +568,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/insight:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-      - name: type
-        in: query
-        required: false
-        schema:
-          type: string
-    get:
-      operationId: playerInsight
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
   /api/players/{playerKey}/hotkey-signature:
     parameters:
       - $ref: "#/components/parameters/playerKey"
     get:
       operationId: playerHotkeySignature
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/insights/apm-histogram:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-    get:
-      operationId: playerApmHistogram
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GenericValue"
-  /api/players/{playerKey}/insights/unit-production-cadence:
-    parameters:
-      - $ref: "#/components/parameters/playerKey"
-      - name: filter
-        in: query
-        required: false
-        schema:
-          type: string
-    get:
-      operationId: playerUnitCadence
       responses:
         "200":
           description: OK

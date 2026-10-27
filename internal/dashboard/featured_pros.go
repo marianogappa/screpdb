@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -56,19 +55,6 @@ type workflowFeaturedPlayerItem struct {
 	GamesSampled int     `json:"games_sampled"`
 	Liquipedia   string  `json:"liquipedia,omitempty"`
 	PhotoURL     string  `json:"photo_url,omitempty"`
-}
-
-// workflowFeaturedPoint is a pro's value on one skill-proxy distribution. It is
-// drawn for reference only: never binned, never part of the mean, stddev or
-// percentile of the local population.
-type workflowFeaturedPoint struct {
-	PlayerKey   string  `json:"player_key"`
-	PlayerName  string  `json:"player_name"`
-	Race        string  `json:"race,omitempty"`
-	CountryCode string  `json:"country_code,omitempty"`
-	Value       float64 `json:"value"`
-	Games       int     `json:"games"`
-	PhotoURL    string  `json:"photo_url,omitempty"`
 }
 
 func proPhotoURL(pro *propack.Pro) string {
@@ -372,120 +358,6 @@ func (d *Dashboard) featuredHotkeySignature(pro *propack.Pro) hotkeySignaturePay
 	return payload
 }
 
-// featuredAsyncInsight places a pro's baked value on the local population of
-// the requested skill proxy. The population is the user's dataset, exactly as
-// the local player insight sees it; the pro is never part of it.
-func (d *Dashboard) featuredAsyncInsight(pro *propack.Pro, insightType workflowPlayerInsightType) (workflowPlayerAsyncInsight, error) {
-	result := workflowPlayerAsyncInsight{
-		SummaryVersion:  workflowSummaryVersion,
-		PlayerKey:       pro.Key(),
-		PlayerName:      pro.Label,
-		InsightType:     insightType,
-		BetterDirection: "higher",
-		Details:         []workflowPlayerInsightDetail{},
-	}
-	var (
-		values    []float64
-		value     float64
-		games     int
-		haveValue bool
-		unit      string
-	)
-	switch insightType {
-	case workflowPlayerInsightTypeAPM:
-		histogram, err := d.buildWorkflowPlayerApmHistogram("")
-		if err != nil {
-			return result, err
-		}
-		result.Title = "APM"
-		result.Description = fmt.Sprintf("%s's average actions per minute across %d sampled ladder games, placed on the APM distribution of the players in your database.", pro.Label, apmGames(pro))
-		values = extractApmValues(histogram.Players)
-		result.PopulationSize = histogram.PlayersIncluded
-		result.Details = append(result.Details,
-			workflowPlayerInsightDetail{Label: "Local players", Value: fmt.Sprintf("%d (minimum %d games)", histogram.PlayersIncluded, histogram.MinGames)},
-			workflowPlayerInsightDetail{Label: "Population mean", Value: fmt.Sprintf("%.1f APM", histogram.MeanAPM)},
-		)
-		if pro.APM != nil {
-			value, games, haveValue, unit = pro.APM.Value, pro.APM.Games, true, "APM"
-		}
-	case workflowPlayerInsightTypeUnitCadence:
-		leaderboard, err := d.buildWorkflowPlayerUnitCadenceLeaderboard(workflowUnitCadenceFilterStrict, workflowUnitCadenceMinGames, 0)
-		if err != nil {
-			return result, err
-		}
-		result.Title = "Unit production cadence"
-		result.Description = fmt.Sprintf("%s's unit production rhythm (units per minute over 1 + gap CV, 7:00 to 80%% of game length) placed on the cadence distribution of the players in your database.", pro.Label)
-		values = extractCadenceValues(leaderboard.Players)
-		result.PopulationSize = leaderboard.PlayersIncluded
-		result.Details = append(result.Details,
-			workflowPlayerInsightDetail{Label: "Local players", Value: fmt.Sprintf("%d (minimum %d games)", leaderboard.PlayersIncluded, leaderboard.MinGames)},
-			workflowPlayerInsightDetail{Label: "Population mean", Value: fmt.Sprintf("%.3f", leaderboard.MeanCadence)},
-		)
-		if pro.Cadence != nil {
-			value, games, haveValue, unit = pro.Cadence.Score, pro.Cadence.Games, true, "cadence"
-			result.Details = append(result.Details,
-				workflowPlayerInsightDetail{Label: "Average rate/min", Value: fmt.Sprintf("%.2f", pro.Cadence.RatePerMin)},
-				workflowPlayerInsightDetail{Label: "Average gap CV", Value: fmt.Sprintf("%.2f", pro.Cadence.CVGap)},
-			)
-		}
-	case workflowPlayerInsightTypeViewportSwitchRate:
-		all, err := d.loadWorkflowViewportMultitaskingAggregates()
-		if err != nil {
-			return result, err
-		}
-		eligible := filterWorkflowViewportMultitaskingAggregates(all)
-		result.Title = "Viewport switch rate"
-		result.Description = fmt.Sprintf("How often %s's commands jump outside the previous viewport-sized area (7:00 to 80%% of game length), placed on the distribution of the players in your database.", pro.Label)
-		for _, player := range eligible {
-			values = append(values, player.averageViewportSwitchRate)
-		}
-		sort.Float64s(values)
-		mean, _ := workflowViewportSwitchPopulationStats(eligible)
-		result.PopulationSize = int64(len(eligible))
-		result.Details = append(result.Details,
-			workflowPlayerInsightDetail{Label: "Local players", Value: fmt.Sprintf("%d (minimum %d games)", len(eligible), workflowViewportMultitaskingMinGames)},
-			workflowPlayerInsightDetail{Label: "Population mean", Value: fmt.Sprintf("%.2f switches/min", mean)},
-		)
-		if pro.ViewportSwitchRate != nil {
-			value, games, haveValue, unit = pro.ViewportSwitchRate.Value, pro.ViewportSwitchRate.Games, true, "switches/min"
-		}
-	default:
-		return result, errUnsupportedWorkflowPlayerInsightType
-	}
-	if !haveValue {
-		result.IneligibleReason = fmt.Sprintf("Not enough sampled games of %s for this comparison.", pro.Label)
-		result.IneligibleReasonKey = "not_enough_sampled_games_of_pro"
-		result.IneligibleReasonArgs = []string{pro.Label}
-		return result, nil
-	}
-	result.PlayerValue = &value
-	switch unit {
-	case "APM":
-		result.PlayerValueLabel = fmt.Sprintf("%.1f APM", value)
-	case "cadence":
-		result.PlayerValueLabel = fmt.Sprintf("%.3f cadence", value)
-	default:
-		result.PlayerValueLabel = fmt.Sprintf("%.2f %s", value, unit)
-	}
-	result.Details = append(result.Details, workflowPlayerInsightDetail{Label: "Sampled games", Value: fmt.Sprintf("%d", games)})
-	if len(values) == 0 {
-		result.IneligibleReason = "Your database has no eligible players to compare against yet."
-		result.IneligibleReasonKey = "no_eligible_players_to_compare"
-		return result, nil
-	}
-	percentile := performancePercentileFromSortedValues(values, value, false)
-	result.Eligible = true
-	result.PerformancePercentile = &percentile
-	return result, nil
-}
-
-func apmGames(pro *propack.Pro) int {
-	if pro.APM == nil {
-		return pro.GamesSampled
-	}
-	return pro.APM.Games
-}
-
 // The whole pack overlaid on one histogram is a wall, not a reference: seventy
 // markers collide into each other and bury the local population underneath, and
 // no single pro stays readable. The overlay is capped here rather than in the
@@ -526,42 +398,6 @@ func (d *Dashboard) featuredOverlayPros(hasValue func(*propack.Pro) bool) []*pro
 		out = append(out, pro)
 	}
 	return out
-}
-
-func (d *Dashboard) featuredApmPoints() []workflowFeaturedPoint {
-	points := []workflowFeaturedPoint{}
-	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.APM != nil }) {
-		points = append(points, featuredPointOf(pro, pro.APM.Value, pro.APM.Games))
-	}
-	return points
-}
-
-func (d *Dashboard) featuredCadencePoints() []workflowFeaturedPoint {
-	points := []workflowFeaturedPoint{}
-	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.Cadence != nil }) {
-		points = append(points, featuredPointOf(pro, pro.Cadence.Score, pro.Cadence.Games))
-	}
-	return points
-}
-
-func (d *Dashboard) featuredViewportPoints() []workflowFeaturedPoint {
-	points := []workflowFeaturedPoint{}
-	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.ViewportSwitchRate != nil }) {
-		points = append(points, featuredPointOf(pro, pro.ViewportSwitchRate.Value, pro.ViewportSwitchRate.Games))
-	}
-	return points
-}
-
-func featuredPointOf(pro *propack.Pro, value float64, games int) workflowFeaturedPoint {
-	return workflowFeaturedPoint{
-		PlayerKey:   pro.Key(),
-		PlayerName:  pro.Label,
-		Race:        pro.MainRace,
-		CountryCode: pro.Country,
-		Value:       value,
-		Games:       games,
-		PhotoURL:    proPhotoURL(pro),
-	}
 }
 
 var errFeaturedPlayerHasNoLocalData = errors.New("built-in profiles have no local games")

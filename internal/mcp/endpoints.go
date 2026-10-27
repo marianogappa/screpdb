@@ -61,35 +61,12 @@ var exposed = []endpoint{
 		summary:  "What that player says in game.",
 	},
 	{
-		template:    "/api/players/{playerKey}/insight",
-		summary:     "One computed insight for that player; type selects which.",
-		queryParams: []string{"type"},
-	},
-	{
 		template: "/api/players/{playerKey}/hotkey-signature",
 		summary:  "That player's hotkey habits, the basis of playstyle fingerprinting.",
 	},
 	{
-		template: "/api/players/{playerKey}/insights/apm-histogram",
-		summary:  "That player's APM distribution.",
-	},
-	{
-		template:    "/api/players/{playerKey}/insights/unit-production-cadence",
-		summary:     "That player's army production rhythm.",
-		queryParams: []string{"filter"},
-	},
-	{
-		template: "/api/players/insights/apm-histogram",
-		summary:  "APM distribution across the corpus.",
-	},
-	{
-		template:    "/api/players/insights/unit-production-cadence",
-		summary:     "Army production rhythm across the corpus.",
-		queryParams: []string{"filter", "limit", "min_games"},
-	},
-	{
-		template: "/api/players/insights/viewport-multitasking",
-		summary:  "Screen-switching rate across the corpus.",
+		template: "/api/custom/players/skill",
+		summary:  "Where the corpus's players sit on the Skill tiers, as medians per metric, beside the built-in progamers.",
 	},
 	{
 		template: "/api/custom/markers/definitions",

@@ -167,6 +167,7 @@ func (d *Dashboard) localHotkeySignature(ctx context.Context, playerKey string) 
 		if err != nil || len(events) == 0 {
 			continue
 		}
+		d.engineHotkeyUnits(row.ReplayID, row.Slot, events)
 		byRace[row.Race] = append(byRace[row.Race], events)
 	}
 	payload := hotkeySignaturePayload{Cards: []*hotkeystream.Signature{}, GamesByRace: gamesByRace}

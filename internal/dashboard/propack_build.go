@@ -18,12 +18,11 @@ import (
 // produced by the same aggregators the dashboard runs on local players, which
 // is what makes a pro's value comparable with the user's dataset.
 type ProMetrics struct {
-	GamesSampled       int
-	Races              map[string]int
-	APM                *propack.Metric
-	Cadence            *propack.Cadence
-	ViewportSwitchRate *propack.Metric
-	Hotkeys            []*hotkeystream.Signature
+	GamesSampled int
+	Races        map[string]int
+	APM          *propack.Metric
+	Hotkeys      []*hotkeystream.Signature
+	Skill        *propack.Skill
 }
 
 // ProCorpusPlayer is one human non-observer player of a ProCorpusReplay.
@@ -193,10 +192,6 @@ func (c *ProCorpus) Metrics(ctx context.Context, playerKeys []string) (map[strin
 	for _, row := range apmRows {
 		apmByKey[row.PlayerKey] = &propack.Metric{Value: row.AverageAPM, Games: int(row.GamesPlayed)}
 	}
-	viewportAll, err := d.loadWorkflowViewportMultitaskingAggregates()
-	if err != nil {
-		return nil, fmt.Errorf("viewport aggregates: %w", err)
-	}
 
 	out := make(map[string]ProMetrics, len(playerKeys))
 	for _, rawKey := range playerKeys {
@@ -220,29 +215,14 @@ func (c *ProCorpus) Metrics(ctx context.Context, playerKeys []string) (map[strin
 		}
 		m.APM = apmByKey[key]
 
-		cadence, err := d.buildWorkflowPlayerUnitCadenceInsight(key, workflowUnitCadenceFilterStrict)
-		if err != nil {
-			return nil, fmt.Errorf("%s: cadence: %w", key, err)
-		}
-		if cadence.GamesUsed >= workflowUnitCadenceMinGames {
-			m.Cadence = &propack.Cadence{
-				Score:      cadence.AverageCadenceScore,
-				RatePerMin: cadence.AverageRatePerMin,
-				CVGap:      cadence.AverageCVGap,
-				Burstiness: cadence.AverageBurstiness,
-				Idle20:     cadence.AverageIdle20,
-				Games:      int(cadence.GamesUsed),
-			}
-		}
-		if agg, ok := findWorkflowViewportMultitaskingAggregate(viewportAll, key); ok && agg.isEligible() {
-			m.ViewportSwitchRate = &propack.Metric{Value: agg.averageViewportSwitchRate, Games: int(agg.GamesPlayed)}
-		}
-
 		payload, err := d.localHotkeySignature(ctx, key)
 		if err != nil {
 			return nil, fmt.Errorf("%s: hotkeys: %w", key, err)
 		}
 		m.Hotkeys = payload.Cards
+		if s := d.playerSkill(key); s != nil {
+			m.Skill = &propack.Skill{Games: s.Games, Combined: s.Combined, Metrics: s.Metrics}
+		}
 		out[key] = m
 	}
 	return out, nil

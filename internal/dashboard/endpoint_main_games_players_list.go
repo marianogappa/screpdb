@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
@@ -227,17 +226,6 @@ func parseOptionalFloatQuery(r *http.Request, key string) (float64, bool) {
 		return 0, false
 	}
 	return parsed, true
-}
-
-func parseWorkflowUnitCadenceFilterMode(raw string) (workflowUnitCadenceFilterMode, error) {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "", string(workflowUnitCadenceFilterStrict):
-		return workflowUnitCadenceFilterStrict, nil
-	case string(workflowUnitCadenceFilterBroad):
-		return workflowUnitCadenceFilterBroad, nil
-	default:
-		return "", fmt.Errorf("invalid filter mode: %s", raw)
-	}
 }
 
 func prettyWorkflowRaceLabel(value string) string {
