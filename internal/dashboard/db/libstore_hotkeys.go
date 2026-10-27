@@ -41,6 +41,8 @@ func (s *LibStore) ListPlayerHotkeyStreamsByKey(_ context.Context, playerKey str
 			continue
 		}
 		rows = append(rows, PlayerHotkeyStreamRow{
+			ReplayID:        ref.Replay.ID,
+			Slot:            int8(p.Slot),
 			Name:            p.Name,
 			Race:            p.Race.String(),
 			HotkeyStream:    p.HotkeyStream,

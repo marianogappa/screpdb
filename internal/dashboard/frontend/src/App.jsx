@@ -6,19 +6,16 @@ import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineCoverage from './components/EngineCoverage';
-import SkillTab, { PlayerSkillRow, PlayerSkillTab, TIER_KEYS, tierLabel } from './components/SkillTab';
+import SkillTab, { PlayerSkillRow, PlayerSkillTab, PlayersSkillTab, TIER_KEYS, tierLabel } from './components/SkillTab';
 import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
 import GamingSessionPanel from './components/GamingSessionPanel';
 import NoValue from './components/NoValue';
 import LanguageSwitcher from './components/LanguageSwitcher';
-import Histogram from './components/charts/Histogram';
 import TimingScatterRows from './components/charts/TimingScatterRows';
-import FirstUnitEfficiencyTimelineRows from './components/charts/FirstUnitEfficiencyTimelineRows';
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import MutaliskTimingChart from './components/charts/MutaliskTimingChart';
-import UnitProductionEarlyTimeline from './components/charts/UnitProductionEarlyTimeline';
 import SupplyTimeline from './components/charts/SupplyTimeline';
 import HotkeyTimeline from './components/charts/HotkeyTimeline';
 import HotkeyMaps from './components/charts/HotkeyMaps';
@@ -91,81 +88,11 @@ import {
   mainRouteHref,
   mainRouteSnapshotEqual,
   buildOrderKey,
-  shouldLoadPlayerSkillProxyInsights,
   MAIN_GAME_TABS,
   MAIN_PLAYER_TABS,
-  MAIN_PLAYER_SKILL_PROXY_SUBTABS,
 } from './lib/mainRoute';
 import { applyShownNames, rawName, shownNamesByPlayerID } from './lib/shownNames';
 import './styles.css';
-
-const buildHistogramSummaryFromPlayers = (players) => {
-  const safePlayers = Array.isArray(players)
-    ? players
-      .map((player) => ({
-        ...player,
-        player_key: String(player?.player_key || '').trim().toLowerCase(),
-        player_name: String(player?.player_name || '').trim(),
-        average_apm: Number(player?.average_apm || 0),
-        games_played: Number(player?.games_played || 0),
-      }))
-      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm >= 0)
-    : [];
-
-  if (safePlayers.length === 0) {
-    return {
-      points: [],
-      bins: [],
-      mean: 0,
-      stddev: 0,
-      playersIncluded: 0,
-      maxGames: 5,
-    };
-  }
-
-  const values = safePlayers.map((player) => player.average_apm).sort((a, b) => a - b);
-  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-  const variance = values.reduce((sum, value) => {
-    const diff = value - mean;
-    return sum + (diff * diff);
-  }, 0) / values.length;
-  const stddev = Math.sqrt(variance);
-
-  let binCount = Math.round(Math.sqrt(values.length));
-  if (binCount < 8) binCount = 8;
-  if (binCount > 24) binCount = 24;
-
-  const minValue = values[0];
-  const maxValue = values[values.length - 1];
-  let bins = [];
-  if (maxValue <= minValue) {
-    bins = [{ x0: minValue, x1: minValue + 1, count: values.length }];
-  } else {
-    let width = (maxValue - minValue) / binCount;
-    if (width <= 0) width = 1;
-    bins = Array.from({ length: binCount }, (_, idx) => {
-      const x0 = minValue + (idx * width);
-      const x1 = idx === binCount - 1 ? maxValue : minValue + ((idx + 1) * width);
-      return { x0, x1, count: 0 };
-    });
-    values.forEach((value) => {
-      let idx = Math.floor((value - minValue) / width);
-      if (idx < 0) idx = 0;
-      if (idx >= binCount) idx = binCount - 1;
-      bins[idx].count += 1;
-    });
-  }
-
-  const maxGames = safePlayers.reduce((maxValue, player) => Math.max(maxValue, player.games_played), 5);
-  return {
-    points: safePlayers,
-    bins,
-    mean,
-    stddev,
-    playersIncluded: safePlayers.length,
-    maxGames,
-  };
-};
 
 const getRaceIcon = (race) => {
   const value = String(race || '').toLowerCase();
@@ -199,14 +126,6 @@ const buildPlayersOmnibarStateLabels = (t) => ({
 });
 const PLAYERS_OMNIBAR_STATE_ORDER = ['races', 'apm', 'games', 'lastPlayed'];
 
-
-// APM is omitted intentionally: the number is self-explanatory in that view.
-const playerInsightDescriptionOverride = (insightType) => {
-  if (insightType === 'apm') return '';
-  if (insightType === 'unit-production-cadence') return t('skillProxies.cadence.description');
-  if (insightType === 'viewport-switch-rate') return t('skillProxies.viewport.description');
-  return undefined;
-};
 
 const DROP_EVENT_TYPES = ['drop', 'cliff_drop', 'reaver_drop', 'dt_drop'];
 const DROP_ACTOR_EVENT_TYPES = DROP_EVENT_TYPES;
@@ -696,22 +615,6 @@ const FeaturedBadge = ({ compact }) => {
     </span>
   );
 };
-
-const featuredOverlayPoints = (points, valueLabel) => (Array.isArray(points) ? points : [])
-  .map((point) => ({
-    value: Number(point?.value),
-    label: String(point?.player_name || '').trim(),
-    player_key: String(point?.player_key || '').trim(),
-    games_played: Number(point?.games || 0),
-    featured: true,
-    tooltip_lines: [
-      t('player.featured.overlayName', { name: String(point?.player_name || '') }),
-      t('appChart.tooltip.labelValue', { label: valueLabel, value: Number(point?.value || 0).toFixed(2) }),
-      t('player.featured.sampledGames', { count: Number(point?.games || 0) }),
-      t('player.featured.referenceOnly'),
-    ],
-  }))
-  .filter((point) => Number.isFinite(point.value) && point.label);
 
 // Country codes arrive from the SC:R bridge after the page has already
 // rendered, because fetching them is rate-limited and deliberately slow. Rather
@@ -1976,22 +1879,6 @@ const prettyRaceName = (race) => {
 
 const raceLabel = (race) => (race ? prettyRaceName(race) : '');
 
-const FIRST_UNIT_EFFICIENCY_GROUP_CONFIG = [
-  { race: 'protoss', buildingName: 'Forge', unitNames: ['Photon Cannon'] },
-  { race: 'protoss', buildingName: 'Gateway', unitNames: ['Zealot'] },
-  { race: 'protoss', buildingName: 'Stargate', unitNames: ['Corsair', 'Scout'] },
-  { race: 'protoss', buildingName: 'Fleet Beacon', unitNames: ['Carrier'] },
-  { race: 'protoss', buildingName: 'Arbiter Tribunal', unitNames: ['Arbiter'] },
-  { race: 'terran', buildingName: 'Barracks', unitNames: ['Marine'] },
-  { race: 'terran', buildingName: 'Factory', unitNames: ['Vulture', 'Siege Tank'] },
-  { race: 'terran', buildingName: 'Physics Lab', unitNames: ['Battlecruiser'] },
-  { race: 'zerg', buildingName: 'Spawning Pool', unitNames: ['Zergling'] },
-  { race: 'zerg', buildingName: 'Hydralisk Den', unitNames: ['Hydralisk'] },
-  { race: 'zerg', buildingName: 'Spire', unitNames: ['Mutalisk', 'Scourge'] },
-  { race: 'zerg', buildingName: 'Ultralisk Cavern', unitNames: ['Ultralisk'] },
-  { race: 'zerg', buildingName: 'Defiler Mound', unitNames: ['Defiler'] },
-];
-
 const BUILDING_TYPE_KEYS = new Set([
   'academy', 'arbitertribunal', 'armory', 'assimilator', 'barracks', 'bunker', 'citadelofadun', 'comsat', 'commandcenter',
   'controltower', 'covertops', 'creepcolony', 'cyberneticscore', 'defilermound', 'engineeringbay', 'evolutionchamber',
@@ -2152,91 +2039,6 @@ const renderPatternPill = (pattern, keyPrefix, team, registry, link) => {
       {content}
     </span>
   );
-};
-
-const formatSigned = (value) => {
-  const n = Number(value) || 0;
-  if (n > 0) return `+${n.toFixed(2)}`;
-  return n.toFixed(2);
-};
-
-const PLAYER_INSIGHT_TYPES = {
-  apm: 'apm',
-  unitProductionCadence: 'unit-production-cadence',
-  viewportSwitchRate: 'viewport-switch-rate',
-};
-
-const VIEWPORT_SWITCH_RATE_FIELDS = {
-  playerField: 'average_viewport_switch_rate',
-  gameField: 'viewport_switch_rate',
-};
-
-const viewportSwitchRateText = (t) => ({
-  title: t('skillProxies.viewport.title'),
-  axisLabel: t('skillProxies.viewport.axisLabel'),
-  overlayValueLabel: t('skillProxies.viewport.overlayValueLabel'),
-  valueFormatter: (value) => t('skillProxies.viewport.value', { value: Number(value || 0).toFixed(2) }),
-  summaryFormatter: (value) => `${Number(value || 0).toFixed(2)}`,
-});
-
-const HelpTooltip = ({ text, label }) => (
-  <span className="workflow-help-wrap" aria-label={label || 'Explanation'}>
-    <span className="workflow-metric-help">ⓘ</span>
-    <span className="workflow-help-bubble">{text}</span>
-  </span>
-);
-
-const insightScoreColor = (percentile) => {
-  const clamped = Math.max(0, Math.min(100, Number(percentile) || 0));
-  const hue = (clamped / 100) * 120;
-  return `hsl(${hue}, 78%, 52%)`;
-};
-
-const insightScoreLabel = (percentile) => {
-  const score = Number(percentile) || 0;
-  if (score >= 90) return 'Elite';
-  if (score >= 75) return 'Strong';
-  if (score >= 55) return 'Solid';
-  if (score >= 35) return 'Mixed';
-  return 'Needs work';
-};
-
-const insightValueLabel = (t, label) => {
-  const match = String(label || '').match(/^(\S+)\s+(.+)$/);
-  if (!match) return label;
-  return t.server(`server.insight.valueLabel.${slugKey(match[2])}`, label, { value: match[1] });
-};
-
-const insightSummaryLabel = (percentile) => {
-  const score = Math.max(0, Math.min(100, Number(percentile) || 0));
-  if (score >= 99) return t('skillProxies.score.best');
-  if (score >= 80) return t('skillProxies.score.top', { value: Math.max(1, Math.round(100 - score)) });
-  return t('skillProxies.score.betterThan', { value: Math.round(score) });
-};
-
-const playerInsightDestinationTab = (insightType) => {
-  switch (String(insightType || '').trim()) {
-    case PLAYER_INSIGHT_TYPES.apm:
-      return 'apm-histogram';
-    case PLAYER_INSIGHT_TYPES.unitProductionCadence:
-      return 'unit-production-cadence';
-    case PLAYER_INSIGHT_TYPES.viewportSwitchRate:
-      return 'viewport-multitasking';
-    default:
-      return 'summary';
-  }
-};
-
-const prettyMetricValue = (metric) => {
-  const value = Number(metric?.player_value) || 0;
-  if (String(metric?.metric || '').toLowerCase().includes('%')) {
-    if (Math.abs(value) <= 1) return formatPercent(value);
-    return `${value.toFixed(1)}%`;
-  }
-  if (String(metric?.metric || '').toLowerCase().includes('seconds')) {
-    return formatDuration(value);
-  }
-  return value.toFixed(2);
 };
 
 const TEAM_COLORS = ['#60A5FA', '#F472B6', '#34D399', '#FBBF24', '#A78BFA', '#22D3EE', '#FB7185', '#4ADE80'];
@@ -2490,13 +2292,6 @@ function App() {
   const [mainPlayerTab, setMainPlayerTab] = useState(() => initialMainRoute.playerTab);
   const [skillTabBeckon, setSkillTabBeckon] = useState(false);
   const [mainPlayerSubtab, setMainPlayerSubtab] = useState(() => initialMainRoute.playerSubtab || '');
-  // A player with a Skill tab has no Skill proxies tab, so an old link to it lands on Skill.
-  useEffect(() => {
-    if (mainPlayerTab === 'skill-proxies' && mainPlayer?.skill) {
-      setMainPlayerTab('skill');
-      setMainPlayerSubtab('');
-    }
-  }, [mainPlayerTab, mainPlayer?.skill]);
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
     apm: [],
@@ -2511,27 +2306,9 @@ function App() {
     apm: [],
     games: [],
   });
-  const [mainPlayersApmHistogram, setMainPlayersApmHistogram] = useState(null);
-  const [mainPlayersApmHistogramLoading, setMainPlayersApmHistogramLoading] = useState(false);
-  const [mainPlayersApmHistogramError, setMainPlayersApmHistogramError] = useState('');
-  const mainPlayersApmMinGames = 5;
-  const [mainPlayersCadenceHistogram, setMainPlayersCadenceHistogram] = useState(null);
-  const [mainPlayersCadenceHistogramLoading, setMainPlayersCadenceHistogramLoading] = useState(false);
-  const [mainPlayersCadenceHistogramError, setMainPlayersCadenceHistogramError] = useState('');
-  const mainPlayersCadenceMinGames = 4;
-  const [mainPlayersViewportHistogram, setMainPlayersViewportHistogram] = useState(null);
-  const [mainPlayersViewportHistogramLoading, setMainPlayersViewportHistogramLoading] = useState(false);
-  const [mainPlayersViewportHistogramError, setMainPlayersViewportHistogramError] = useState('');
-  const mainPlayersViewportMinGames = 4;
-  const [mainPlayerApmInsight, setMainPlayerApmInsight] = useState(null);
-  const [mainPlayerApmInsightLoading, setMainPlayerApmInsightLoading] = useState(false);
-  const [mainPlayerApmInsightError, setMainPlayerApmInsightError] = useState('');
-  const [mainPlayerCadenceInsight, setMainPlayerCadenceInsight] = useState(null);
-  const [mainPlayerCadenceInsightLoading, setMainPlayerCadenceInsightLoading] = useState(false);
-  const [mainPlayerCadenceInsightError, setMainPlayerCadenceInsightError] = useState('');
-  const [mainPlayerViewportInsight, setMainPlayerViewportInsight] = useState(null);
-  const [mainPlayerViewportInsightLoading, setMainPlayerViewportInsightLoading] = useState(false);
-  const [mainPlayerViewportInsightError, setMainPlayerViewportInsightError] = useState('');
+  const [mainPlayersSkill, setMainPlayersSkill] = useState(null);
+  const [mainPlayersSkillLoading, setMainPlayersSkillLoading] = useState(false);
+  const [mainPlayersSkillError, setMainPlayersSkillError] = useState('');
   // Used purely as a re-render trigger after the screp engine color map loads;
   // the actual map lives at module scope (see scPlayerColorMap above) so the
   // module-level helpers (playerColorToCss) can consume it.
@@ -2722,48 +2499,16 @@ function App() {
     }
   };
 
-  const loadMainPlayersApmHistogram = async () => {
+  const loadMainPlayersSkill = async () => {
     try {
-      setMainPlayersApmHistogramLoading(true);
-      setMainPlayersApmHistogramError('');
-      const data = await api.getPlayersApmHistogram();
-      setMainPlayersApmHistogram(data);
-      if (data?.corpus) setResponseCorpus(data.corpus);
+      setMainPlayersSkillLoading(true);
+      setMainPlayersSkillError('');
+      setMainPlayersSkill(await api.getPlayersSkill());
     } catch (err) {
-      setMainPlayersApmHistogramError(err.message || t('errors.loadPlayersHistogram'));
-      setMainPlayersApmHistogram(null);
+      setMainPlayersSkillError(err.message || t('errors.loadPlayersHistogram'));
+      setMainPlayersSkill(null);
     } finally {
-      setMainPlayersApmHistogramLoading(false);
-    }
-  };
-
-  const loadMainPlayersCadenceHistogram = async () => {
-    try {
-      setMainPlayersCadenceHistogramLoading(true);
-      setMainPlayersCadenceHistogramError('');
-      const data = await api.getPlayersUnitProductionCadence({ filter: 'strict', minGames: 4, limit: 0 });
-      setMainPlayersCadenceHistogram(data);
-      if (data?.corpus) setResponseCorpus(data.corpus);
-    } catch (err) {
-      setMainPlayersCadenceHistogramError(err.message || t('errors.loadPlayersCadence'));
-      setMainPlayersCadenceHistogram(null);
-    } finally {
-      setMainPlayersCadenceHistogramLoading(false);
-    }
-  };
-
-  const loadMainPlayersViewportHistogram = async () => {
-    try {
-      setMainPlayersViewportHistogramLoading(true);
-      setMainPlayersViewportHistogramError('');
-      const data = await api.getPlayersViewportMultitasking();
-      setMainPlayersViewportHistogram(data);
-      if (data?.corpus) setResponseCorpus(data.corpus);
-    } catch (err) {
-      setMainPlayersViewportHistogramError(err.message || t('errors.loadPlayersViewport'));
-      setMainPlayersViewportHistogram(null);
-    } finally {
-      setMainPlayersViewportHistogramLoading(false);
+      setMainPlayersSkillLoading(false);
     }
   };
 
@@ -2920,54 +2665,6 @@ function App() {
     }
   };
 
-  const loadMainPlayerApmInsight = async (playerKey) => {
-    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    if (!normalizedPlayerKey) return;
-    try {
-      setMainPlayerApmInsightLoading(true);
-      setMainPlayerApmInsightError('');
-      const insightData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.apm);
-      setMainPlayerApmInsight(insightData);
-    } catch (err) {
-      setMainPlayerApmInsightError(err.message || t('errors.loadApmInsight'));
-      setMainPlayerApmInsight(null);
-    } finally {
-      setMainPlayerApmInsightLoading(false);
-    }
-  };
-
-  const loadMainPlayerCadenceInsight = async (playerKey) => {
-    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    if (!normalizedPlayerKey) return;
-    try {
-      setMainPlayerCadenceInsightLoading(true);
-      setMainPlayerCadenceInsightError('');
-      const cadenceData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.unitProductionCadence);
-      setMainPlayerCadenceInsight(cadenceData);
-    } catch (err) {
-      setMainPlayerCadenceInsightError(err.message || t('errors.loadCadenceInsight'));
-      setMainPlayerCadenceInsight(null);
-    } finally {
-      setMainPlayerCadenceInsightLoading(false);
-    }
-  };
-
-  const loadMainPlayerViewportInsight = async (playerKey) => {
-    const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
-    if (!normalizedPlayerKey) return;
-    try {
-      setMainPlayerViewportInsightLoading(true);
-      setMainPlayerViewportInsightError('');
-      const viewportData = await api.getPlayerInsight(normalizedPlayerKey, PLAYER_INSIGHT_TYPES.viewportSwitchRate);
-      setMainPlayerViewportInsight(viewportData);
-    } catch (err) {
-      setMainPlayerViewportInsightError(err.message || t('errors.loadViewportInsight'));
-      setMainPlayerViewportInsight(null);
-    } finally {
-      setMainPlayerViewportInsightLoading(false);
-    }
-  };
-
   const openMainPlayer = async (playerKey, options = {}) => {
     const normalizedPlayerKey = String(playerKey || '').trim().toLowerCase();
     // Navigate first, fetch second. Previously the player overview fetch
@@ -2989,27 +2686,13 @@ function App() {
     setMainPlayerHotkeySig(null);
     setMainPlayerHotkeySigError('');
     setMainPlayerHotkeySigLoading(false);
-    setMainPlayerApmInsight(null);
-    setMainPlayerApmInsightError('');
-    setMainPlayerApmInsightLoading(false);
-    setMainPlayerCadenceInsight(null);
-    setMainPlayerCadenceInsightError('');
-    setMainPlayerCadenceInsightLoading(false);
-    setMainPlayerViewportInsight(null);
-    setMainPlayerViewportInsightError('');
-    setMainPlayerViewportInsightLoading(false);
     setSelectedPlayerKey(normalizedPlayerKey);
     const wantTab = options.initialPlayerTab;
     const nextTab = wantTab && MAIN_PLAYER_TABS.includes(String(wantTab).trim().toLowerCase())
       ? String(wantTab).trim().toLowerCase()
       : 'summary';
     setMainPlayerTab(nextTab);
-    const wantSubtab = String(options.initialPlayerSubtab || '').trim().toLowerCase();
-    if (nextTab === 'skill-proxies') {
-      setMainPlayerSubtab(MAIN_PLAYER_SKILL_PROXY_SUBTABS.includes(wantSubtab) ? wantSubtab : 'summary');
-    } else {
-      setMainPlayerSubtab('');
-    }
+    setMainPlayerSubtab('');
     navigateMainView('player');
     // Background-fetch the overview without blocking navigation.
     api.getPlayer(playerKey)
@@ -3438,25 +3121,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!shouldLoadPlayerSkillProxyInsights({ activeView, selectedPlayerKey, mainPlayerTab })) return;
-    if (isFeaturedPlayerKey(selectedPlayerKey)) return;
-    if (!mainPlayerApmInsight && !mainPlayerApmInsightLoading && !mainPlayerApmInsightError) {
-      loadMainPlayerApmInsight(selectedPlayerKey);
-    }
-    if (!mainPlayerCadenceInsight && !mainPlayerCadenceInsightLoading && !mainPlayerCadenceInsightError) {
-      loadMainPlayerCadenceInsight(selectedPlayerKey);
-    }
-    if (!mainPlayerViewportInsight && !mainPlayerViewportInsightLoading && !mainPlayerViewportInsightError) {
-      loadMainPlayerViewportInsight(selectedPlayerKey);
-    }
-  }, [
-    activeView, selectedPlayerKey, mainPlayerTab,
-    mainPlayerApmInsight, mainPlayerApmInsightLoading, mainPlayerApmInsightError,
-    mainPlayerCadenceInsight, mainPlayerCadenceInsightLoading, mainPlayerCadenceInsightError,
-    mainPlayerViewportInsight, mainPlayerViewportInsightLoading, mainPlayerViewportInsightError,
-  ]);
-
-  useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
     if (mainPlayerTab !== 'summary') return;
     if (isFeaturedPlayerKey(selectedPlayerKey)) return;
@@ -3517,43 +3181,11 @@ function App() {
   }, [mainPlayersPage, mainPlayersFilters, mainPlayersSortBy, mainPlayersSortDir]);
 
   useEffect(() => {
-    if (activeView !== 'players' || mainPlayersTab !== 'apm-histogram') return;
-    if (!mainPlayersApmHistogram && !mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError) {
-      loadMainPlayersApmHistogram();
+    if (activeView !== 'players' || mainPlayersTab !== 'skill') return;
+    if (!mainPlayersSkill && !mainPlayersSkillLoading && !mainPlayersSkillError) {
+      loadMainPlayersSkill();
     }
-  }, [
-    activeView,
-    mainPlayersTab,
-    mainPlayersApmHistogram,
-    mainPlayersApmHistogramLoading,
-    mainPlayersApmHistogramError,
-  ]);
-
-  useEffect(() => {
-    if (activeView !== 'players' || mainPlayersTab !== 'unit-production-cadence') return;
-    if (!mainPlayersCadenceHistogram && !mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError) {
-      loadMainPlayersCadenceHistogram();
-    }
-  }, [
-    activeView,
-    mainPlayersTab,
-    mainPlayersCadenceHistogram,
-    mainPlayersCadenceHistogramLoading,
-    mainPlayersCadenceHistogramError,
-  ]);
-
-  useEffect(() => {
-    if (activeView !== 'players' || mainPlayersTab !== 'viewport-multitasking') return;
-    if (!mainPlayersViewportHistogram && !mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError) {
-      loadMainPlayersViewportHistogram();
-    }
-  }, [
-    activeView,
-    mainPlayersTab,
-    mainPlayersViewportHistogram,
-    mainPlayersViewportHistogramLoading,
-    mainPlayersViewportHistogramError,
-  ]);
+  }, [activeView, mainPlayersTab, mainPlayersSkill, mainPlayersSkillLoading, mainPlayersSkillError]);
 
   useEffect(() => {
     let unmounted = false;
@@ -3790,11 +3422,8 @@ function App() {
         console.error('Failed to reload main player after global filter save:', err);
       }
     }
-    if (mainPlayersApmHistogram) {
-      loadMainPlayersApmHistogram();
-    }
-    if (mainPlayersCadenceHistogram) {
-      loadMainPlayersCadenceHistogram();
+    if (mainPlayersSkill) {
+      loadMainPlayersSkill();
     }
   };
 
@@ -3952,12 +3581,6 @@ function App() {
       if (currentView === nextView) return currentView;
       return nextView;
     });
-  };
-
-  const openMainPlayersSubview = (tab) => {
-    const nextTab = String(tab || 'summary');
-    setMainPlayersTab(nextTab);
-    navigateMainView('players');
   };
 
   // Player names render in the standard foreground. The rank palette that used
@@ -5240,17 +4863,6 @@ function App() {
     selectedMainGameAllianceOverlay,
   ]);
 
-  const mainPlayerInsights = [
-    mainPlayerApmInsight,
-    mainPlayerViewportInsight,
-    mainPlayerCadenceInsight,
-  ].filter(Boolean);
-  const mainPlayerInsightLoading = mainPlayerApmInsightLoading || mainPlayerCadenceInsightLoading || mainPlayerViewportInsightLoading;
-  const mainPlayerInsightErrors = [
-    mainPlayerApmInsightError,
-    mainPlayerCadenceInsightError,
-    mainPlayerViewportInsightError,
-  ].filter(Boolean);
   const mainPlayerNameWidthCh = useMemo(() => {
     const longestNameLength = mainGamePlayers.reduce((longest, player) => {
       const nameLength = String(rawName(player)).trim().length;
@@ -5482,49 +5094,6 @@ function App() {
       };
     }).filter((entry) => entry.series.some((playerSeries) => (playerSeries?.points || []).length > 0));
   }, [isHpTiming, mainTimingSeries, mainHpUpgradeFilters, t]);
-  const mainFirstUnitEfficiencyGroups = useMemo(() => {
-    const sourcePlayers = Array.isArray(mainGame?.first_unit_efficiency) ? mainGame.first_unit_efficiency : [];
-    const normalizedPlayers = sourcePlayers.map((playerEntry) => ({
-      ...playerEntry,
-      race: String(playerEntry?.race || '').trim().toLowerCase(),
-      entries: Array.isArray(playerEntry?.entries) ? playerEntry.entries : [],
-    }));
-    return FIRST_UNIT_EFFICIENCY_GROUP_CONFIG.map((cfg) => {
-      const unitKeySet = new Set(cfg.unitNames.map((name) => normalizeUnitName(name)));
-      const rows = normalizedPlayers
-        .filter((playerEntry) => playerEntry.race === cfg.race)
-        .map((playerEntry) => {
-          const matched = playerEntry.entries.find((entry) => (
-            normalizeUnitName(entry?.building_name) === normalizeUnitName(cfg.buildingName)
-            && unitKeySet.has(normalizeUnitName(entry?.unit_name))
-          ));
-          if (!matched) return null;
-          return {
-            player_id: playerEntry.player_id,
-            player_name: playerEntry.name,
-            player_key: playerEntry.player_key,
-            race: playerEntry.race,
-            ...matched,
-            building_icon: getUnitIcon(matched?.building_name || cfg.buildingName),
-            unit_icon: getUnitIcon(matched?.unit_name),
-          };
-        })
-        .filter(Boolean)
-        .sort((a, b) => String(a?.player_name || '').localeCompare(String(b?.player_name || '')));
-      if (rows.length === 0) return null;
-      return {
-        id: `${cfg.race}-${normalizeUnitName(cfg.buildingName)}`,
-        race: cfg.race,
-        building_name: cfg.buildingName,
-        building_icon: getUnitIcon(cfg.buildingName),
-        unit_names: cfg.unitNames,
-        unit_icons: cfg.unitNames
-          .map((unitName) => getUnitIcon(unitName))
-          .filter(Boolean),
-        rows,
-      };
-    }).filter(Boolean);
-  }, [mainGame?.first_unit_efficiency]);
 
   // `view` selects the universe ('all' / 'units' / 'buildings') and
   // productionSubFilter narrows further. Under 'all', tier filters target the union
@@ -5571,124 +5140,14 @@ function App() {
   const mainPlayersTo = mainPlayers.length === 0
     ? 0
     : Math.min((mainPlayersPage - 1) * MAIN_PLAYERS_PAGE_SIZE + mainPlayers.length, Number(mainPlayersTotal) || 0);
-  const playersApmHistogramPoints = useMemo(() => (
-    (mainPlayersApmHistogram?.players || [])
-      .map((player) => ({
-        value: Number(player?.average_apm),
-        label: String(player?.player_name || '').trim(),
-        player_key: String(player?.player_key || '').trim(),
-        games_played: Number(player?.games_played || 0),
-      }))
-      .filter((player) => Number.isFinite(player.value) && player.label)
-  ), [mainPlayersApmHistogram]);
-  const mainPlayersApmProcessed = useMemo(() => {
-    const minGames = Math.max(5, Number(mainPlayersApmMinGames) || 5);
-    const filtered = playersApmHistogramPoints
-      .filter((player) => Number(player.games_played || 0) >= minGames)
-      .map((player) => ({
-        player_key: player.player_key,
-        player_name: player.label,
-        average_apm: player.value,
-        games_played: player.games_played,
-      }));
-    return buildHistogramSummaryFromPlayers(filtered);
-  }, [playersApmHistogramPoints, mainPlayersApmMinGames]);
-  const playersCadenceHistogramPoints = useMemo(() => (
-    (mainPlayersCadenceHistogram?.players || [])
-      .map((player) => ({
-        value: Number(player?.average_cadence_score),
-        label: String(player?.player_name || '').trim(),
-        player_key: String(player?.player_key || '').trim(),
-        games_played: Number(player?.games_used || 0),
-        average_rate_per_min: Number(player?.average_rate_per_min || 0),
-        average_cv_gap: Number(player?.average_cv_gap || 0),
-        average_burstiness: Number(player?.average_burstiness || 0),
-        average_idle20_ratio: Number(player?.average_idle20_ratio || 0),
-      }))
-      .filter((player) => Number.isFinite(player.value) && player.label)
-  ), [mainPlayersCadenceHistogram]);
-  const mainPlayersCadenceProcessed = useMemo(() => {
-    const minGames = Math.max(4, Number(mainPlayersCadenceMinGames) || 4);
-    const filtered = playersCadenceHistogramPoints
-      .filter((player) => Number(player.games_played || 0) >= minGames)
-      .map((player) => ({
-        player_key: player.player_key,
-        player_name: player.label,
-        average_apm: player.value,
-        games_played: player.games_played,
-        average_rate_per_min: player.average_rate_per_min,
-        average_cv_gap: player.average_cv_gap,
-        average_burstiness: player.average_burstiness,
-        average_idle20_ratio: player.average_idle20_ratio,
-      }));
-    return buildHistogramSummaryFromPlayers(filtered);
-  }, [playersCadenceHistogramPoints, mainPlayersCadenceMinGames]);
-  const mainPlayersViewportProcessed = useMemo(() => {
-    const minGames = Math.max(4, Number(mainPlayersViewportMinGames) || 4);
-    const filtered = (mainPlayersViewportHistogram?.players || [])
-      .filter((player) => Number(player?.games_played || 0) >= minGames)
-      .map((player) => ({
-        player_key: String(player?.player_key || '').trim(),
-        player_name: String(player?.player_name || '').trim(),
-        average_apm: Number(player?.[VIEWPORT_SWITCH_RATE_FIELDS.playerField] || 0),
-        games_played: Number(player?.games_played || 0),
-        average_viewport_switch_rate: Number(player?.average_viewport_switch_rate || 0),
-      }))
-      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm >= 0);
-    return buildHistogramSummaryFromPlayers(filtered);
-  }, [mainPlayersViewportHistogram, mainPlayersViewportMinGames]);
-  const mainGameCadenceProcessed = useMemo(() => {
-    const rows = (mainGame?.unit_production_cadence || [])
-      .filter((player) => Boolean(player?.eligible))
-      .map((player) => ({
-        player_key: String(player?.player_key || '').trim(),
-        player_name: String(player?.player_name || '').trim(),
-        average_apm: Number(player?.cadence_score || 0),
-        games_played: Number(player?.units_produced || 0),
-        average_rate_per_min: Number(player?.rate_per_minute || 0),
-        average_cv_gap: Number(player?.cv_gap || 0),
-        average_burstiness: Number(player?.burstiness || 0),
-        average_idle20_ratio: Number(player?.idle20_ratio || 0),
-        window_seconds: Number(player?.window_seconds || 0),
-        gap_count: Number(player?.gap_count || 0),
-      }))
-      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm > 0);
-    return buildHistogramSummaryFromPlayers(rows);
-  }, [mainGame]);
-  const mainGameViewportProcessed = useMemo(() => {
-    const rows = (mainGame?.viewport_multitasking || [])
-      .filter((player) => Boolean(player?.eligible))
-      .map((player) => ({
-        player_key: String(player?.player_key || '').trim(),
-        player_name: String(player?.player_name || '').trim(),
-        average_apm: Number(player?.[VIEWPORT_SWITCH_RATE_FIELDS.gameField] || 0),
-        games_played: 1,
-        viewport_switch_rate: Number(player?.viewport_switch_rate || 0),
-      }))
-      .filter((player) => player.player_name && Number.isFinite(player.average_apm) && player.average_apm >= 0);
-    return buildHistogramSummaryFromPlayers(rows);
-  }, [mainGame]);
   const toggleShowFeaturedPros = () => {
     setShowFeaturedPros((prev) => {
       saveShowFeaturedPros(!prev);
       return !prev;
     });
   };
-  const viewportText = useMemo(() => viewportSwitchRateText(t), [t]);
   const playersOmnibarAxes = useMemo(() => buildPlayersOmnibarAxes(t), [t]);
   const playersOmnibarStateLabels = useMemo(() => buildPlayersOmnibarStateLabels(t), [t]);
-  const featuredApmOverlayPoints = useMemo(
-    () => featuredOverlayPoints(mainPlayersApmHistogram?.featured_players, t('appChart.averageApm')),
-    [mainPlayersApmHistogram, t],
-  );
-  const featuredCadenceOverlayPoints = useMemo(
-    () => featuredOverlayPoints(mainPlayersCadenceHistogram?.featured_players, t('appChart.cadenceScore')),
-    [mainPlayersCadenceHistogram, t],
-  );
-  const featuredViewportOverlayPoints = useMemo(
-    () => featuredOverlayPoints(mainPlayersViewportHistogram?.featured_players, viewportText.title),
-    [mainPlayersViewportHistogram, viewportText],
-  );
   const renderFeaturedToggle = (count) => (
     <label className="workflow-featured-toggle" title={t('players.featuredToggleTip')}>
       <input type="checkbox" checked={showFeaturedPros} onChange={toggleShowFeaturedPros} />
@@ -5955,41 +5414,13 @@ function App() {
                 <button
                   type="button"
                   role="tab"
-                  aria-selected={mainPlayersTab === 'apm-histogram'}
-                  className={`workflow-production-tab ${mainPlayersTab === 'apm-histogram' ? 'workflow-production-tab-active' : ''}`}
-                  onClick={() => setMainPlayersTab('apm-histogram')}
+                  aria-selected={mainPlayersTab === 'skill'}
+                  className={`workflow-production-tab ${mainPlayersTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
+                  onClick={() => setMainPlayersTab('skill')}
                 >
-                  {t('players.tabs.apmHistogram')}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mainPlayersTab === 'unit-production-cadence'}
-                  className={`workflow-production-tab ${mainPlayersTab === 'unit-production-cadence' ? 'workflow-production-tab-active' : ''}`}
-                  onClick={() => setMainPlayersTab('unit-production-cadence')}
-                >
-                  {t('players.tabs.cadence')}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mainPlayersTab === 'viewport-multitasking'}
-                  className={`workflow-production-tab ${mainPlayersTab === 'viewport-multitasking' ? 'workflow-production-tab-active' : ''}`}
-                  onClick={() => setMainPlayersTab('viewport-multitasking')}
-                >
-                  {t('players.tabs.viewport')}
+                  {t('game.tabs.skill')}
                 </button>
               </div>
-              {mainPlayersTab === 'unit-production-cadence' ? (
-                <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                  {t('skillProxies.cadence.info')}
-                </div>
-              ) : null}
-              {mainPlayersTab === 'viewport-multitasking' ? (
-                <div className="workflow-section-info workflow-skill-proxy-tab-info" role="note">
-                  {t('skillProxies.viewport.info')}
-                </div>
-              ) : null}
             </div>
 
             {mainPlayersTab === 'summary' ? (
@@ -6113,138 +5544,16 @@ function App() {
                   </>
                 )}
               </>
-            ) : mainPlayersTab === 'apm-histogram' ? (
-              <div className="workflow-card workflow-card-fingerprints">
-                {mainPlayersApmHistogramLoading ? <div className="chart-empty">{t('players.apm.loading')}</div> : null}
-                {!mainPlayersApmHistogramLoading && mainPlayersApmHistogramError ? <div className="chart-empty">{mainPlayersApmHistogramError}</div> : null}
-                {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length === 0 ? (
-                  <div className="chart-empty">{libraryLoadingCopy || t('players.apm.notEnough')}</div>
-                ) : null}
-                {!mainPlayersApmHistogramLoading && !mainPlayersApmHistogramError && mainPlayersApmProcessed.points.length > 0 ? (
-                  <div className="workflow-insight-chart workflow-insight-chart-tall">
-                    <Histogram
-                      data={[]}
-                      config={{
-                        style: 'monobell_relax',
-                        precomputed_bins: mainPlayersApmProcessed.bins,
-                        x_axis_label: t('appChart.averageApm'),
-                        y_axis_label: t('appChart.density'),
-                        mean: mainPlayersApmProcessed.mean,
-                        stddev: mainPlayersApmProcessed.stddev,
-                        chart_height: 620,
-                        overlay_points: [
-                          ...mainPlayersApmProcessed.points.map((player) => ({
-                            value: Number(player.average_apm || 0),
-                            label: String(player.player_name || ''),
-                            player_key: String(player.player_key || ''),
-                            games_played: Number(player.games_played || 0),
-                          })),
-                          ...(showFeaturedPros ? featuredApmOverlayPoints : []),
-                        ],
-                        on_overlay_point_click: openMainPlayer,
-                      }}
-                    />
-                    <div className="workflow-subtle-note">
-                      {`${t('players.apm.population', { players: Number(mainPlayersApmProcessed.playersIncluded) || 0, minGames: Math.max(5, Number(mainPlayersApmMinGames) || 5), mean: Number(mainPlayersApmProcessed.mean || 0).toFixed(1), stddev: Number(mainPlayersApmProcessed.stddev || 0).toFixed(1) })}${showFeaturedPros && featuredApmOverlayPoints.length ? t('players.featuredNote') : ''}`}
-                    </div>
-                    {featuredApmOverlayPoints.length > 0 ? <div className="workflow-featured-toggle-row">{renderFeaturedToggle(featuredApmOverlayPoints.length)}</div> : null}
-                  </div>
-                ) : null}
-              </div>
-            ) : mainPlayersTab === 'unit-production-cadence' ? (
-              <div className="workflow-card workflow-card-fingerprints">
-                {mainPlayersCadenceHistogramLoading ? <div className="chart-empty">{t('players.cadence.loading')}</div> : null}
-                {!mainPlayersCadenceHistogramLoading && mainPlayersCadenceHistogramError ? <div className="chart-empty">{mainPlayersCadenceHistogramError}</div> : null}
-                {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length === 0 ? (
-                  <div className="chart-empty">{libraryLoadingCopy || t('players.cadence.notEnough')}</div>
-                ) : null}
-                {!mainPlayersCadenceHistogramLoading && !mainPlayersCadenceHistogramError && mainPlayersCadenceProcessed.points.length > 0 ? (
-                  <div className="workflow-insight-chart workflow-insight-chart-tall">
-                    <Histogram
-                      data={[]}
-                      config={{
-                        style: 'monobell_relax',
-                        precomputed_bins: mainPlayersCadenceProcessed.bins,
-                        x_axis_label: t('appChart.averageCadence'),
-                        y_axis_label: t('appChart.density'),
-                        overlay_value_label: t('appChart.overlay.cadence'),
-                        overlay_count_label: t('appChart.overlay.games'),
-                        mean: mainPlayersCadenceProcessed.mean,
-                        stddev: mainPlayersCadenceProcessed.stddev,
-                        chart_height: 620,
-                        overlay_points: [
-                          ...mainPlayersCadenceProcessed.points.map((player) => ({
-                            value: Number(player.average_apm || 0),
-                            label: String(player.player_name || ''),
-                            player_key: String(player.player_key || ''),
-                            games_played: Number(player.games_played || 0),
-                            tooltip_lines: [
-                              `${String(player.player_name || '')}`,
-                              t('appChart.tooltip.cadenceScore', { value: Number(player.average_apm || 0).toFixed(3) }),
-                              t('appChart.tooltip.ratePerMinute', { value: Number(player.average_rate_per_min || 0).toFixed(2) }),
-                              t('appChart.tooltip.gapCv', { value: Number(player.average_cv_gap || 0).toFixed(2) }),
-                              t('appChart.tooltip.burstiness', { value: Number(player.average_burstiness || 0).toFixed(2) }),
-                              t('appChart.tooltip.idleGapRatio', { value: (Number(player.average_idle20_ratio || 0) * 100).toFixed(1) }),
-                              t('appChart.tooltip.gamesUsed', { count: Number(player.games_played || 0) }),
-                            ],
-                          })),
-                          ...(showFeaturedPros ? featuredCadenceOverlayPoints : []),
-                        ],
-                        on_overlay_point_click: openMainPlayer,
-                      }}
-                    />
-                    <div className="workflow-subtle-note">
-                      {`${t('players.cadence.population', { players: Number(mainPlayersCadenceProcessed.playersIncluded) || 0, minGames: Math.max(4, Number(mainPlayersCadenceMinGames) || 4), mean: Number(mainPlayersCadenceProcessed.mean || 0).toFixed(3), stddev: Number(mainPlayersCadenceProcessed.stddev || 0).toFixed(3) })}${showFeaturedPros && featuredCadenceOverlayPoints.length ? t('players.featuredNote') : ''}`}
-                    </div>
-                    {featuredCadenceOverlayPoints.length > 0 ? <div className="workflow-featured-toggle-row">{renderFeaturedToggle(featuredCadenceOverlayPoints.length)}</div> : null}
-                  </div>
-                ) : null}
-              </div>
-            ) : mainPlayersTab === 'viewport-multitasking' ? (
-              <div className="workflow-card workflow-card-fingerprints">
-                {mainPlayersViewportHistogramLoading ? <div className="chart-empty">{t('players.viewport.loading')}</div> : null}
-                {!mainPlayersViewportHistogramLoading && mainPlayersViewportHistogramError ? <div className="chart-empty">{mainPlayersViewportHistogramError}</div> : null}
-                {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length === 0 ? (
-                  <div className="chart-empty">{libraryLoadingCopy || t('players.viewport.notEnough')}</div>
-                ) : null}
-                {!mainPlayersViewportHistogramLoading && !mainPlayersViewportHistogramError && mainPlayersViewportProcessed.points.length > 0 ? (
-                  <div className="workflow-insight-chart workflow-insight-chart-tall">
-                    <Histogram
-                      data={[]}
-                      config={{
-                        style: 'monobell_relax',
-                        precomputed_bins: mainPlayersViewportProcessed.bins,
-                        x_axis_label: viewportText.axisLabel,
-                        y_axis_label: t('appChart.density'),
-                        overlay_value_label: viewportText.overlayValueLabel,
-                        overlay_count_label: t('appChart.overlay.games'),
-                        mean: mainPlayersViewportProcessed.mean,
-                        stddev: mainPlayersViewportProcessed.stddev,
-                        chart_height: 620,
-                        overlay_points: [
-                          ...mainPlayersViewportProcessed.points.map((player) => ({
-                            value: Number(player.average_apm || 0),
-                            label: String(player.player_name || ''),
-                            player_key: String(player.player_key || ''),
-                            games_played: Number(player.games_played || 0),
-                            tooltip_lines: [
-                              `${String(player.player_name || '')}`,
-                              t('appChart.tooltip.labelValue', { label: viewportText.title, value: viewportText.valueFormatter(player.average_apm) }),
-                              t('appChart.tooltip.gamesUsed', { count: Number(player.games_played || 0) }),
-                            ],
-                          })),
-                          ...(showFeaturedPros ? featuredViewportOverlayPoints : []),
-                        ],
-                        on_overlay_point_click: openMainPlayer,
-                      }}
-                    />
-                    <div className="workflow-subtle-note">
-                      {`${t('players.viewport.population', { players: Number(mainPlayersViewportProcessed.playersIncluded) || 0, minGames: Math.max(4, Number(mainPlayersViewportMinGames) || 4), mean: viewportText.summaryFormatter(mainPlayersViewportProcessed.mean), stddev: viewportText.summaryFormatter(mainPlayersViewportProcessed.stddev) })}${showFeaturedPros && featuredViewportOverlayPoints.length ? t('players.featuredNote') : ''}`}
-                    </div>
-                    {featuredViewportOverlayPoints.length > 0 ? <div className="workflow-featured-toggle-row">{renderFeaturedToggle(featuredViewportOverlayPoints.length)}</div> : null}
-                  </div>
-                ) : null}
-              </div>
+            ) : mainPlayersTab === 'skill' ? (
+              <PlayersSkillTab
+                data={mainPlayersSkill}
+                loading={mainPlayersSkillLoading}
+                error={mainPlayersSkillError}
+                emptyNotice={libraryLoadingCopy}
+                showFeatured={showFeaturedPros}
+                featuredToggle={renderFeaturedToggle}
+                onOpenPlayer={openMainPlayer}
+              />
             ) : null}
           </div>
         )}
@@ -7395,8 +6704,6 @@ function App() {
 
         {activeView === 'player' && (() => {
           const isFeaturedPlayer = isFeaturedPlayerKey(selectedPlayerKey);
-          // The Skill tab replaces Skill proxies wherever a player has one.
-          const isSkillProxiesTab = mainPlayerTab === 'skill-proxies' && !isFeaturedPlayer && !mainPlayer?.skill;
           const featured = mainPlayer?.featured || null;
           return (
           <div className="workflow-panel workflow-panel--player">
@@ -7453,17 +6760,6 @@ function App() {
                       onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
                       {t('tabs.hotkeys')}
                     </button>
-                    {!isFeaturedPlayer && !mainPlayer?.skill ? (
-                      <button type="button" role="tab" aria-selected={isSkillProxiesTab}
-                        className={`workflow-production-tab ${isSkillProxiesTab ? 'workflow-production-tab-active' : ''}`}
-                        onClick={() => {
-                          if (isSkillProxiesTab) return;
-                          setMainPlayerTab('skill-proxies');
-                          setMainPlayerSubtab('summary');
-                        }}>
-                        {t('tabs.skillProxies')}
-                      </button>
-                    ) : null}
                     {!isFeaturedPlayer ? (
                       <button type="button" role="tab" aria-selected={mainPlayerTab === 'chat-summary'}
                         className={`workflow-production-tab ${mainPlayerTab === 'chat-summary' ? 'workflow-production-tab-active' : ''}`}
@@ -7766,77 +7062,6 @@ function App() {
                       </div>
                     );
                   })()}
-
-                  {isSkillProxiesTab && (
-                    <div className="workflow-card workflow-card-fingerprints">
-                      <div className="workflow-card-title"><span>{t('skillProxies.populationComparison')}</span></div>
-                      {isFeaturedPlayer ? (
-                        <div className="workflow-subtle-note">
-                          {t('skillProxies.featuredNote', { name: featured?.label || t('skillProxies.thisProgamer') })}
-                        </div>
-                      ) : null}
-                      {mainPlayerInsightLoading ? <div className="chart-empty">{t('skillProxies.loading')}</div> : null}
-                      {!mainPlayerInsightLoading && mainPlayerInsightErrors.length > 0 ? (
-                        <div className="chart-empty">{mainPlayerInsightErrors[0]}</div>
-                      ) : null}
-                      {!mainPlayerInsightLoading && mainPlayerInsightErrors.length === 0 ? (
-                        <div className="workflow-insight-grid">
-                          {mainPlayerInsights.map((insight) => {
-                            const percentile = Number(insight.performance_percentile || 0);
-                            const accent = insightScoreColor(percentile);
-                            const overrideDesc = isFeaturedPlayer ? undefined : playerInsightDescriptionOverride(insight.insight_type);
-                            const description = overrideDesc !== undefined
-                              ? overrideDesc
-                              : (isFeaturedPlayer ? insight.description : t.server(`server.insight.${insight.insight_type}.description`, insight.description));
-                            const reasonArgs = Array.isArray(insight.ineligible_reason_args) ? insight.ineligible_reason_args : [];
-                            const ineligibleReason = insight.ineligible_reason_key
-                              ? t.server(`server.insight.reason.${insight.ineligible_reason_key}`, insight.ineligible_reason, Object.fromEntries(reasonArgs.map((arg, idx) => [idx, arg])))
-                              : insight.ineligible_reason;
-                            const popTab = playerInsightDestinationTab(insight.insight_type);
-                            return (
-                              <div
-                                key={insight.insight_type}
-                                className="workflow-insight-card workflow-insight-card-static"
-                                style={insight.eligible ? { borderColor: `${accent}55`, boxShadow: `inset 0 0 0 1px ${accent}22` } : undefined}
-                              >
-                                <div className="workflow-insight-card-header">
-                                  <span>{t.server(`server.insight.${insight.insight_type}.title`, insight.title)}</span>
-                                </div>
-                                {insight.eligible ? (
-                                  <>
-                                    <div className="workflow-insight-score-row">
-                                      <span className="workflow-insight-score" style={{ color: accent }}>{insightSummaryLabel(percentile)}</span>
-                                    </div>
-                                    <div className="workflow-insight-value">{insightValueLabel(t, insight.player_value_label)}</div>
-                                    <div className="workflow-subtle-note">{t('skillProxies.populationSize', { count: insight.population_size })}</div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="workflow-insight-unavailable">{t('skillProxies.notEnoughData')}</div>
-                                    <div className="workflow-subtle-note">{libraryLoadingCopy || ineligibleReason || t('skillProxies.notAvailable')}</div>
-                                  </>
-                                )}
-                                {description ? (
-                                  <div className="workflow-subtle-note workflow-insight-description">{description}</div>
-                                ) : null}
-                                {popTab ? (
-                                  <div className="workflow-insight-card-footer">
-                                    <button
-                                      type="button"
-                                      className="workflow-link-btn"
-                                      onClick={() => openMainPlayersSubview(popTab)}
-                                    >
-                                      {t('skillProxies.seeAllPlayers')}
-                                    </button>
-                                  </div>
-                                ) : null}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
 
                   {mainPlayerTab === 'hotkeys' && (
                     <div className="workflow-card">

@@ -84,13 +84,10 @@ type Reader interface {
 	GetPhaseBoundariesForReplay(ctx context.Context, replayID int64) (PhaseBoundaries, error)
 	ListGameUnitProductionAndCasts(ctx context.Context, replayID int64) ([]UnitProductionOrCastRow, error)
 	ListUnitSliceCommandRows(ctx context.Context, replayID int64) ([]UnitSliceCommandRow, error)
-	ListFirstUnitCommandRows(ctx context.Context, replayID int64) ([]FirstUnitCommandRow, error)
-	ListGameUnitCadenceRows(ctx context.Context, replayID int64, durationSeconds int64, excludedUnits []string, startSeconds int64, endFraction float64, idleGapSeconds int64) ([]GameUnitCadenceRow, error)
 	ListGasTimingRows(ctx context.Context, replayID int64) ([]TimingRow, error)
 	ListUpgradeTimingRows(ctx context.Context, replayID int64) ([]TimingRow, error)
 	ListTechTimingRows(ctx context.Context, replayID int64) ([]TimingRow, error)
 	LoadEarlyZergTimings(ctx context.Context, replayID int64) ([]EarlyZergTimingsRow, error)
-	ListViewportGameRows(ctx context.Context, replayID int64, eventType string) ([]ViewportGameRow, error)
 	ListReplayLeaveReasons(ctx context.Context, replayID int64) ([]ReplayLeaveReasonRow, error)
 	ListReplayChat(ctx context.Context, replayID int64) ([]ReplayChatRow, error)
 
@@ -133,8 +130,6 @@ type Reader interface {
 	CountPlayersLastPlayedBuckets(ctx context.Context, query PlayersQuery) (int64, int64, error)
 	CountPlayerFacets(ctx context.Context, query PlayersQuery) (PlayerFacetCounts, error)
 	ListPlayerApmAggregates(ctx context.Context, minGames int64) ([]PlayerApmAggregateRow, error)
-	ListUnitCadenceReplayMetrics(ctx context.Context, excludedUnits []string, onlyPlayerKey string, startSeconds int64, endFraction float64, idleGapSeconds int64, minUnitsPerReplay int64, minGapsPerReplay int64) ([]UnitCadenceReplayMetricRow, error)
-	ListViewportAggregateRows(ctx context.Context, patternName string) ([]ViewportAggregateRow, error)
 	ListHotkeyGamesRateByPlayer(ctx context.Context) (map[string]float64, error)
 	ListTopPlayerColorRows(ctx context.Context) ([]PlayerColorRow, error)
 

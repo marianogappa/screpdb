@@ -352,51 +352,6 @@ func (d *Dashboard) PlayersList(_ context.Context, request apigen.PlayersListReq
 	}, nil
 }
 
-func (d *Dashboard) PlayersApmHistogram(_ context.Context, _ apigen.PlayersApmHistogramRequestObject) (any, error) {
-	histogram, err := d.buildWorkflowPlayerApmHistogram("")
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	histogram.FeaturedPlayers = d.featuredApmPoints()
-	return histogram, nil
-}
-
-func (d *Dashboard) PlayersUnitCadence(_ context.Context, request apigen.PlayersUnitCadenceRequestObject) (any, error) {
-	filterMode, err := parseWorkflowUnitCadenceFilterMode(nullableStringValue(request.Params.Filter))
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-	}
-	minGames := workflowUnitCadenceMinGames
-	if request.Params.MinGames != nil && *request.Params.MinGames > 0 {
-		minGames = *request.Params.MinGames
-	}
-	limit := workflowUnitCadenceDefaultLimit
-	if request.Params.Limit != nil {
-		if *request.Params.Limit < 0 {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("limit must be >= 0"))
-		}
-		limit = *request.Params.Limit
-	}
-	if limit > workflowUnitCadenceMaxLimit {
-		limit = workflowUnitCadenceMaxLimit
-	}
-	result, err := d.buildWorkflowPlayerUnitCadenceLeaderboard(filterMode, minGames, limit)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	result.FeaturedPlayers = d.featuredCadencePoints()
-	return result, nil
-}
-
-func (d *Dashboard) PlayersViewportMultitasking(_ context.Context, _ apigen.PlayersViewportMultitaskingRequestObject) (any, error) {
-	result, err := d.buildWorkflowPlayerViewportMultitaskingDistribution()
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	result.FeaturedPlayers = d.featuredViewportPoints()
-	return result, nil
-}
-
 func (d *Dashboard) PlayerDetail(_ context.Context, request apigen.PlayerDetailRequestObject) (any, error) {
 	if strings.TrimSpace(request.PlayerKey) == "" {
 		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
@@ -442,76 +397,6 @@ func (d *Dashboard) PlayerChatSummary(_ context.Context, request apigen.PlayerCh
 		"chat_summary":    chatSummary,
 		"summary_version": workflowSummaryVersion,
 	}, nil
-}
-
-func (d *Dashboard) PlayerInsight(_ context.Context, request apigen.PlayerInsightRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	insightType := workflowPlayerInsightType(nullableStringValue(request.Params.Type))
-	if _, isPro := propack.IDFromKey(playerKey); isPro {
-		pro := d.featuredPro(playerKey)
-		if pro == nil {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, dashboarddb.ErrNotFound)
-		}
-		result, err := d.featuredAsyncInsight(pro, insightType)
-		if err != nil {
-			if errors.Is(err, errUnsupportedWorkflowPlayerInsightType) {
-				return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-			}
-			return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-		}
-		return result, nil
-	}
-	result, err := d.buildWorkflowPlayerAsyncInsight(playerKey, insightType)
-	if err != nil {
-		if errors.Is(err, errUnsupportedWorkflowPlayerInsightType) {
-			return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-		}
-		if errors.Is(err, dashboarddb.ErrNotFound) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return result, nil
-}
-
-func (d *Dashboard) PlayerApmHistogram(_ context.Context, request apigen.PlayerApmHistogramRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	if _, isPro := propack.IDFromKey(playerKey); isPro {
-		return nil, dashboardservice.WithStatus(http.StatusNotFound, errFeaturedPlayerHasNoLocalData)
-	}
-	histogram, err := d.buildWorkflowPlayerApmHistogram(playerKey)
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return histogram, nil
-}
-
-func (d *Dashboard) PlayerUnitCadence(_ context.Context, request apigen.PlayerUnitCadenceRequestObject) (any, error) {
-	playerKey := normalizePlayerKey(request.PlayerKey)
-	if playerKey == "" {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, errors.New("player key missing"))
-	}
-	filterMode, err := parseWorkflowUnitCadenceFilterMode(nullableStringValue(request.Params.Filter))
-	if err != nil {
-		return nil, dashboardservice.WithStatus(http.StatusBadRequest, err)
-	}
-	if _, isPro := propack.IDFromKey(playerKey); isPro {
-		return nil, dashboardservice.WithStatus(http.StatusNotFound, errFeaturedPlayerHasNoLocalData)
-	}
-	result, err := d.buildWorkflowPlayerUnitCadenceInsight(playerKey, filterMode)
-	if err != nil {
-		if errors.Is(err, dashboarddb.ErrNotFound) {
-			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
-		}
-		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
-	}
-	return result, nil
 }
 
 func (d *Dashboard) PlayerLastGames(_ context.Context, request apigen.PlayerLastGamesRequestObject) (any, error) {

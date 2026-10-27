@@ -115,6 +115,7 @@ func metricsFromManifests(
 	for _, r := range missing {
 		keys = append(keys, propack.Key(r.id))
 	}
+	engineRun(ctx, corpus)
 	return corpus.Metrics(ctx, keys)
 }
 

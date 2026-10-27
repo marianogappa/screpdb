@@ -194,13 +194,10 @@ Choosing an endpoint
   - "How did they use hotkeys?"       /api/games/{replayID}/hotkeys,
                                       /api/players/{playerKey}/hotkey-signature
   - "Who is in the corpus?"           /api/players (or list_top_players)
-  - "How does this player play?"      /api/players/{playerKey},
-                                      /api/players/{playerKey}/insight?type=…
+  - "How does this player play?"      /api/players/{playerKey} (its skill field is their Skill average)
   - "Their recent games?"             /api/players/{playerKey}/last-games
   - "What do they say in game?"       /api/players/{playerKey}/chat-summary
-  - "How do they compare?"            /api/players/insights/apm-histogram,
-                                      /api/players/insights/unit-production-cadence,
-                                      /api/players/insights/viewport-multitasking
+  - "How do they compare?"            /api/custom/players/skill
 
 What this API cannot answer
 

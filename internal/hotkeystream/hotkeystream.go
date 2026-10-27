@@ -50,6 +50,9 @@ type Event struct {
 	Group byte
 	// Count is the selection size for TypeAssignUnits events.
 	Count byte
+	// Unit is the main unit type of a TypeAssignUnits event when the engine saw it; zero otherwise. It is not
+	// part of the wire format.
+	Unit uint16
 	// Building, TileX, TileY annotate TypeAssignBuilding events.
 	Building byte
 	TileX    byte

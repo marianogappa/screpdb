@@ -5,6 +5,7 @@ package dashboard
 import (
 	"net/http"
 
+	"github.com/marianogappa/screpdb/internal/hotkeystream"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
@@ -19,3 +20,5 @@ func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, _ *http.Request
 }
 
 func (d *Dashboard) applyEngineHotkeys(int64, *hotkeyTimelinePayload) {}
+
+func (d *Dashboard) engineHotkeyUnits(int64, int8, []hotkeystream.Event) {}

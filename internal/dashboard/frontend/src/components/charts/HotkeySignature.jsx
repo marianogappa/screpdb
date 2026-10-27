@@ -34,6 +34,9 @@ const categoryIcon = (category, race) => {
   return category === 'units' ? getUnitIcon(name) : hotkeyBuildingIcon(name);
 };
 
+// A units run names its main unit when the engine saw the assigns; without it, a generic silhouette.
+const runIcon = (run, race) => (run.category === 'units' && run.unit ? getUnitIcon(run.unit) : categoryIcon(run.category, race));
+
 const KEY_ORDER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
 const pct = (minute) => (minute / (MAX_MINUTE + 1)) * 100;
@@ -52,19 +55,27 @@ function SignatureCard({ card }) {
             <div className="hk-keycap hk-sig-keycap">{n}</div>
             <div className="hk-sig-lane">
               {key.runs.map((run, i) => {
-                const icon = categoryIcon(run.category, card.race);
+                const icon = runIcon(run, card.race);
                 if (!icon) return null;
+                const label = run.unit || (CATEGORY_LABEL_KEYS[run.category] ? t(CATEGORY_LABEL_KEYS[run.category]) : run.category);
                 return (
-                  <img
-                    key={i}
-                    src={icon}
-                    alt={CATEGORY_LABEL_KEYS[run.category] ? t(CATEGORY_LABEL_KEYS[run.category]) : run.category}
-                    className={`hk-sig-sprite ${run.category === 'units' ? 'hk-silhouette' : ''}`}
-                    style={{ left: `${pct(run.start_min)}%` }}
-                  />
+                  <React.Fragment key={i}>
+                    <img
+                      src={icon}
+                      alt={label}
+                      title={label}
+                      className={`hk-sig-sprite ${run.category === 'units' && !run.unit ? 'hk-silhouette' : ''}`}
+                      style={{ left: `${pct(run.start_min)}%` }}
+                    />
+                    {run.unit && run.median_count > 0 ? (
+                      <i className="hk-count hk-sig-count" style={{ left: `${pct(run.start_min)}%`, background: hotkeyCountColor(run.median_count) }}>
+                        {run.median_count}
+                      </i>
+                    ) : null}
+                  </React.Fragment>
                 );
               })}
-              {key.runs.length && key.runs[0].category === 'units' && key.median_count > 0 ? (
+              {key.runs.length && key.runs[0].category === 'units' && !key.runs[0].unit && key.median_count > 0 ? (
                 <i
                   className="hk-count hk-sig-count"
                   style={{ left: `${pct(key.runs[0].start_min)}%`, background: hotkeyCountColor(key.median_count) }}

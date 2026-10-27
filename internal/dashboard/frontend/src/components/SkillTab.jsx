@@ -393,3 +393,163 @@ export function PlayerSkillTab({ summary, name, color }) {
     </div>
   );
 }
+
+const FULL_RANGE = [0, 4];
+
+const LIBRARY_PLAYERS_SHOWN = 30;
+const MARKER_PX = 16;
+const LABEL_GAP_PX = 10;
+const EDGE_PX = 6;
+const POPULATION_ROW_PX = 19;
+
+let measureContext;
+const labelWidth = (text, hero) => {
+  if (typeof document === 'undefined') return text.length * 7;
+  measureContext = measureContext || document.createElement('canvas').getContext('2d');
+  if (!measureContext) return text.length * 7;
+  const family = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  measureContext.font = `${hero ? 600 : 400} ${hero ? 13 : 12}px ${family}`;
+  return measureContext.measureText(text).width;
+};
+
+// packLabels gives every marker the first row where its label fits beside it, on its right or else on its
+// left, without running into another label or past the strip's edges.
+const packLabels = (entries, width, hero) => {
+  const rows = [];
+  const free = (row, start, end) => start >= EDGE_PX && end <= width - EDGE_PX
+    && (rows[row] || []).every(([s, e]) => end + LABEL_GAP_PX <= s || start >= e + LABEL_GAP_PX);
+  return [...entries].sort((a, b) => a.placement.position - b.placement.position).map((e) => {
+    const x = e.share * width;
+    const w = MARKER_PX + labelWidth(e.name, hero);
+    const sides = [[false, x - MARKER_PX / 2, x + w], [true, x - w, x + MARKER_PX / 2]];
+    for (let row = 0; ; row += 1) {
+      const fit = sides.find(([, start, end]) => free(row, start, end));
+      if (fit || row > entries.length) {
+        const [right, start, end] = fit || sides[x + w > width - EDGE_PX ? 1 : 0];
+        rows[row] = [...(rows[row] || []), [start, end]];
+        return { ...e, row, right };
+      }
+    }
+  });
+};
+
+// PopulationStrip is one Skill metric across the library: the four tiers, the library's players, a dotted line
+// at the median of their averages and a star per built-in progamer.
+function PopulationStrip({ median, players, stars, describe, hero, tierLabels, focus, onFocus, onOpenPlayer }) {
+  const t = useT();
+  const [ref, width] = useWidth(900);
+  const [lo, hi] = FULL_RANGE;
+  const band = (pos) => (pos - lo) / (hi - lo);
+  const share = (pos) => 0.015 + 0.97 * band(pos);
+  const entries = [
+    ...players.map((p) => ({ ...p, pro: false, share: share(p.placement.position) })),
+    ...stars.map((p) => ({ ...p, pro: true, share: share(p.placement.position) })),
+  ];
+  const placed = packLabels(entries, width, hero);
+  const rows = placed.reduce((n, e) => Math.max(n, e.row + 1), 1);
+  const top = tierLabels ? BAND_LABEL_PX + 4 : 4;
+  const medianText = median ? t('skill.players.median', { count: median.players }) : '';
+  return (
+    <div
+      ref={ref}
+      className={`skill-strip skill-strip--population${hero ? ' skill-strip--hero' : ''}${focus ? ' skill-strip--focus' : ''}`}
+      style={{ height: `${top + rows * POPULATION_ROW_PX + 6}px` }}
+    >
+      {TIER_KEYS.map((key, i) => (
+        <div key={key} className={`skill-band skill-band-${key}`} style={{ left: `${band(i) * 100}%`, width: `${(band(i + 1) - band(i)) * 100}%` }}>
+          {tierLabels ? <span className="skill-band-label">{t(`skill.tier.${key}`)}</span> : null}
+        </div>
+      ))}
+      {median ? (
+        <div
+          className="skill-median"
+          style={{ left: `${share(median.position) * 100}%` }}
+          title={describe ? `${medianText}: ${describe(median)}` : medianText}
+        />
+      ) : null}
+      {placed.map(({ key, name, placement, share: x, row, right, pro }) => {
+        const value = describe ? describe(placement) : '';
+        const focused = focus === key;
+        return (
+          <button
+            type="button"
+            key={key}
+            className={`skill-marker skill-marker--population${pro ? ' skill-marker--star' : ' skill-marker--library'}${right ? ' skill-marker--right' : ''}${focused ? ' skill-marker--focused' : ''}`}
+            style={{ left: `${x * 100}%`, top: `${top + row * POPULATION_ROW_PX}px` }}
+            title={value ? `${name}: ${value}` : name}
+            onMouseEnter={() => onFocus?.(key)}
+            onMouseLeave={() => onFocus?.(null)}
+            onFocus={() => onFocus?.(key)}
+            onBlur={() => onFocus?.(null)}
+            onClick={() => onOpenPlayer?.(key)}
+          >
+            {pro ? <span className="skill-star" aria-hidden="true">★</span> : <span className="skill-marker-dot skill-library-dot" />}
+            <span className="skill-player-label">
+              {name}
+              {focused && value ? <span className="skill-player-value"> {value}</span> : null}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// PlayersSkillTab is the Players page Skill tab: where each of the library's players sits on the Skill tiers,
+// with the median of their averages, beside the built-in progamers.
+export function PlayersSkillTab({ data, loading, error, emptyNotice, showFeatured, featuredToggle, onOpenPlayer }) {
+  const t = useT();
+  const [focus, setFocus] = React.useState(null);
+  if (loading && !data) return <div className="workflow-card skill-tab"><div className="chart-empty">{t('players.loading')}</div></div>;
+  if (error) return <div className="workflow-card skill-tab"><div className="chart-empty">{error}</div></div>;
+  const featured = data?.featured_players || [];
+  const pros = showFeatured ? featured : [];
+  const starsFor = (key) => pros
+    .map((p) => ({ key: p.player_key, name: p.player_name, placement: key === 'combined' ? p.combined : p.metrics?.[key] }))
+    .filter((s) => s.placement);
+  const library = [...(data?.library_players || [])].sort((a, b) => b.games - a.games).slice(0, LIBRARY_PLAYERS_SHOWN);
+  const playersFor = (key) => library
+    .map((p) => ({ key: p.player_key, name: p.player_name, placement: key === 'combined' ? p.combined : p.metrics?.[key] }))
+    .filter((d) => d.placement);
+  const metrics = METRICS.filter((m) => data?.metrics?.[m.key] || starsFor(m.key).length);
+  if (!data?.combined && !pros.length) {
+    return <div className="workflow-card skill-tab"><div className="chart-empty">{emptyNotice || t('skill.player.none')}</div></div>;
+  }
+  return (
+    <div className="workflow-card skill-tab skill-players-tab">
+      <SkillExplainerLink model={data?.model} className="skill-explainer-link--corner" />
+      <div className="skill-rows">
+        <div className="skill-row-label skill-row-label--hero">
+          <span>{t('skill.metric.combined.title')}</span>
+          <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
+        </div>
+        <PopulationStrip median={data?.combined} players={playersFor('combined')} stars={starsFor('combined')} hero tierLabels focus={focus} onFocus={setFocus} onOpenPlayer={onOpenPlayer} />
+        {metrics.map((m, index) => (
+          <React.Fragment key={m.key}>
+            <div className="skill-row-label">
+              <span>{t(`skill.metric.${m.key}.title`)}</span>
+              <Help text={t(`skill.metric.${m.key}.hint`)} />
+            </div>
+            <PopulationStrip
+              median={data?.metrics?.[m.key]}
+              players={playersFor(m.key)}
+              focus={focus}
+              onFocus={setFocus}
+              stars={starsFor(m.key)}
+              tierLabels={index === 0}
+              describe={(p) => String(m.format(p.value))}
+              onOpenPlayer={onOpenPlayer}
+            />
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="skill-players-legend">
+        {data?.combined ? (
+          <span className="skill-players-legend-median">{t('skill.players.median', { count: data.combined.players })}</span>
+        ) : null}
+        {pros.length ? <span>{t('players.featuredNote')}</span> : null}
+        {featured.length ? <span className="skill-players-legend-toggle">{featuredToggle(featured.length)}</span> : null}
+      </div>
+    </div>
+  );
+}

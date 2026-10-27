@@ -3,11 +3,9 @@ package db
 import (
 	"context"
 	"encoding/json"
-	"math"
 	"sort"
 	"strings"
 
-	"github.com/marianogappa/screpdb/internal/gamerules"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/models"
 )
@@ -360,76 +358,6 @@ func (s *LibStore) ListUnitSliceCommandRows(ctx context.Context, replayID int64)
 	return out, nil
 }
 
-func (s *LibStore) ListFirstUnitCommandRows(ctx context.Context, replayID int64) ([]FirstUnitCommandRow, error) {
-	r, err := s.replay(replayID)
-	if err != nil {
-		return nil, err
-	}
-	refs := prodRefs(r, func(kind library.ProdKind, _ uint8, _ uint16) bool {
-		switch kind {
-		case library.ProdBuild, library.ProdTrain, library.ProdUnitMorph:
-			return true
-		}
-		return false
-	})
-	sortProdRefsByPlayerThenSecond(refs)
-
-	out := make([]FirstUnitCommandRow, 0, len(refs))
-	for _, ref := range refs {
-		name := r.Prod.SubjectName(ref.index)
-		out = append(out, FirstUnitCommandRow{
-			PlayerID:   rowPlayerID(r, ref.ordinal),
-			Second:     int64(ref.sec),
-			ActionType: r.Prod.Kind[ref.index].String(),
-			UnitType:   &name,
-		})
-	}
-	return out, nil
-}
-
-func (s *LibStore) ListGameUnitCadenceRows(
-	ctx context.Context,
-	replayID int64,
-	durationSeconds int64,
-	excludedUnits []string,
-	startSeconds int64,
-	endFraction float64,
-	idleGapSeconds int64,
-) ([]GameUnitCadenceRow, error) {
-	r, err := s.replay(replayID)
-	if err != nil {
-		return nil, err
-	}
-	precomputed := durationSeconds == int64(r.Duration) &&
-		cadenceTuningIsDefault(excludedUnits, startSeconds, endFraction, idleGapSeconds)
-	var excluded map[string]struct{}
-	if !precomputed {
-		excluded = make(map[string]struct{}, len(excludedUnits))
-		for _, name := range excludedUnits {
-			excluded[name] = struct{}{}
-		}
-	}
-
-	out := []GameUnitCadenceRow{}
-	for i := range r.Players {
-		p := &r.Players[i]
-		if !humanNonObserver(p) {
-			continue
-		}
-		playerID := rowPlayerID(r, uint8(i))
-		var row *GameUnitCadenceRow
-		if precomputed {
-			row = cadenceRowFromCadence(playerID, p.Cadence)
-		} else {
-			row = cadenceRowFromProd(r, uint8(i), playerID, durationSeconds, excluded, startSeconds, endFraction, idleGapSeconds)
-		}
-		if row != nil {
-			out = append(out, *row)
-		}
-	}
-	return out, nil
-}
-
 // gasBuildings are the three refineries the gas-timing row set tracks.
 var gasBuildings = map[string]struct{}{
 	"Assimilator": {},
@@ -540,29 +468,6 @@ func (s *LibStore) LoadEarlyZergTimings(ctx context.Context, replayID int64) ([]
 	out := make([]EarlyZergTimingsRow, 0, len(order))
 	for _, playerID := range order {
 		out = append(out, *byPlayer[playerID])
-	}
-	return out, nil
-}
-
-func (s *LibStore) ListViewportGameRows(ctx context.Context, replayID int64, eventType string) ([]ViewportGameRow, error) {
-	r, err := s.replay(replayID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]ViewportGameRow, 0, len(r.Markers))
-	for i := range r.Markers {
-		m := &r.Markers[i]
-		if library.Features.Name(m.Feature) != eventType {
-			continue
-		}
-		if len(m.Payload) == 0 || strings.TrimSpace(string(m.Payload)) == "" {
-			continue
-		}
-		var playerID int64
-		if m.Player != library.NoPlayer && int(m.Player) < len(r.Players) {
-			playerID = rowPlayerID(r, m.Player)
-		}
-		out = append(out, ViewportGameRow{PlayerID: playerID, RawValue: string(m.Payload)})
 	}
 	return out, nil
 }
@@ -741,137 +646,3 @@ func screpPlayerTypeName(t library.PlayerType) string {
 // the SQL used when the deviation is undefined; it keeps the cadence score
 // finite and near zero instead of NULL.
 const cadenceUndefinedDeviationFallback = 9999.0
-
-func cadenceTuningIsDefault(excludedUnits []string, startSeconds int64, endFraction float64, idleGapSeconds int64) bool {
-	if startSeconds != gamerules.UnitCadenceStartSeconds ||
-		endFraction != gamerules.UnitCadenceEndFraction ||
-		idleGapSeconds != gamerules.UnitCadenceIdleGapSeconds {
-		return false
-	}
-	if len(excludedUnits) != len(gamerules.UnitCadenceExcludedUnits) {
-		return false
-	}
-	want := make(map[string]struct{}, len(gamerules.UnitCadenceExcludedUnits))
-	for _, name := range gamerules.UnitCadenceExcludedUnits {
-		want[name] = struct{}{}
-	}
-	for _, name := range excludedUnits {
-		if _, ok := want[name]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func cadenceRowFromCadence(playerID int64, c *library.Cadence) *GameUnitCadenceRow {
-	if c == nil {
-		return nil
-	}
-	row := &GameUnitCadenceRow{
-		PlayerID:      playerID,
-		WindowSeconds: int64(c.WindowSec),
-		UnitsProduced: int64(c.Units),
-		GapCount:      int64(c.Gaps),
-		RatePerMinute: ptrFloat64(c.RatePerMinute),
-		CadenceScore:  ptrFloat64(c.Score),
-	}
-	if c.Gaps == 0 {
-		return row
-	}
-	row.Idle20Ratio = ptrFloat64(c.Idle20Ratio)
-	// Cadence flattens the SQL NULLs to zero, so the undefined-deviation branch
-	// has to be recognised by its fingerprint: only it leaves both the
-	// coefficient of variation and the burstiness at zero, because a real
-	// coefficient of zero yields a burstiness of -1.
-	if c.CVGap == 0 && c.Burstiness == 0 {
-		return row
-	}
-	row.CVGap = ptrFloat64(c.CVGap)
-	row.Burstiness = ptrFloat64(c.Burstiness)
-	return row
-}
-
-func cadenceRowFromProd(
-	r *library.Replay,
-	ordinal uint8,
-	playerID int64,
-	durationSeconds int64,
-	excluded map[string]struct{},
-	startSeconds int64,
-	endFraction float64,
-	idleGapSeconds int64,
-) *GameUnitCadenceRow {
-	// The SQL bounded the command window with the replay's own duration and
-	// sized the reported window with the caller's, so both are kept apart here.
-	windowEnd := int64(endFraction * float64(r.Duration))
-	if windowEnd <= startSeconds {
-		return nil
-	}
-	windowSeconds := int64(endFraction*float64(durationSeconds)) - startSeconds
-	if windowSeconds <= 0 {
-		return nil
-	}
-
-	var times []int64
-	prod := &r.Prod
-	for i := 0; i < prod.Len(); i++ {
-		if prod.Player[i] != ordinal {
-			continue
-		}
-		if kind := prod.Kind[i]; kind != library.ProdTrain && kind != library.ProdUnitMorph {
-			continue
-		}
-		name := library.Units.Name(prod.Subject[i])
-		if strings.TrimSpace(name) == "" {
-			continue
-		}
-		if _, skip := excluded[name]; skip {
-			continue
-		}
-		sec := int64(prod.Sec[i])
-		if sec < startSeconds || sec > windowEnd {
-			continue
-		}
-		times = append(times, sec)
-	}
-	if len(times) == 0 {
-		return nil
-	}
-
-	rate := float64(len(times)) * 60.0 / float64(windowSeconds)
-	row := &GameUnitCadenceRow{
-		PlayerID:      playerID,
-		WindowSeconds: windowSeconds,
-		UnitsProduced: int64(len(times)),
-		GapCount:      int64(len(times) - 1),
-		RatePerMinute: ptrFloat64(rate),
-	}
-	if len(times) < 2 {
-		row.CadenceScore = ptrFloat64(rate / (1.0 + cadenceUndefinedDeviationFallback))
-		return row
-	}
-
-	var sum, sumSquares float64
-	idle := 0
-	for i := 1; i < len(times); i++ {
-		gap := float64(times[i] - times[i-1])
-		sum += gap
-		sumSquares += gap * gap
-		if gap >= float64(idleGapSeconds) {
-			idle++
-		}
-	}
-	n := float64(len(times) - 1)
-	mean := sum / n
-	variance := sumSquares/n - mean*mean
-	row.Idle20Ratio = ptrFloat64(float64(idle) / n)
-	if variance < 0 || mean == 0 {
-		row.CadenceScore = ptrFloat64(rate / (1.0 + cadenceUndefinedDeviationFallback))
-		return row
-	}
-	cv := math.Sqrt(variance) / mean
-	row.CVGap = ptrFloat64(cv)
-	row.Burstiness = ptrFloat64((cv - 1.0) / (cv + 1.0))
-	row.CadenceScore = ptrFloat64(rate / (1.0 + cv))
-	return row
-}

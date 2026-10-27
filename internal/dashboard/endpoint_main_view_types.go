@@ -22,88 +22,6 @@ var topPlayerPalette = []string{
 	"#A855F7",
 }
 
-const firstUnitEfficiencyMaxGapSeconds int64 = 60
-const workflowUnitCadenceStartSeconds int64 = 7 * 60
-const workflowUnitCadenceEndFraction float64 = 0.8
-const workflowUnitCadenceIdleGapSeconds int64 = 20
-const workflowUnitCadenceMinUnitsPerReplay int64 = 12
-const workflowUnitCadenceMinGapsPerReplay int64 = 8
-const workflowUnitCadenceMinGames int64 = 4
-const workflowUnitCadenceDefaultLimit int64 = 50
-const workflowUnitCadenceMaxLimit int64 = 200
-
-type workflowUnitCadenceFilterMode string
-
-const (
-	workflowUnitCadenceFilterStrict workflowUnitCadenceFilterMode = "strict"
-	workflowUnitCadenceFilterBroad  workflowUnitCadenceFilterMode = "broad"
-)
-
-type firstUnitEfficiencyUnitOption struct {
-	DisplayName string
-	MatchKeys   []string
-}
-
-type firstUnitEfficiencyConfig struct {
-	Race                 string
-	BuildingName         string
-	BuildDurationSeconds int64
-	Units                []firstUnitEfficiencyUnitOption
-}
-
-// Deliberately limited to bread-and-butter army buildings whose first unit a
-// player almost always wants out the moment it completes. Tech/utility
-// buildings (Forge, Fleet Beacon, Hydralisk Den, …) are excluded: they are
-// routinely built for upgrades, so the gap-after-ready signal there is mostly
-// false positives (issue #166).
-var firstUnitEfficiencyConfigs = []firstUnitEfficiencyConfig{
-	{
-		Race:                 "protoss",
-		BuildingName:         "Gateway",
-		BuildDurationSeconds: 38,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Zealot", MatchKeys: []string{"Zealot"}}},
-	},
-	{
-		Race:                 "protoss",
-		BuildingName:         "Stargate",
-		BuildDurationSeconds: 44,
-		Units: []firstUnitEfficiencyUnitOption{
-			{DisplayName: "Corsair", MatchKeys: []string{"Corsair"}},
-			{DisplayName: "Scout", MatchKeys: []string{"Scout"}},
-		},
-	},
-	{
-		Race:                 "terran",
-		BuildingName:         "Barracks",
-		BuildDurationSeconds: 50,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Marine", MatchKeys: []string{"Marine"}}},
-	},
-	{
-		Race:                 "terran",
-		BuildingName:         "Factory",
-		BuildDurationSeconds: 50,
-		Units: []firstUnitEfficiencyUnitOption{
-			{DisplayName: "Vulture", MatchKeys: []string{"Vulture"}},
-			{DisplayName: "Siege Tank", MatchKeys: []string{"Siege Tank", "Siege Tank (Tank Mode)", "Terran Siege Tank (Siege Mode)"}},
-		},
-	},
-	{
-		Race:                 "zerg",
-		BuildingName:         "Spawning Pool",
-		BuildDurationSeconds: 50,
-		Units:                []firstUnitEfficiencyUnitOption{{DisplayName: "Zergling", MatchKeys: []string{"Zergling"}}},
-	},
-	{
-		Race:                 "zerg",
-		BuildingName:         "Spire",
-		BuildDurationSeconds: 75,
-		Units: []firstUnitEfficiencyUnitOption{
-			{DisplayName: "Mutalisk", MatchKeys: []string{"Mutalisk"}},
-			{DisplayName: "Scourge", MatchKeys: []string{"Scourge"}},
-		},
-	},
-}
-
 type workflowGameListItem struct {
 	ReplayID           int64                     `json:"replay_id"`
 	ReplayDate         string                    `json:"replay_date"`
@@ -387,33 +305,30 @@ type workflowGameDetail struct {
 	FilePath        string   `json:"file_path"`
 	OwnCopyFileName string   `json:"own_copy_file_name,omitempty"`
 	// CompleteCopy is a game whose full recording was downloaded from a co-player (issue #341).
-	CompleteCopy                     bool                                     `json:"complete_copy,omitempty"`
-	MapName                          string                                   `json:"map_name"`
-	MapKind                          string                                   `json:"map_kind,omitempty"`
-	GameSource                       string                                   `json:"game_source"`
-	LobbyKind                        string                                   `json:"lobby_kind"`
-	MapVisual                        workflowMapVisual                        `json:"map_visual"`
-	MapWidthPixels                   int64                                    `json:"map_width_pixels,omitempty"`
-	MapHeightPixels                  int64                                    `json:"map_height_pixels,omitempty"`
-	DurationSeconds                  int64                                    `json:"duration_seconds"`
-	GameType                         string                                   `json:"game_type"`
-	TeamStacking                     bool                                     `json:"team_stacking"`
-	TeamInfoIncomplete               bool                                     `json:"team_info_incomplete"`
-	Players                          []workflowGamePlayer                     `json:"players"`
-	ReplayPatterns                   []workflowPatternValue                   `json:"replay_patterns"`
-	GameEvents                       []workflowGameEvent                      `json:"game_events"`
-	UnitsBySlice                     []workflowUnitSlice                      `json:"units_by_slice"`
-	UnitsEarlyEvents                 []workflowUnitEarlyEventPlayer           `json:"units_early_events"`
-	ProductionTimeline               []workflowProductionTimelinePlayer       `json:"production_timeline"`
-	Timings                          workflowReplayTimings                    `json:"timings"`
-	FirstUnitEfficiency              []workflowFirstUnitEfficiencyPlayer      `json:"first_unit_efficiency"`
-	UnitCadence                      []workflowGameUnitCadencePlayer          `json:"unit_production_cadence"`
-	ViewportMultitasking             []workflowGameViewportMultitaskingPlayer `json:"viewport_multitasking"`
-	Markers                          []workflowMarkerPlayer                   `json:"build_orders"`
-	MutaliskTiming                   []workflowMarkerPlayer                   `json:"mutalisk_timing_chart,omitempty"`
-	MutaliskTimingSummary            *workflowMutaliskTimingSummary           `json:"mutalisk_timing_summary,omitempty"`
-	AllianceTimeline                 []workflowAllianceSnapshot               `json:"alliance_timeline,omitempty"`
-	AllianceStackingThresholdSeconds int64                                    `json:"alliance_stacking_threshold_seconds,omitempty"`
+	CompleteCopy                     bool                               `json:"complete_copy,omitempty"`
+	MapName                          string                             `json:"map_name"`
+	MapKind                          string                             `json:"map_kind,omitempty"`
+	GameSource                       string                             `json:"game_source"`
+	LobbyKind                        string                             `json:"lobby_kind"`
+	MapVisual                        workflowMapVisual                  `json:"map_visual"`
+	MapWidthPixels                   int64                              `json:"map_width_pixels,omitempty"`
+	MapHeightPixels                  int64                              `json:"map_height_pixels,omitempty"`
+	DurationSeconds                  int64                              `json:"duration_seconds"`
+	GameType                         string                             `json:"game_type"`
+	TeamStacking                     bool                               `json:"team_stacking"`
+	TeamInfoIncomplete               bool                               `json:"team_info_incomplete"`
+	Players                          []workflowGamePlayer               `json:"players"`
+	ReplayPatterns                   []workflowPatternValue             `json:"replay_patterns"`
+	GameEvents                       []workflowGameEvent                `json:"game_events"`
+	UnitsBySlice                     []workflowUnitSlice                `json:"units_by_slice"`
+	UnitsEarlyEvents                 []workflowUnitEarlyEventPlayer     `json:"units_early_events"`
+	ProductionTimeline               []workflowProductionTimelinePlayer `json:"production_timeline"`
+	Timings                          workflowReplayTimings              `json:"timings"`
+	Markers                          []workflowMarkerPlayer             `json:"build_orders"`
+	MutaliskTiming                   []workflowMarkerPlayer             `json:"mutalisk_timing_chart,omitempty"`
+	MutaliskTimingSummary            *workflowMutaliskTimingSummary     `json:"mutalisk_timing_summary,omitempty"`
+	AllianceTimeline                 []workflowAllianceSnapshot         `json:"alliance_timeline,omitempty"`
+	AllianceStackingThresholdSeconds int64                              `json:"alliance_stacking_threshold_seconds,omitempty"`
 	// AllianceTabChat is the full per-replay chat stream, surfaced only for the
 	// Alliances tab's context panel. Empty for non-melee or ≤2-player games.
 	AllianceTabChat []workflowAllianceChat `json:"alliance_tab_chat,omitempty"`
@@ -709,44 +624,6 @@ type workflowReplayTimings struct {
 	Tech      []workflowPlayerTimingSeries `json:"tech"`
 }
 
-type workflowFirstUnitEfficiencyPlayer struct {
-	PlayerID  int64                              `json:"player_id"`
-	PlayerKey string                             `json:"player_key"`
-	Name      string                             `json:"name"`
-	Race      string                             `json:"race"`
-	Entries   []workflowFirstUnitEfficiencyEntry `json:"entries"`
-}
-
-type workflowFirstUnitEfficiencyEntry struct {
-	BuildingName         string `json:"building_name"`
-	UnitName             string `json:"unit_name"`
-	BuildingStartSecond  int64  `json:"building_start_second"`
-	BuildingReadySecond  int64  `json:"building_ready_second"`
-	UnitSecond           int64  `json:"unit_second"`
-	BuildDurationSeconds int64  `json:"build_duration_seconds"`
-	GapAfterReadySeconds int64  `json:"gap_after_ready_seconds"`
-}
-
-type workflowGameUnitCadencePlayer struct {
-	PlayerID             int64    `json:"player_id"`
-	PlayerKey            string   `json:"player_key"`
-	PlayerName           string   `json:"player_name"`
-	Team                 int64    `json:"team"`
-	TeamWon              bool     `json:"team_won"`
-	Eligible             bool     `json:"eligible"`
-	WindowSeconds        int64    `json:"window_seconds"`
-	UnitsProduced        int64    `json:"units_produced"`
-	GapCount             int64    `json:"gap_count"`
-	RatePerMinute        float64  `json:"rate_per_minute"`
-	CVGap                float64  `json:"cv_gap"`
-	Burstiness           float64  `json:"burstiness"`
-	Idle20Ratio          float64  `json:"idle20_ratio"`
-	CadenceScore         float64  `json:"cadence_score"`
-	IneligibleReason     string   `json:"ineligible_reason,omitempty"`
-	IneligibleReasonKey  string   `json:"ineligible_reason_key,omitempty"`
-	IneligibleReasonArgs []string `json:"ineligible_reason_args,omitempty"`
-}
-
 type workflowPlayerTimingSeries struct {
 	PlayerID  int64                 `json:"player_id"`
 	PlayerKey string                `json:"player_key"`
@@ -915,38 +792,6 @@ type workflowComparativeMetric struct {
 	PlayerValue float64 `json:"player_value"`
 }
 
-type workflowPlayerInsightType string
-
-const (
-	workflowPlayerInsightTypeAPM                workflowPlayerInsightType = "apm"
-	workflowPlayerInsightTypeUnitCadence        workflowPlayerInsightType = "unit-production-cadence"
-	workflowPlayerInsightTypeViewportSwitchRate workflowPlayerInsightType = "viewport-switch-rate"
-)
-
-type workflowPlayerInsightDetail struct {
-	Label string `json:"label"`
-	Value string `json:"value"`
-}
-
-type workflowPlayerAsyncInsight struct {
-	SummaryVersion        string                        `json:"summary_version"`
-	PlayerKey             string                        `json:"player_key"`
-	PlayerName            string                        `json:"player_name"`
-	InsightType           workflowPlayerInsightType     `json:"insight_type"`
-	Title                 string                        `json:"title"`
-	Eligible              bool                          `json:"eligible"`
-	BetterDirection       string                        `json:"better_direction"`
-	PopulationSize        int64                         `json:"population_size"`
-	PerformancePercentile *float64                      `json:"performance_percentile,omitempty"`
-	PlayerValue           *float64                      `json:"player_value,omitempty"`
-	PlayerValueLabel      string                        `json:"player_value_label,omitempty"`
-	Description           string                        `json:"description"`
-	IneligibleReason      string                        `json:"ineligible_reason,omitempty"`
-	IneligibleReasonKey   string                        `json:"ineligible_reason_key,omitempty"`
-	IneligibleReasonArgs  []string                      `json:"ineligible_reason_args,omitempty"`
-	Details               []workflowPlayerInsightDetail `json:"details"`
-}
-
 type workflowRaceOrderSummary struct {
 	Race         string   `json:"race"`
 	TechOrder    []string `json:"tech_order"`
@@ -1000,99 +845,4 @@ type workflowPlayersListFilterOptions struct {
 	Apm        []workflowPlayersListFilterOption `json:"apm"`
 	Games      []workflowPlayersListFilterOption `json:"games"`
 	LastPlayed []workflowPlayersListFilterOption `json:"last_played"`
-}
-
-type workflowPlayerApmHistogramBin struct {
-	X0    float64 `json:"x0"`
-	X1    float64 `json:"x1"`
-	Count int64   `json:"count"`
-}
-
-type workflowPlayerApmHistogramPoint struct {
-	PlayerKey   string  `json:"player_key"`
-	PlayerName  string  `json:"player_name"`
-	AverageAPM  float64 `json:"average_apm"`
-	GamesPlayed int64   `json:"games_played"`
-}
-
-type workflowPlayerApmHistogram struct {
-	SummaryVersion   string                            `json:"summary_version"`
-	PlayerKey        string                            `json:"player_key"`
-	MinGames         int64                             `json:"min_games"`
-	PlayersIncluded  int64                             `json:"players_included"`
-	MeanAPM          float64                           `json:"mean_apm"`
-	StddevAPM        float64                           `json:"stddev_apm"`
-	PlayerAverageAPM *float64                          `json:"player_average_apm,omitempty"`
-	PlayerEligible   bool                              `json:"player_eligible"`
-	PlayerPercentile *float64                          `json:"player_percentile,omitempty"`
-	Bins             []workflowPlayerApmHistogramBin   `json:"bins"`
-	Players          []workflowPlayerApmHistogramPoint `json:"players"`
-	FeaturedPlayers  []workflowFeaturedPoint           `json:"featured_players,omitempty"`
-}
-
-type workflowPlayerUnitCadencePoint struct {
-	PlayerKey         string  `json:"player_key"`
-	PlayerName        string  `json:"player_name"`
-	GamesUsed         int64   `json:"games_used"`
-	AverageRatePerMin float64 `json:"average_rate_per_min"`
-	AverageCVGap      float64 `json:"average_cv_gap"`
-	AverageBurstiness float64 `json:"average_burstiness"`
-	AverageIdle20     float64 `json:"average_idle20_ratio"`
-	AverageCadence    float64 `json:"average_cadence_score"`
-}
-
-type workflowPlayerUnitCadenceHistogramBin struct {
-	X0    float64 `json:"x0"`
-	X1    float64 `json:"x1"`
-	Count int64   `json:"count"`
-}
-
-type workflowPlayerUnitCadenceLeaderboard struct {
-	SummaryVersion    string                                  `json:"summary_version"`
-	FilterMode        workflowUnitCadenceFilterMode           `json:"filter_mode"`
-	StartSecond       int64                                   `json:"start_second"`
-	EndFraction       float64                                 `json:"end_fraction"`
-	IdleGapSeconds    int64                                   `json:"idle_gap_seconds"`
-	MinUnitsPerReplay int64                                   `json:"min_units_per_replay"`
-	MinGapsPerReplay  int64                                   `json:"min_gaps_per_replay"`
-	MinGames          int64                                   `json:"min_games"`
-	PlayersIncluded   int64                                   `json:"players_included"`
-	MeanCadence       float64                                 `json:"mean_cadence_score"`
-	StddevCadence     float64                                 `json:"stddev_cadence_score"`
-	Bins              []workflowPlayerUnitCadenceHistogramBin `json:"bins"`
-	Players           []workflowPlayerUnitCadencePoint        `json:"players"`
-	FeaturedPlayers   []workflowFeaturedPoint                 `json:"featured_players,omitempty"`
-}
-
-type workflowPlayerUnitCadenceReplay struct {
-	ReplayID        int64   `json:"replay_id"`
-	FileName        string  `json:"file_name"`
-	DurationSeconds int64   `json:"duration_seconds"`
-	WindowSeconds   int64   `json:"window_seconds"`
-	UnitsProduced   int64   `json:"units_produced"`
-	GapCount        int64   `json:"gap_count"`
-	RatePerMinute   float64 `json:"rate_per_minute"`
-	CVGap           float64 `json:"cv_gap"`
-	Burstiness      float64 `json:"burstiness"`
-	Idle20Ratio     float64 `json:"idle20_ratio"`
-	CadenceScore    float64 `json:"cadence_score"`
-}
-
-type workflowPlayerUnitCadenceInsight struct {
-	SummaryVersion      string                            `json:"summary_version"`
-	PlayerKey           string                            `json:"player_key"`
-	PlayerName          string                            `json:"player_name"`
-	FilterMode          workflowUnitCadenceFilterMode     `json:"filter_mode"`
-	StartSecond         int64                             `json:"start_second"`
-	EndFraction         float64                           `json:"end_fraction"`
-	IdleGapSeconds      int64                             `json:"idle_gap_seconds"`
-	MinUnitsPerReplay   int64                             `json:"min_units_per_replay"`
-	MinGapsPerReplay    int64                             `json:"min_gaps_per_replay"`
-	GamesUsed           int64                             `json:"games_used"`
-	AverageRatePerMin   float64                           `json:"average_rate_per_min"`
-	AverageCVGap        float64                           `json:"average_cv_gap"`
-	AverageBurstiness   float64                           `json:"average_burstiness"`
-	AverageIdle20       float64                           `json:"average_idle20_ratio"`
-	AverageCadenceScore float64                           `json:"average_cadence_score"`
-	Replays             []workflowPlayerUnitCadenceReplay `json:"replays"`
 }

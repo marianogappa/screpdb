@@ -12,6 +12,8 @@ type ReplayPlayerHotkeyStreamRow struct {
 // PlayerHotkeyStreamRow is one game's stream for a player, for signature
 // aggregation.
 type PlayerHotkeyStreamRow struct {
+	ReplayID        int64
+	Slot            int8
 	Name            string
 	Race            string
 	HotkeyStream    []byte

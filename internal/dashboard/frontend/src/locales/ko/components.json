@@ -163,6 +163,7 @@
   "skill.explain.oneGame.title": "한 게임은 대략적인 추정입니다",
   "skill.explain.oneGame.body": "10번 중 6번 정도 정확한 등급을 맞힙니다. 여러 게임의 평균이 더 안정적입니다.",
   "skill.player.basis": "{count}게임 기준",
+  "skill.players.median": "플레이어 {count}명의 중앙값",
   "skill.pill.no_hotkeys": "부대 지정 안 씀",
   "skill.pill.no_hotkeys.hint": "{of}게임 중 {games}게임: 부대 호출이 분당 1번 미만입니다.",
   "skill.pill.never_checks_hotkeys": "부대 확인 안 함",

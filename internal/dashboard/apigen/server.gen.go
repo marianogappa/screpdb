@@ -235,23 +235,6 @@ type PlayersListParamsSortBy string
 // PlayersListParamsSortDir defines parameters for PlayersList.
 type PlayersListParamsSortDir string
 
-// PlayersUnitCadenceParams defines parameters for PlayersUnitCadence.
-type PlayersUnitCadenceParams struct {
-	Filter   *string `form:"filter,omitempty" json:"filter,omitempty"`
-	MinGames *int64  `form:"min_games,omitempty" json:"min_games,omitempty"`
-	Limit    *int64  `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// PlayerInsightParams defines parameters for PlayerInsight.
-type PlayerInsightParams struct {
-	Type *string `form:"type,omitempty" json:"type,omitempty"`
-}
-
-// PlayerUnitCadenceParams defines parameters for PlayerUnitCadence.
-type PlayerUnitCadenceParams struct {
-	Filter *string `form:"filter,omitempty" json:"filter,omitempty"`
-}
-
 // UpdateGlobalReplayFilterConfigJSONRequestBody defines body for UpdateGlobalReplayFilterConfig for application/json ContentType.
 type UpdateGlobalReplayFilterConfigJSONRequestBody = UpdateGlobalReplayFilterConfigRequest
 
@@ -579,6 +562,9 @@ type ServerInterface interface {
 	// (PUT /api/custom/library/settings)
 	UpdateLibrarySettings(w http.ResponseWriter, r *http.Request)
 
+	// (GET /api/custom/players/skill)
+	PlayersSkill(w http.ResponseWriter, r *http.Request)
+
 	// (GET /api/games)
 	GamesList(w http.ResponseWriter, r *http.Request, params GamesListParams)
 
@@ -600,15 +586,6 @@ type ServerInterface interface {
 	// (GET /api/players)
 	PlayersList(w http.ResponseWriter, r *http.Request, params PlayersListParams)
 
-	// (GET /api/players/insights/apm-histogram)
-	PlayersApmHistogram(w http.ResponseWriter, r *http.Request)
-
-	// (GET /api/players/insights/unit-production-cadence)
-	PlayersUnitCadence(w http.ResponseWriter, r *http.Request, params PlayersUnitCadenceParams)
-
-	// (GET /api/players/insights/viewport-multitasking)
-	PlayersViewportMultitasking(w http.ResponseWriter, r *http.Request)
-
 	// (GET /api/players/{playerKey})
 	PlayerDetail(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
 
@@ -617,15 +594,6 @@ type ServerInterface interface {
 
 	// (GET /api/players/{playerKey}/hotkey-signature)
 	PlayerHotkeySignature(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
-
-	// (GET /api/players/{playerKey}/insight)
-	PlayerInsight(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerInsightParams)
-
-	// (GET /api/players/{playerKey}/insights/apm-histogram)
-	PlayerApmHistogram(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
-
-	// (GET /api/players/{playerKey}/insights/unit-production-cadence)
-	PlayerUnitCadence(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerUnitCadenceParams)
 
 	// (GET /api/players/{playerKey}/last-games)
 	PlayerLastGames(w http.ResponseWriter, r *http.Request, playerKey PlayerKey)
@@ -690,6 +658,20 @@ func (siw *ServerInterfaceWrapper) UpdateLibrarySettings(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateLibrarySettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PlayersSkill operation middleware
+func (siw *ServerInterfaceWrapper) PlayersSkill(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PlayersSkill(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1095,93 +1077,6 @@ func (siw *ServerInterfaceWrapper) PlayersList(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
-// PlayersApmHistogram operation middleware
-func (siw *ServerInterfaceWrapper) PlayersApmHistogram(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayersApmHistogram(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayersUnitCadence operation middleware
-func (siw *ServerInterfaceWrapper) PlayersUnitCadence(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PlayersUnitCadenceParams
-
-	// ------------- Optional query parameter "filter" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "filter", r.URL.Query(), &params.Filter, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "filter"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "min_games" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "min_games", r.URL.Query(), &params.MinGames, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "min_games"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "min_games", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayersUnitCadence(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayersViewportMultitasking operation middleware
-func (siw *ServerInterfaceWrapper) PlayersViewportMultitasking(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayersViewportMultitasking(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // PlayerDetail operation middleware
 func (siw *ServerInterfaceWrapper) PlayerDetail(w http.ResponseWriter, r *http.Request) {
 
@@ -1251,116 +1146,6 @@ func (siw *ServerInterfaceWrapper) PlayerHotkeySignature(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PlayerHotkeySignature(w, r, playerKey)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayerInsight operation middleware
-func (siw *ServerInterfaceWrapper) PlayerInsight(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PlayerInsightParams
-
-	// ------------- Optional query parameter "type" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "type", r.URL.Query(), &params.Type, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "type"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "type", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerInsight(w, r, playerKey, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayerApmHistogram operation middleware
-func (siw *ServerInterfaceWrapper) PlayerApmHistogram(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerApmHistogram(w, r, playerKey)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PlayerUnitCadence operation middleware
-func (siw *ServerInterfaceWrapper) PlayerUnitCadence(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "playerKey" -------------
-	var playerKey PlayerKey
-
-	err = runtime.BindStyledParameterWithOptions("simple", "playerKey", mux.Vars(r)["playerKey"], &playerKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "playerKey", Err: err})
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PlayerUnitCadenceParams
-
-	// ------------- Optional query parameter "filter" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "filter", r.URL.Query(), &params.Filter, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "filter"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PlayerUnitCadence(w, r, playerKey, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1531,6 +1316,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/custom/library/settings", wrapper.UpdateLibrarySettings).Methods(http.MethodPut)
 
+	r.HandleFunc(options.BaseURL+"/api/custom/players/skill", wrapper.PlayersSkill).Methods(http.MethodGet)
+
 	r.HandleFunc(options.BaseURL+"/api/games", wrapper.GamesList).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/games/{replayID}", wrapper.GameDetail).Methods(http.MethodGet)
@@ -1545,23 +1332,11 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/api/players", wrapper.PlayersList).Methods(http.MethodGet)
 
-	r.HandleFunc(options.BaseURL+"/api/players/insights/apm-histogram", wrapper.PlayersApmHistogram).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/insights/unit-production-cadence", wrapper.PlayersUnitCadence).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/insights/viewport-multitasking", wrapper.PlayersViewportMultitasking).Methods(http.MethodGet)
-
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}", wrapper.PlayerDetail).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/chat-summary", wrapper.PlayerChatSummary).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/hotkey-signature", wrapper.PlayerHotkeySignature).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insight", wrapper.PlayerInsight).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insights/apm-histogram", wrapper.PlayerApmHistogram).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/insights/unit-production-cadence", wrapper.PlayerUnitCadence).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/players/{playerKey}/last-games", wrapper.PlayerLastGames).Methods(http.MethodGet)
 
@@ -1677,6 +1452,35 @@ func (t *UpdateLibrarySettings200JSONResponse) UnmarshalJSON(b []byte) error {
 }
 
 func (response UpdateLibrarySettings200JSONResponse) VisitUpdateLibrarySettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PlayersSkillRequestObject struct {
+}
+
+type PlayersSkillResponseObject interface {
+	VisitPlayersSkillResponse(w http.ResponseWriter) error
+}
+
+type PlayersSkill200JSONResponse GenericValue
+
+func (t PlayersSkill200JSONResponse) MarshalJSON() ([]byte, error) {
+	return GenericValue(t).MarshalJSON()
+}
+
+func (t *PlayersSkill200JSONResponse) UnmarshalJSON(b []byte) error {
+	return (*GenericValue)(t).UnmarshalJSON(b)
+}
+
+func (response PlayersSkill200JSONResponse) VisitPlayersSkillResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1897,94 +1701,6 @@ func (response PlayersList200JSONResponse) VisitPlayersListResponse(w http.Respo
 	return err
 }
 
-type PlayersApmHistogramRequestObject struct {
-}
-
-type PlayersApmHistogramResponseObject interface {
-	VisitPlayersApmHistogramResponse(w http.ResponseWriter) error
-}
-
-type PlayersApmHistogram200JSONResponse GenericValue
-
-func (t PlayersApmHistogram200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayersApmHistogram200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayersApmHistogram200JSONResponse) VisitPlayersApmHistogramResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayersUnitCadenceRequestObject struct {
-	Params PlayersUnitCadenceParams
-}
-
-type PlayersUnitCadenceResponseObject interface {
-	VisitPlayersUnitCadenceResponse(w http.ResponseWriter) error
-}
-
-type PlayersUnitCadence200JSONResponse GenericValue
-
-func (t PlayersUnitCadence200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayersUnitCadence200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayersUnitCadence200JSONResponse) VisitPlayersUnitCadenceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayersViewportMultitaskingRequestObject struct {
-}
-
-type PlayersViewportMultitaskingResponseObject interface {
-	VisitPlayersViewportMultitaskingResponse(w http.ResponseWriter) error
-}
-
-type PlayersViewportMultitasking200JSONResponse GenericValue
-
-func (t PlayersViewportMultitasking200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayersViewportMultitasking200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayersViewportMultitasking200JSONResponse) VisitPlayersViewportMultitaskingResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type PlayerDetailRequestObject struct {
 	PlayerKey PlayerKey `json:"playerKey"`
 }
@@ -2075,98 +1791,6 @@ func (response PlayerHotkeySignature200JSONResponse) VisitPlayerHotkeySignatureR
 	return err
 }
 
-type PlayerInsightRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-	Params    PlayerInsightParams
-}
-
-type PlayerInsightResponseObject interface {
-	VisitPlayerInsightResponse(w http.ResponseWriter) error
-}
-
-type PlayerInsight200JSONResponse GenericValue
-
-func (t PlayerInsight200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerInsight200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerInsight200JSONResponse) VisitPlayerInsightResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayerApmHistogramRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-}
-
-type PlayerApmHistogramResponseObject interface {
-	VisitPlayerApmHistogramResponse(w http.ResponseWriter) error
-}
-
-type PlayerApmHistogram200JSONResponse GenericValue
-
-func (t PlayerApmHistogram200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerApmHistogram200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerApmHistogram200JSONResponse) VisitPlayerApmHistogramResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PlayerUnitCadenceRequestObject struct {
-	PlayerKey PlayerKey `json:"playerKey"`
-	Params    PlayerUnitCadenceParams
-}
-
-type PlayerUnitCadenceResponseObject interface {
-	VisitPlayerUnitCadenceResponse(w http.ResponseWriter) error
-}
-
-type PlayerUnitCadence200JSONResponse GenericValue
-
-func (t PlayerUnitCadence200JSONResponse) MarshalJSON() ([]byte, error) {
-	return GenericValue(t).MarshalJSON()
-}
-
-func (t *PlayerUnitCadence200JSONResponse) UnmarshalJSON(b []byte) error {
-	return (*GenericValue)(t).UnmarshalJSON(b)
-}
-
-func (response PlayerUnitCadence200JSONResponse) VisitPlayerUnitCadenceResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type PlayerLastGamesRequestObject struct {
 	PlayerKey PlayerKey `json:"playerKey"`
 }
@@ -2241,6 +1865,9 @@ type StrictServerInterface interface {
 	// (PUT /api/custom/library/settings)
 	UpdateLibrarySettings(ctx context.Context, request UpdateLibrarySettingsRequestObject) (UpdateLibrarySettingsResponseObject, error)
 
+	// (GET /api/custom/players/skill)
+	PlayersSkill(ctx context.Context, request PlayersSkillRequestObject) (PlayersSkillResponseObject, error)
+
 	// (GET /api/games)
 	GamesList(ctx context.Context, request GamesListRequestObject) (GamesListResponseObject, error)
 
@@ -2262,15 +1889,6 @@ type StrictServerInterface interface {
 	// (GET /api/players)
 	PlayersList(ctx context.Context, request PlayersListRequestObject) (PlayersListResponseObject, error)
 
-	// (GET /api/players/insights/apm-histogram)
-	PlayersApmHistogram(ctx context.Context, request PlayersApmHistogramRequestObject) (PlayersApmHistogramResponseObject, error)
-
-	// (GET /api/players/insights/unit-production-cadence)
-	PlayersUnitCadence(ctx context.Context, request PlayersUnitCadenceRequestObject) (PlayersUnitCadenceResponseObject, error)
-
-	// (GET /api/players/insights/viewport-multitasking)
-	PlayersViewportMultitasking(ctx context.Context, request PlayersViewportMultitaskingRequestObject) (PlayersViewportMultitaskingResponseObject, error)
-
 	// (GET /api/players/{playerKey})
 	PlayerDetail(ctx context.Context, request PlayerDetailRequestObject) (PlayerDetailResponseObject, error)
 
@@ -2279,15 +1897,6 @@ type StrictServerInterface interface {
 
 	// (GET /api/players/{playerKey}/hotkey-signature)
 	PlayerHotkeySignature(ctx context.Context, request PlayerHotkeySignatureRequestObject) (PlayerHotkeySignatureResponseObject, error)
-
-	// (GET /api/players/{playerKey}/insight)
-	PlayerInsight(ctx context.Context, request PlayerInsightRequestObject) (PlayerInsightResponseObject, error)
-
-	// (GET /api/players/{playerKey}/insights/apm-histogram)
-	PlayerApmHistogram(ctx context.Context, request PlayerApmHistogramRequestObject) (PlayerApmHistogramResponseObject, error)
-
-	// (GET /api/players/{playerKey}/insights/unit-production-cadence)
-	PlayerUnitCadence(ctx context.Context, request PlayerUnitCadenceRequestObject) (PlayerUnitCadenceResponseObject, error)
 
 	// (GET /api/players/{playerKey}/last-games)
 	PlayerLastGames(ctx context.Context, request PlayerLastGamesRequestObject) (PlayerLastGamesResponseObject, error)
@@ -2431,6 +2040,30 @@ func (sh *strictHandler) UpdateLibrarySettings(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateLibrarySettingsResponseObject); ok {
 		if err := validResponse.VisitUpdateLibrarySettingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PlayersSkill operation middleware
+func (sh *strictHandler) PlayersSkill(w http.ResponseWriter, r *http.Request) {
+	var request PlayersSkillRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PlayersSkill(ctx, request.(PlayersSkillRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PlayersSkill")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PlayersSkillResponseObject); ok {
+		if err := validResponse.VisitPlayersSkillResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2617,80 +2250,6 @@ func (sh *strictHandler) PlayersList(w http.ResponseWriter, r *http.Request, par
 	}
 }
 
-// PlayersApmHistogram operation middleware
-func (sh *strictHandler) PlayersApmHistogram(w http.ResponseWriter, r *http.Request) {
-	var request PlayersApmHistogramRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayersApmHistogram(ctx, request.(PlayersApmHistogramRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayersApmHistogram")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayersApmHistogramResponseObject); ok {
-		if err := validResponse.VisitPlayersApmHistogramResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayersUnitCadence operation middleware
-func (sh *strictHandler) PlayersUnitCadence(w http.ResponseWriter, r *http.Request, params PlayersUnitCadenceParams) {
-	var request PlayersUnitCadenceRequestObject
-
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayersUnitCadence(ctx, request.(PlayersUnitCadenceRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayersUnitCadence")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayersUnitCadenceResponseObject); ok {
-		if err := validResponse.VisitPlayersUnitCadenceResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayersViewportMultitasking operation middleware
-func (sh *strictHandler) PlayersViewportMultitasking(w http.ResponseWriter, r *http.Request) {
-	var request PlayersViewportMultitaskingRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayersViewportMultitasking(ctx, request.(PlayersViewportMultitaskingRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayersViewportMultitasking")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayersViewportMultitaskingResponseObject); ok {
-		if err := validResponse.VisitPlayersViewportMultitaskingResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // PlayerDetail operation middleware
 func (sh *strictHandler) PlayerDetail(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
 	var request PlayerDetailRequestObject
@@ -2769,86 +2328,6 @@ func (sh *strictHandler) PlayerHotkeySignature(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// PlayerInsight operation middleware
-func (sh *strictHandler) PlayerInsight(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerInsightParams) {
-	var request PlayerInsightRequestObject
-
-	request.PlayerKey = playerKey
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerInsight(ctx, request.(PlayerInsightRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerInsight")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerInsightResponseObject); ok {
-		if err := validResponse.VisitPlayerInsightResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayerApmHistogram operation middleware
-func (sh *strictHandler) PlayerApmHistogram(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
-	var request PlayerApmHistogramRequestObject
-
-	request.PlayerKey = playerKey
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerApmHistogram(ctx, request.(PlayerApmHistogramRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerApmHistogram")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerApmHistogramResponseObject); ok {
-		if err := validResponse.VisitPlayerApmHistogramResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PlayerUnitCadence operation middleware
-func (sh *strictHandler) PlayerUnitCadence(w http.ResponseWriter, r *http.Request, playerKey PlayerKey, params PlayerUnitCadenceParams) {
-	var request PlayerUnitCadenceRequestObject
-
-	request.PlayerKey = playerKey
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PlayerUnitCadence(ctx, request.(PlayerUnitCadenceRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PlayerUnitCadence")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PlayerUnitCadenceResponseObject); ok {
-		if err := validResponse.VisitPlayerUnitCadenceResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // PlayerLastGames operation middleware
 func (sh *strictHandler) PlayerLastGames(w http.ResponseWriter, r *http.Request, playerKey PlayerKey) {
 	var request PlayerLastGamesRequestObject
@@ -2904,30 +2383,27 @@ func (sh *strictHandler) ScrepColors(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"3Flfb9s4Ev8qAu+A3gFSlLvu7oPfug02DdqiRYP2JQ2EsTSW2FAkSw7TFQx99wUp2bFjyU68LtbJSxyT",
-	"Pw5nfvOHQ3rOclVrJVGSZZM502CgRkLTfRPQoHmLjf/CJZswDVSxmEmokU1W5mNm8LvjBgs2IeMwZjav",
-	"sAa/kBrtwZYMlyVrW4/1Ky/ORsQup7dJnSlTA7EJ45J++4XFi224JCzRsLZtF/BgyzlKNDz/MP2GOfkB",
-	"KApOXEkQH43SaIijXWzTy1IduI0Xq7+AcOgXK4kfZmxyNWf/NjhjE/av9I7ItN82Xd+zjeeME9b27wi4",
-	"R+bdiHT1FM3qyJKJu6GpUgJBsva6XRoJxkBzaNmfdQGE50JNQXwK7vyDC0LzWskZLz/hd4d2ixdmICzG",
-	"TK8MzRn+mQtXYOZ5cosQvb95vITZShnKSqhxBOinMj8c5peeQelqNrlipHR2a7OpIlI1i1mNApHF3nOZ",
-	"kpmS/svMIGYzZTIQgl3HGxTeJ5nVoLMbLouwVYE2N1x7+9mEvQcdBXUiUhGXwYqT6PP7y6hLCBuBwQjE",
-	"D/9vb2URlYFj0XyV/wFHKim4zcH4GaCIyxIt/TeOrIpeuNq+iLiNpKIIolsQvPB/HUYVGjz5Klm8yYLB",
-	"0gkw3n4lsXmAje1q1l6tsjzsm3jAsas8XQ+kYxde7/jUgGkukYjL0u4XVR23WcHNcK26t7cf4nKmApiT",
-	"COjcoC6m0RnYaqrAFNGrjxcsZrdobOfa/52cnpx6xZVGCZqzCXt5cnryksWh9AVFUtA8zZ0lVadTiZRq",
-	"o2bcbzBv481ZS0DOjkySKsuhlQVOXZnWoBMBjXKUzhe1tt0Ee/ckYC2STaeOi8JTshVVg94JSHKjdqCc",
-	"5DSACIGedAons1BOPG8lerBn1oD3+UXBJuwcaaz4hFPFaiVtFwD/Pz31H7mShLKLHq0Fz4Ow9Jv1Dpyv",
-	"HDwPqNfdMRFiZT3FP7ztRrUb0Hl7zewPQ7T0uyqag2n8sELdrme1PyTbf5zGe/FRKbrBpouxAgg2I0h0",
-	"9SLF277dGZk3aHOQ4/O2Lzjbou9ebTryoBvS9mfF2kjVbvsYO6aQqsHcoLFpgTMuw4EyEDXaKJvOtVEX",
-	"Z22qK0VqE2Oh1gITi5QKBcUmwAVqUm9fMzq7UfKXzc1wFPrZd9wSi9f6+qu+6f7u0DR3XbfgNffQx7TY",
-	"8bAoNZtZPJCs7o6xJmvZpOzsRIZF+mPqkPIK17F+UKEzBHJhyWFNp7xy+tB0hlZtP6HXR5P0IZvWO6Lx",
-	"xDpDAi6Ooqyvp/aQyDtIurCuu6YN2r04Sbfa/6bHPEsCLOL9x5BHCY6ZVnaEuMtwiXxAPb4Fw0GuV9HF",
-	"rUz9kCwOTzcCCQcuZUeUVhWCoGo0mN6E6bzC/IYdjc7doZPkSigzngcfA+p1Bzoy3Xdp/fQbg/Cx9Z1x",
-	"RAcpmuzXTAtn91lu/cvFtBlMy14lA7n/WDxvgK5ZzARYyoJviqF83babf5sY2g5szrpYeITEVT0O2QV4",
-	"o+1BJXa8HU7ewh9Puknpszvl0vKyIpuCrpOKW1KlgXpX0r/S9Zsl9nht8g9AiTaqcLlfkORQoMxxl3Wf",
-	"JafXPfRBla1/RNqjCtRcZpvxtHct26fEHnFM3nL8oZWhpHaCOIG96Z4Ot3rvS7/o/eqao7NxvvzNq91h",
-	"0FO9ISwNXOmQB6xP8woosa6uwTS7WqQK6LJHPls+ultTYnkp/c19V7XqLlCXS/Sz5aWvCjvouOhRT5mG",
-	"keIeKve2M+Yh9D3uoD+uc/4nR9a+/cJ6u/Dswu4Bzc1Wdv1FIdn+wtzx+A4snfe90DOItPBr7q6r/6UH",
-	"Hc3Nv23/GgA=",
+	"3Flfb9s2EP8qAjegGyBH2brtwW9bg6VBW7So0b2kgXCWThYbimTJYzrB0HcfSNqO/0h22nmYk5e6In88",
+	"3v3uD4/MnBWq0UqiJMvGc6bBQIOEJn4JaNG8wtZ/cMnGTAPVLGUSGmTjtfmUGfzsuMGSjck4TJktamzA",
+	"L6RWe7Alw+WMdZ3H+pVXFwNiV9P7pFbKNEBszLik335h6XIbLglnaFjXdUt4sOUSJRpevJ1+woL8AJQl",
+	"J64kiHdGaTTE0S63WchSEdyly9V/gXDoFyuJbys2vp6z7w1WbMy+y+6JzBbbZpt7dumcccLG/hsBW2Te",
+	"j0jXTNGsj6yYuB+aKiUQJOtuupWRYAy0x5b9QZdAeCnUFMT74M4/uSA0L5Ss+Ow9fnZo93ihAmExZXpt",
+	"aM7w70K4EnPPk1uG6Pbm6Qpma2Uon0GDA0A/lfvhML/yDErXsPE1I6XzO5tPFZFqWMoaFIgs9Z7LlcyV",
+	"9B+VQcwrZXIQgt2kOxRuk8wa0Pktl2XYqkRbGK69/WzM3oBOgjoJqYTLYMVZ8uHNJIkJYRMwmID44v+7",
+	"sLJMZoFj0X6UP4AjNSq5LcD4GaCEyxla+jFNrEqeucY+S7hNpKIEkjsQvPT/OkxqNHj2UbJ0lwWDMyfA",
+	"ePuVxPYBNnbrWXu9znK/b9Iex67zdNOTjjG8XvOpAdNOkIjLmf22qIrc5iU3/bVqa28/xGWlApiTCOjC",
+	"oC6nyQXYeqrAlMnv765Yyu7Q2Ojan87Oz8694kqjBM3ZmD0/Oz97ztJQ+oIiGWieFc6SarKpRMq0URX3",
+	"G8y7dHfWEpCzA5OkZrO+lSVO3SxrQI8EtMpRNl/W2m4X7N0zAmuRbDZ1XJSekr2oBvRBwKgw6gDKSU49",
+	"iBDoo6jwqArlxPM2Qw/2zBrwPr8q2ZhdIg0Vn3CqWK2kjQHw8/m5/ymUJJQxerQWvAjCsk/WO3C+dvA8",
+	"oF7HYyLEymaKv30VR7Xr0Xl/zVwchmjpD1W2R9P4YYW628xqf0h2/zuNW/FRK7rFNsZYCQS7ESRivcjw",
+	"btHuDMwbtAXI4Xm7KDj7om+rNp140PVp+1/F2kDV7hYxdkoh1YC5RWOzEisuw4HSEzWxCbaZveVCDIbE",
+	"u4iaBNCp2amNstlcG3V10WW6VqR2zbTQaIEji5QJBeUuwAXvZl71dnB259Ra9Wf9ieRnX3NLLN24mlwv",
+	"7g2fHZr2/uIgeMM99GtuCWm/KFVVFo8kK0bIhqxVn3WwmeoX6U/aY8orXWT9qEIrBHJhyXFNp6J2+th0",
+	"hm7z24TenEw+h2zabOqGE+sCCbg4iZNpM7X7RN5DsqV18abZa/eyGdhr/8sF5kkSYBG333O+SnDKtLID",
+	"xE3CPfgB9fgODAe5WUWXF0v1RbI0vD4JJOy5V55QWtUIgurBYHoZposai9vTOdrjoTMqlFDGHmhLXkTQ",
+	"iel+SOvH3xiEn71PpQM6SNHmv+ZaOPsty61/fJm2vWm5UMlA4X+WLzSgG5YyAZby4JuyL1/37VZy07sd",
+	"2ILFWPgKiet6HLML8Ebbo0qMvB1P3tIfj7pJWV6Y5qs/H3QHMv2xdiorA9dO6h7rs6IGGlnXNGDaQ6W6",
+	"BposkE+Wj9i9jSyfSX+DwAOcxEZuskI/WV584RvtvzFHRl6DpctFrXgCXIQH9kOtzMSDTqaT6bp/BgA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

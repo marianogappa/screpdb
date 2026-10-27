@@ -204,34 +204,14 @@ export const api = {
     return response.json();
   },
 
-  getPlayersApmHistogram: async () => {
-    const response = await fetch(`${API_BASE}/players/insights/apm-histogram`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get players APM histogram');
-    }
-    return response.json();
-  },
 
-  getPlayersUnitProductionCadence: async ({ filter = 'strict', minGames = 4, limit = 0 } = {}) => {
-    const params = new URLSearchParams();
-    if (String(filter || '').trim()) params.set('filter', String(filter).trim());
-    if (Number.isFinite(Number(minGames)) && Number(minGames) > 0) params.set('min_games', String(Math.floor(Number(minGames))));
-    if (Number.isFinite(Number(limit)) && Number(limit) >= 0) params.set('limit', String(Math.floor(Number(limit))));
-    const query = params.toString();
-    const response = await fetch(`${API_BASE}/players/insights/unit-production-cadence${query ? `?${query}` : ''}`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get players unit production cadence');
-    }
-    return response.json();
-  },
 
-  getPlayersViewportMultitasking: async () => {
-    const response = await fetch(`${API_BASE}/players/insights/viewport-multitasking`);
+
+  getPlayersSkill: async () => {
+    const response = await fetch(`${API_CUSTOM}/players/skill`);
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || 'Failed to get players viewport multitasking');
+      throw new Error(text || 'Failed to get players Skill');
     }
     return response.json();
   },
@@ -317,38 +297,8 @@ export const api = {
     return response.json();
   },
 
-  getPlayerInsight: async (playerKey, type) => {
-    const params = new URLSearchParams();
-    if (String(type || '').trim()) params.set('type', String(type).trim());
-    const query = params.toString();
-    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insight${query ? `?${query}` : ''}`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get player insight');
-    }
-    return response.json();
-  },
 
-  getPlayerApmHistogram: async (playerKey) => {
-    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insights/apm-histogram`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get player APM histogram');
-    }
-    return response.json();
-  },
 
-  getPlayerUnitProductionCadence: async (playerKey, { filter = 'strict' } = {}) => {
-    const params = new URLSearchParams();
-    if (String(filter || '').trim()) params.set('filter', String(filter).trim());
-    const query = params.toString();
-    const response = await fetch(`${API_BASE}/players/${encodeURIComponent(playerKey)}/insights/unit-production-cadence${query ? `?${query}` : ''}`);
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || 'Failed to get player unit production cadence');
-    }
-    return response.json();
-  },
 
   getScrepColors: async () => {
     const response = await fetch(`${API_BASE}/screp-colors`);

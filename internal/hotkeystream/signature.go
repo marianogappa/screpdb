@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/icza/screp/rep/repcmd"
 )
 
 // Signature aggregation: a player's hotkey pattern is a schedule, not a static
@@ -44,6 +46,28 @@ type KeyRun struct {
 	Category string  `json:"category"`
 	Share    float64 `json:"share"`
 	Presses  int     `json:"presses"`
+	// Unit is the main unit type of a units run when the engine saw the assigns, and MedianCount the
+	// median number of units assigned in it.
+	Unit        string `json:"unit,omitempty"`
+	MedianCount int    `json:"median_count,omitempty"`
+}
+
+// unitCategory names the content of a unit assign: the bare units category, or the units category split by
+// the main unit type when the engine saw it.
+func unitCategory(unit uint16) string {
+	if u := repcmd.UnitByID(unit); unit != 0 && u != nil && u.Name != "" {
+		return CategoryUnits + unitSep + u.Name
+	}
+	return CategoryUnits
+}
+
+const unitSep = "/"
+
+func splitCategory(cat string) (string, string) {
+	if base, unit, ok := strings.Cut(cat, unitSep); ok {
+		return base, unit
+	}
+	return cat, ""
 }
 
 // KeySignature is one hotkey group's aggregated behaviour.
@@ -88,6 +112,7 @@ func ComputeSignature(playerName, race string, games [][]Event) *Signature {
 	usedGames := map[int]int{}
 	uses := map[int]int{}
 	unitCounts := map[int][]int{}
+	countsByCat := map[int]map[string][]int{}
 
 	for _, events := range games {
 		// Decoded streams are time-ordered already; sorting keeps the
@@ -113,10 +138,14 @@ func ComputeSignature(playerName, race string, games [][]Event) *Signature {
 			}
 			switch e.Type {
 			case TypeAssignUnits:
-				curCat[k] = CategoryUnits
+				curCat[k] = unitCategory(e.Unit)
 				noteAssign()
 				if e.Count > 0 {
 					unitCounts[k] = append(unitCounts[k], int(e.Count))
+					if countsByCat[k] == nil {
+						countsByCat[k] = map[string][]int{}
+					}
+					countsByCat[k][curCat[k]] = append(countsByCat[k][curCat[k]], int(e.Count))
 				}
 			case TypeAssignBuilding:
 				curCat[k] = CategoryOf(BuildingName(e.Building))
@@ -221,10 +250,16 @@ func ComputeSignature(playerName, race string, games [][]Event) *Signature {
 		if len(runs) == 0 {
 			continue
 		}
+		for i := range runs {
+			cat := runs[i].Category
+			runs[i].Category, runs[i].Unit = splitCategory(cat)
+			if counts := countsByCat[k][cat]; runs[i].Unit != "" && len(counts) > 0 {
+				runs[i].MedianCount = median(counts)
+			}
+		}
 		ks := KeySignature{Key: k, Runs: runs, AssignRuns: assignRunsFor(assignsPerMin[k]), Uses: uses[k], UsedGames: usedGames[k]}
 		if counts := unitCounts[k]; len(counts) > 0 {
-			sort.Ints(counts)
-			ks.MedianCount = counts[len(counts)/2]
+			ks.MedianCount = median(counts)
 		}
 		sig.Keys = append(sig.Keys, ks)
 	}
@@ -435,4 +470,10 @@ func keyRanges(keys []int) string {
 		}
 	}
 	return strings.Join(out, ", ")
+}
+
+func median(values []int) int {
+	sorted := append([]int(nil), values...)
+	sort.Ints(sorted)
+	return sorted[len(sorted)/2]
 }

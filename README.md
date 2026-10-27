@@ -297,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-26  OK. Fingerprint outcomes per player refresh when the corpus changes instead of serving a stale cache; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+2026-10-27  OK. Skill replaces the Skill proxies: one Players page Skill tab (library medians on the tier bands, built-in progamers as stars), the old APM, cadence and screen switch views and endpoints removed; player hotkey signatures name the units the engine saw; pro-pack runs the engine pass over the pro corpus (digest cache under the system temp dir, allowed through iofacade.AllowDir) to bake each pro's Skill and unit-aware hotkeys. Engine event maps also keep the left game and stopped playing marker on screen, anchored on the base the player held just before, read from the engine digest already in memory. No new network calls, no netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-26  OK. Fingerprint outcomes per player refresh when the corpus changes instead of serving a stale cache; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-26  OK. A game page says Downloaded complete replay when its full recording came from a co-player, the build orders event title is shorter, the How Skill works modal no longer inherits uppercase, engine event maps mark where a player left or stopped playing, and the engine queue skips the user's own copy once its complete copy is in the library; reads library flags already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-26  OK. Winners come from the engine whenever it ran, and undecided games are settled from the Battle.net game archive; the only new request is the user's own profile, fetched once at a new outcome priority after an undecided game of theirs ends. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-26  OK. Game Events: engine maps show a wider view with a dim around the event and who holds each base (read from the town halls of the snapshot on screen, with hover details and placed owner labels); the build orders event comes first, only key events show, filters sit above the list, and the map with its title snaps to the viewport; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-21  OK. Frontend only: a player with a Skill tab no longer shows Skill proxies, and old Skill proxies links open Skill. No I/O changes.
-2026-10-21  OK. Frontend only: the player summary Skill row is taller and leads with a large tier badge in its tier colour. No I/O changes.
 ```
 
 </details>

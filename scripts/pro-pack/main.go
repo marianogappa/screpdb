@@ -29,7 +29,8 @@
 //	go run ./scripts/pro-pack \
 //	  -harvest ~/Code/go/src/github.com/marianogappa/screpharvest/harvest \
 //	  -corpus  ~/Code/go/src/github.com/marianogappa/scfingerprint/corpus \
-//	  -dataset $(go list -m -f '{{.Dir}}' github.com/marianogappa/scfingerprint)/internal/dataset
+//	  -dataset $(go list -m -f '{{.Dir}}' github.com/marianogappa/scfingerprint)/internal/dataset \
+//	  -bwdata  "$HOME/Library/Application Support/screpdb/bwdata"
 //
 // Nothing is written outside -out and -staged, and no database is involved.
 package main
@@ -52,10 +53,14 @@ import (
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/dashboard"
+	"github.com/marianogappa/screpdb/internal/engine"
 	"github.com/marianogappa/screpdb/internal/patterns/core"
 	"github.com/marianogappa/screpdb/internal/propack"
 	"github.com/marianogappa/screpdb/scripts/procorpus"
 )
+
+// engineRun runs the engine pass over a corpus before its metrics are read; a no-op without -bwdata.
+var engineRun = func(context.Context, *dashboard.ProCorpus) {}
 
 const userAgent = "screpdb-pro-pack/1.0 (https://github.com/marianogappa/screpdb)"
 
@@ -85,7 +90,22 @@ func main() {
 	photos := flag.Bool("photos", true, "fetch country + portrait from Liquipedia")
 	minGames := flag.Int("min-games", 10, "drop pros with fewer sampled games")
 	minDuration := flag.Int("min-duration", 240, "minimum game duration in seconds")
+	bwdata := flag.String("bwdata", "", "StarCraft game data dir for the engine pass (Skill, engine hotkeys); empty skips both")
+	engineCache := flag.String("engine-cache", filepath.Join(os.TempDir(), "pro-pack", "engine_digests.bin"), "engine digest cache")
 	flag.Parse()
+	if *bwdata != "" {
+		data, err := engine.LoadData(*bwdata)
+		if err != nil {
+			log.Fatalf("engine data: %v", err)
+		}
+		engineRun = func(ctx context.Context, corpus *dashboard.ProCorpus) {
+			start := time.Now()
+			if err := corpus.RunEngine(ctx, data, *engineCache, log.Printf); err != nil {
+				log.Fatalf("%v", err)
+			}
+			log.Printf("engine pass done in %s", time.Since(start).Round(time.Second))
+		}
+	}
 	if *harvestDir == "" || *corpusDir == "" || *datasetDir == "" {
 		flag.Usage()
 		os.Exit(2)
@@ -139,6 +159,7 @@ func main() {
 	for _, r := range rosterByName {
 		keys = append(keys, propack.Key(r.id))
 	}
+	engineRun(ctx, corpus)
 	metrics, err := corpus.Metrics(ctx, keys)
 	if err != nil {
 		log.Fatalf("metrics: %v", err)
@@ -203,19 +224,18 @@ func main() {
 			continue
 		}
 		pro := propack.Pro{
-			ID:                 r.id,
-			Label:              r.label,
-			Liquipedia:         r.liquipedia,
-			Confidence:         r.confidence,
-			AuroraIDs:          r.auroraIDs,
-			Toons:              toonsByName[name],
-			Races:              m.Races,
-			MainRace:           mainRace(m.Races),
-			GamesSampled:       m.GamesSampled,
-			APM:                m.APM,
-			Cadence:            m.Cadence,
-			ViewportSwitchRate: m.ViewportSwitchRate,
-			Hotkeys:            m.Hotkeys,
+			ID:           r.id,
+			Label:        r.label,
+			Liquipedia:   r.liquipedia,
+			Confidence:   r.confidence,
+			AuroraIDs:    r.auroraIDs,
+			Toons:        toonsByName[name],
+			Races:        m.Races,
+			MainRace:     mainRace(m.Races),
+			GamesSampled: m.GamesSampled,
+			APM:          m.APM,
+			Hotkeys:      m.Hotkeys,
+			Skill:        m.Skill,
 		}
 		if lp != nil && r.liquipedia != "" {
 			info, err := lp.playerInfo(r.liquipedia)
@@ -240,7 +260,7 @@ func main() {
 	if *photos {
 		pruneUnreferencedPhotos(photosDir, referencedPhotos)
 	}
-	carryOverRanks(filepath.Join(*outDir, "pros.json"), pack.Pros)
+	carryOver(filepath.Join(*outDir, "pros.json"), pack.Pros, !*photos)
 	sort.Slice(pack.Pros, func(i, j int) bool { return pack.Pros[i].ID < pack.Pros[j].ID })
 	data, err := json.MarshalIndent(pack, "", " ")
 	if err != nil {
@@ -613,22 +633,27 @@ func countryAlpha2(name string) string {
 	return countryCodes[strings.ToLower(strings.TrimSpace(name))]
 }
 
-// carryOverRanks copies the curated popularity rank of each pro from the
-// previously committed pack, so regenerating metrics never reshuffles the
-// featured strip. Ranks were set once by hand from recent ASL results.
-func carryOverRanks(previousPath string, pros []propack.Pro) {
+// carryOver copies the curated popularity rank of each pro from the previously committed pack, so
+// regenerating metrics never reshuffles the featured strip (ranks were set once by hand from recent ASL
+// results). A run without -photos also keeps each pro's country and portrait.
+func carryOver(previousPath string, pros []propack.Pro, profiles bool) {
 	var previous propack.Pack
 	if err := procorpus.ReadJSON(previousPath, &previous); err != nil {
 		log.Printf("no previous pack at %s, ranks start empty: %v", previousPath, err)
 		return
 	}
-	ranks := map[string]int{}
+	byID := map[string]propack.Pro{}
 	for _, p := range previous.Pros {
-		if p.Rank > 0 {
-			ranks[p.ID] = p.Rank
-		}
+		byID[p.ID] = p
 	}
 	for i := range pros {
-		pros[i].Rank = ranks[pros[i].ID]
+		prev, ok := byID[pros[i].ID]
+		if !ok {
+			continue
+		}
+		pros[i].Rank = prev.Rank
+		if profiles {
+			pros[i].Country, pros[i].Photo, pros[i].PhotoLicense = prev.Country, prev.Photo, prev.PhotoLicense
+		}
 	}
 }

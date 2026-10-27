@@ -31,35 +31,6 @@ func TestParseWorkflowGamesListFilters(t *testing.T) {
 	}
 }
 
-func TestExtractApmValues(t *testing.T) {
-	points := []workflowPlayerApmHistogramPoint{
-		{AverageAPM: 300},
-		{AverageAPM: 100},
-		{AverageAPM: 200},
-	}
-	got := extractApmValues(points)
-	want := []float64{100, 200, 300}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("extractApmValues = %v, want sorted %v", got, want)
-	}
-	if got := extractApmValues(nil); len(got) != 0 {
-		t.Fatalf("nil input should yield empty, got %v", got)
-	}
-}
-
-func TestExtractCadenceValues(t *testing.T) {
-	points := []workflowPlayerUnitCadencePoint{
-		{AverageCadence: 5},
-		{AverageCadence: 1},
-		{AverageCadence: 3},
-	}
-	got := extractCadenceValues(points)
-	want := []float64{1, 3, 5}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("extractCadenceValues = %v, want sorted %v", got, want)
-	}
-}
-
 func TestHasValidCenterBaseKind(t *testing.T) {
 	for _, kind := range []string{"start", "starting", "natural", "expansion", "expa"} {
 		if !hasValidCenterBaseKind(kind) {

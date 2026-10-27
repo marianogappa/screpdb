@@ -78,6 +78,21 @@ func (a *openAPIStrictAdapter) UpdateLibrarySettings(ctx context.Context, reques
 	})
 }
 
+type PlayersSkillJSONResponse struct {
+	Payload any
+}
+
+func (response PlayersSkillJSONResponse) VisitPlayersSkillResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	return json.NewEncoder(w).Encode(response.Payload)
+}
+
+func (a *openAPIStrictAdapter) PlayersSkill(ctx context.Context, request apigen.PlayersSkillRequestObject) (apigen.PlayersSkillResponseObject, error) {
+	return responseFromPayload(ctx, request, a.service.PlayersSkill, func(value any) apigen.PlayersSkillResponseObject { return PlayersSkillJSONResponse{Payload: value} })
+}
+
 type GamesListJSONResponse struct {
 	Payload any
 }
@@ -183,57 +198,6 @@ func (a *openAPIStrictAdapter) PlayersList(ctx context.Context, request apigen.P
 	return responseFromPayload(ctx, request, a.service.PlayersList, func(value any) apigen.PlayersListResponseObject { return PlayersListJSONResponse{Payload: value} })
 }
 
-type PlayersApmHistogramJSONResponse struct {
-	Payload any
-}
-
-func (response PlayersApmHistogramJSONResponse) VisitPlayersApmHistogramResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayersApmHistogram(ctx context.Context, request apigen.PlayersApmHistogramRequestObject) (apigen.PlayersApmHistogramResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayersApmHistogram, func(value any) apigen.PlayersApmHistogramResponseObject {
-		return PlayersApmHistogramJSONResponse{Payload: value}
-	})
-}
-
-type PlayersUnitCadenceJSONResponse struct {
-	Payload any
-}
-
-func (response PlayersUnitCadenceJSONResponse) VisitPlayersUnitCadenceResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayersUnitCadence(ctx context.Context, request apigen.PlayersUnitCadenceRequestObject) (apigen.PlayersUnitCadenceResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayersUnitCadence, func(value any) apigen.PlayersUnitCadenceResponseObject {
-		return PlayersUnitCadenceJSONResponse{Payload: value}
-	})
-}
-
-type PlayersViewportMultitaskingJSONResponse struct {
-	Payload any
-}
-
-func (response PlayersViewportMultitaskingJSONResponse) VisitPlayersViewportMultitaskingResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayersViewportMultitasking(ctx context.Context, request apigen.PlayersViewportMultitaskingRequestObject) (apigen.PlayersViewportMultitaskingResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayersViewportMultitasking, func(value any) apigen.PlayersViewportMultitaskingResponseObject {
-		return PlayersViewportMultitaskingJSONResponse{Payload: value}
-	})
-}
-
 type PlayerDetailJSONResponse struct {
 	Payload any
 }
@@ -280,55 +244,6 @@ func (response PlayerHotkeySignatureJSONResponse) VisitPlayerHotkeySignatureResp
 func (a *openAPIStrictAdapter) PlayerHotkeySignature(ctx context.Context, request apigen.PlayerHotkeySignatureRequestObject) (apigen.PlayerHotkeySignatureResponseObject, error) {
 	return responseFromPayload(ctx, request, a.service.PlayerHotkeySignature, func(value any) apigen.PlayerHotkeySignatureResponseObject {
 		return PlayerHotkeySignatureJSONResponse{Payload: value}
-	})
-}
-
-type PlayerInsightJSONResponse struct {
-	Payload any
-}
-
-func (response PlayerInsightJSONResponse) VisitPlayerInsightResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayerInsight(ctx context.Context, request apigen.PlayerInsightRequestObject) (apigen.PlayerInsightResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayerInsight, func(value any) apigen.PlayerInsightResponseObject { return PlayerInsightJSONResponse{Payload: value} })
-}
-
-type PlayerApmHistogramJSONResponse struct {
-	Payload any
-}
-
-func (response PlayerApmHistogramJSONResponse) VisitPlayerApmHistogramResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayerApmHistogram(ctx context.Context, request apigen.PlayerApmHistogramRequestObject) (apigen.PlayerApmHistogramResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayerApmHistogram, func(value any) apigen.PlayerApmHistogramResponseObject {
-		return PlayerApmHistogramJSONResponse{Payload: value}
-	})
-}
-
-type PlayerUnitCadenceJSONResponse struct {
-	Payload any
-}
-
-func (response PlayerUnitCadenceJSONResponse) VisitPlayerUnitCadenceResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	return json.NewEncoder(w).Encode(response.Payload)
-}
-
-func (a *openAPIStrictAdapter) PlayerUnitCadence(ctx context.Context, request apigen.PlayerUnitCadenceRequestObject) (apigen.PlayerUnitCadenceResponseObject, error) {
-	return responseFromPayload(ctx, request, a.service.PlayerUnitCadence, func(value any) apigen.PlayerUnitCadenceResponseObject {
-		return PlayerUnitCadenceJSONResponse{Payload: value}
 	})
 }
 

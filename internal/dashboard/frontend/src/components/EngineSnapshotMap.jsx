@@ -354,11 +354,11 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
     return placeLabels({ labels, obstacles, avoid: focus ? [focus] : [], view, width, height });
   }, [snapshot, region, focus, width, height, frameWidth, nameByPlayerId]);
   if (!width || !height) return null;
-  // A player who left or stopped playing is marked on their main, else their first base, else where the
-  // event says.
+  // A player who left or stopped playing is marked where the event says: the snapshot of that very second
+  // may no longer hold any of their bases.
   const leaveBases = leaveMarker ? (snapshot?.bases || []).filter((b) => b.player_id === leaveMarker.playerID && (b.polygon || []).length >= 3) : [];
   const leaveBase = leaveBases.find((b) => b.kind === 'main') || leaveBases[0] || null;
-  const leavePoint = leaveBase ? polygonCentroid(leaveBase.polygon) : event?.base?.center || null;
+  const leavePoint = engine?.point || (leaveBase ? polygonCentroid(leaveBase.polygon) : event?.base?.center || null);
   const showZoomed = Boolean(region);
   // Terrain, then creep on the floor, then minerals and geysers, then everything else.
   const crop = showZoomed ? terrainCrop(replayId, region, width, height) : null;
