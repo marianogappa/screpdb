@@ -297,7 +297,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-27  OK. Skill replaces the Skill proxies: one Players page Skill tab (library medians on the tier bands, built-in progamers as stars), the old APM, cadence and screen switch views and endpoints removed; player hotkey signatures name the units the engine saw; pro-pack runs the engine pass over the pro corpus (digest cache under the system temp dir, allowed through iofacade.AllowDir) to bake each pro's Skill and unit-aware hotkeys. No new network calls, no netfacade allowlist widening, no enforcement-test changes.
+2026-10-27  OK. Skill replaces the Skill proxies: one Players page Skill tab (library medians on the tier bands, built-in progamers as stars), the old APM, cadence and screen switch views and endpoints removed; player hotkey signatures name the units the engine saw; pro-pack runs the engine pass over the pro corpus (digest cache under the system temp dir, allowed through iofacade.AllowDir) to bake each pro's Skill and unit-aware hotkeys. Engine event maps also keep the left game and stopped playing marker on screen, anchored on the base the player held just before, read from the engine digest already in memory. No new network calls, no netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>

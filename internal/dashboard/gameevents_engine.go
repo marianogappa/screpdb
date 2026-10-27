@@ -70,12 +70,23 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		return &b
 	}
 
+	slotByPlayerID := map[int64]int8{}
+	for ordinal, p := range rec.Players {
+		slotByPlayerID[library.PlayerID(rec.ID, uint8(ordinal))] = int8(p.Slot)
+	}
 	kept := detail.GameEvents[:0]
 	for _, e := range detail.GameEvents {
 		if commandMetaEvents[e.Type] {
 			e.Engine = &workflowEngineEvent{SnapshotSecond: e.Second, EndSecond: e.Second}
 			if e.Base != nil {
 				e.Engine.Region = regionAroundBase(e.Base)
+			}
+			if slot, ok := slotByPlayerID[actorID(e.Actor)]; ok && leaveEvents[e.Type] {
+				if b := base(leaverBase(dg, bases, int(e.Second), slot)); b != nil {
+					center := b.Center
+					e.Engine.Point = &center
+					e.Engine.Region = regionAroundBase(b)
+				}
 			}
 			kept = append(kept, e)
 		}
@@ -120,6 +131,42 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		detail.GameEvents = append(detail.GameEvents, e)
 	}
 	sort.SliceStable(detail.GameEvents, func(i, j int) bool { return detail.GameEvents[i].Second < detail.GameEvents[j].Second })
+}
+
+// leaveEvents are the meta events whose player is gone from the engine's snapshot of that second.
+var leaveEvents = map[string]bool{"leave_game": true, "player_dropped": true, "mass_disconnect": true, "player_stopped_playing": true}
+
+func actorID(p *workflowGameEventPlayer) int64 {
+	if p == nil {
+		return 0
+	}
+	return p.PlayerID
+}
+
+// leaverBase is where a player who left or stopped playing is marked: the base they held the second
+// before, their main first, else their start base. The engine removes a leaver's units on the very
+// frame they leave, so the event's own snapshot shows nothing of theirs.
+func leaverBase(dg *engine.Digest, bases []moments.Base, sec int, slot int8) int {
+	if b := heldBase(dg, bases, max(sec-1, 0), slot); b != moments.NoBase {
+		return b
+	}
+	return heldBase(dg, bases, 0, slot)
+}
+
+func heldBase(dg *engine.Digest, bases []moments.Base, sec int, slot int8) int {
+	held := moments.NoBase
+	for _, o := range moments.BaseOwners(dg, bases, sec, coarseHalls(moments.SnapshotAt(dg, sec))) {
+		if o.Owner != slot {
+			continue
+		}
+		if bases[o.Base].Kind == moments.BaseStart {
+			return o.Base
+		}
+		if held == moments.NoBase {
+			held = o.Base
+		}
+	}
+	return held
 }
 
 func momentPlayers(rec *library.Replay) []moments.Player {

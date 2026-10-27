@@ -55,3 +55,45 @@ func TestSnapshotBasesNamesWhoHoldsWhat(t *testing.T) {
 		t.Fatalf("no layout: %+v", out)
 	}
 }
+
+func TestLeaverBaseIsWhereTheyLastHeldGround(t *testing.T) {
+	square := func(x, y int32) [][2]int32 {
+		return [][2]int32{{x - 200, y - 200}, {x + 200, y - 200}, {x + 200, y + 200}, {x - 200, y + 200}}
+	}
+	bases := []moments.Base{
+		{Kind: moments.BaseStart, X: 300, Y: 300, Polygon: square(300, 300)},
+		{Kind: moments.BaseNatural, X: 900, Y: 400, Polygon: square(900, 400)},
+		{Kind: moments.BaseStart, X: 3700, Y: 3700, Polygon: square(3700, 3700)},
+		{Kind: moments.BaseExpansion, X: 2000, Y: 2000, Polygon: square(2000, 2000)},
+	}
+	hatch := uint16(bwgame.UnitTypesZergHatchery)
+	nexus := uint16(bwgame.UnitTypesProtossNexus)
+	sec := func(s int32) int32 { return s * engine.EconomyEveryFrames }
+	dg := &engine.Digest{
+		Initial: []engine.InitialUnit{{Unit: 1, Type: hatch, Owner: 0, X: 300, Y: 300}, {Unit: 2, Type: nexus, Owner: 1, X: 3700, Y: 3700}},
+		Productions: []engine.Production{
+			{Owner: 0, Type: hatch, Unit: 3, X: 900, Y: 400, Start: sec(50), Complete: sec(120), Cancel: engine.NoFrame},
+			{Owner: 1, Type: nexus, Unit: 4, X: 2000, Y: 2000, Start: sec(60), Complete: sec(140), Cancel: engine.NoFrame},
+		},
+		Deaths: []engine.Death{
+			{Frame: sec(200), Unit: 2, Type: nexus, Owner: 1},
+			{Frame: sec(300), Unit: 1, Type: hatch, Owner: 0},
+			{Frame: sec(310), Unit: 3, Type: hatch, Owner: 0},
+		},
+	}
+	for _, c := range []struct {
+		name string
+		slot int8
+		sec  int
+		want int
+	}{
+		{"main first", 0, 250, 0},
+		{"main lost, expansion held", 1, 250, 3},
+		{"nothing left, start base", 0, 400, 0},
+		{"unknown player", 5, 250, moments.NoBase},
+	} {
+		if got := leaverBase(dg, bases, c.sec, c.slot); got != c.want {
+			t.Errorf("%s: got %d, want %d", c.name, got, c.want)
+		}
+	}
+}
