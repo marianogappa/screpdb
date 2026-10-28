@@ -45,6 +45,7 @@ func (d *Dashboard) setReplayDir(ctx context.Context, dir string) error {
 	if err := d.library.SetFolder(ctx, dir); err != nil {
 		return dashboardservice.WithStatus(http.StatusBadRequest, err)
 	}
+	d.refreshYouKeysBestEffort(ctx)
 	d.invalidateFingerprintCache()
 	return nil
 }
