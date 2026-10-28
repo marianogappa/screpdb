@@ -104,65 +104,32 @@ func (s *LibStore) ListReplayPlayersForDetail(ctx context.Context, replayID int6
 	return out, nil
 }
 
-func (s *LibStore) ListReplayPlayersForAlliance(ctx context.Context, replayID int64) ([]ReplayPlayerForAllianceRow, error) {
+// ListReplayAllianceSnapshots is the alliance timeline exactly as ingest
+// computed it. Re-deriving it from commands cannot work: a player allied into
+// two cliques at once has no single command that reproduces both.
+func (s *LibStore) ListReplayAllianceSnapshots(ctx context.Context, replayID int64) ([]ReplayAllianceSnapshotRow, error) {
 	r, err := s.replay(replayID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ReplayPlayerForAllianceRow, 0, len(r.Players))
-	for i := range r.Players {
-		p := &r.Players[i]
-		out = append(out, ReplayPlayerForAllianceRow{
-			PlayerID:   rowPlayerID(r, uint8(i)),
-			Name:       p.Name,
-			Race:       p.Race.String(),
-			Type:       screpPlayerTypeName(p.Type),
-			Team:       int64(p.Team),
-			IsObserver: p.IsObserver(),
-			SlotID:     int64(p.Slot),
-		})
-	}
-	return out, nil
-}
-
-// ListReplayAllianceCommands rebuilds an Alliance command stream that replays
-// into the topology the library already holds. The raw commands are not kept,
-// so each snapshot is expressed as one mutual-alliance command per member: the
-// last command of a snapshot completes exactly that snapshot's teams, which is
-// what parser.AnalyzeAlliances keys its dedupe on.
-func (s *LibStore) ListReplayAllianceCommands(ctx context.Context, replayID int64) ([]ReplayAllianceCommandRow, error) {
-	r, err := s.replay(replayID)
-	if err != nil {
-		return nil, err
-	}
-	out := []ReplayAllianceCommandRow{}
+	out := []ReplayAllianceSnapshotRow{}
 	if r.Alliance == nil {
 		return out, nil
 	}
 	for _, snap := range r.Alliance.Snapshots {
+		teams := make([][]int64, 0, len(snap.Teams))
 		for _, team := range snap.Teams {
-			slots := make([]int64, 0, len(team))
+			ids := make([]int64, 0, len(team))
 			for _, ordinal := range team {
 				if int(ordinal) < len(r.Players) {
-					slots = append(slots, int64(r.Players[ordinal].Slot))
+					ids = append(ids, rowPlayerID(r, ordinal))
 				}
 			}
-			sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
-			encoded, marshalErr := json.Marshal(slots)
-			if marshalErr != nil {
-				continue
-			}
-			for _, ordinal := range team {
-				if int(ordinal) >= len(r.Players) {
-					continue
-				}
-				out = append(out, ReplayAllianceCommandRow{
-					PlayerID:             rowPlayerID(r, ordinal),
-					SecondsFromGameStart: int64(snap.Sec),
-					AlliancePlayerIDs:    string(encoded),
-				})
+			if len(ids) > 0 {
+				teams = append(teams, ids)
 			}
 		}
+		out = append(out, ReplayAllianceSnapshotRow{Second: int64(snap.Sec), Teams: teams, Stacking: snap.Stacking})
 	}
 	return out, nil
 }

@@ -14,8 +14,6 @@ import (
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/librarytest"
 	"github.com/marianogappa/screpdb/internal/library/load"
-	"github.com/marianogappa/screpdb/internal/models"
-	"github.com/marianogappa/screpdb/internal/parser"
 )
 
 // newUnfilteredLibStore serves every replay handed to it, so a fixture can
@@ -126,191 +124,40 @@ func TestLibStoreListReplayPlayersForDetailExcludesObserversAndOrdersByTeam(t *t
 	}
 }
 
-func TestLibStoreListReplayPlayersForAllianceKeepsEveryone(t *testing.T) {
-	r := librarytest.Replay(
-		librarytest.WithPlayer("Human", librarytest.Team(1)),
-		librarytest.WithPlayer("Bot", librarytest.Team(2), librarytest.Computer()),
-		librarytest.WithPlayer("Watcher", librarytest.Team(0), librarytest.Observer()),
-		librarytest.WithPlayer("Slot", librarytest.Team(3), librarytest.Type(library.PlayerTypeRescuePassive)),
-	)
-	s := newUnfilteredLibStore(t, r)
-
-	rows, err := s.ListReplayPlayersForAlliance(context.Background(), r.ID)
-	if err != nil {
-		t.Fatalf("ListReplayPlayersForAlliance: %v", err)
-	}
-	if len(rows) != 4 {
-		t.Fatalf("got %d rows, want every slot", len(rows))
-	}
-	for i, row := range rows {
-		if row.PlayerID != rowPlayerID(r, uint8(i)) {
-			t.Fatalf("row %d must stay in ordinal order, got id %d", i, row.PlayerID)
-		}
-		if row.SlotID != int64(i) {
-			t.Fatalf("row %d slot = %d", i, row.SlotID)
-		}
-	}
-	// The alliance endpoint compares Type against screp's own spelling.
-	wantTypes := []string{"Human", "Computer", "Human", "Rescue Passive"}
-	for i, want := range wantTypes {
-		if rows[i].Type != want {
-			t.Fatalf("row %d type = %q, want %q", i, rows[i].Type, want)
-		}
-	}
-	if !rows[2].IsObserver || rows[0].IsObserver {
-		t.Fatalf("observer flags = %v, %v", rows[0].IsObserver, rows[2].IsObserver)
-	}
-}
-
-func TestLibStoreListReplayAllianceCommands(t *testing.T) {
-	r := librarytest.Replay(
-		librarytest.WithPlayer("A", librarytest.Team(1)),
-		librarytest.WithPlayer("B", librarytest.Team(2)),
-		librarytest.WithPlayer("C", librarytest.Team(3)),
-	)
-	r.Alliance = &library.AllianceTimeline{Snapshots: []library.AllianceSnapshot{
-		{Sec: 0, Teams: [][]uint8{{0}, {1}, {2}}},
-		{Sec: 300, Teams: [][]uint8{{0, 2}, {1}}},
-	}}
-	s := newTestLibStore(t, r)
-
-	rows, err := s.ListReplayAllianceCommands(context.Background(), r.ID)
-	if err != nil {
-		t.Fatalf("ListReplayAllianceCommands: %v", err)
-	}
-	if len(rows) != 6 {
-		t.Fatalf("got %d rows, want one per member per snapshot", len(rows))
-	}
-	for i := 1; i < len(rows); i++ {
-		if rows[i].SecondsFromGameStart < rows[i-1].SecondsFromGameStart {
-			t.Fatalf("rows must be chronological, got %+v", rows)
-		}
-	}
-	// The pairing snapshot names both slots on both members' commands, which
-	// is what makes the alliance mutual when the analyzer replays them.
-	pair := rows[3:5]
-	for _, row := range pair {
-		var slots []int64
-		if err := json.Unmarshal([]byte(row.AlliancePlayerIDs), &slots); err != nil {
-			t.Fatalf("alliance ids %q: %v", row.AlliancePlayerIDs, err)
-		}
-		if len(slots) != 2 || slots[0] != 0 || slots[1] != 2 {
-			t.Fatalf("alliance ids = %v, want sorted [0 2]", slots)
-		}
-		if row.SecondsFromGameStart != 300 {
-			t.Fatalf("pair row second = %d", row.SecondsFromGameStart)
-		}
-	}
-	if rows[3].PlayerID != rowPlayerID(r, 0) || rows[4].PlayerID != rowPlayerID(r, 2) {
-		t.Fatalf("pair issuers = %d, %d", rows[3].PlayerID, rows[4].PlayerID)
-	}
-
-	noAlliance := melee("solo")
-	empty, err := newTestLibStore(t, noAlliance).ListReplayAllianceCommands(context.Background(), noAlliance.ID)
-	if err != nil {
-		t.Fatalf("ListReplayAllianceCommands(no timeline): %v", err)
-	}
-	if empty == nil || len(empty) != 0 {
-		t.Fatalf("a replay with no timeline must yield an empty non-nil slice, got %v", empty)
-	}
-}
-
-// TestLibStoreAllianceCommandsReplayIntoTheSameTopology is the real contract of
-// ListReplayAllianceCommands: the rows exist only to be fed back through
-// parser.AnalyzeAlliances by the game-detail endpoint, so what matters is that
-// the analyzer lands on the topology the library already holds.
-func TestLibStoreAllianceCommandsReplayIntoTheSameTopology(t *testing.T) {
+func TestLibStoreListReplayAllianceSnapshots(t *testing.T) {
 	r := librarytest.Replay(
 		librarytest.WithPlayer("A", librarytest.Team(1)),
 		librarytest.WithPlayer("B", librarytest.Team(2)),
 		librarytest.WithPlayer("C", librarytest.Team(3)),
 		librarytest.WithPlayer("D", librarytest.Team(4)),
 	)
+	// B sits in two cliques at once, the shape a command replay cannot rebuild.
 	r.Alliance = &library.AllianceTimeline{Snapshots: []library.AllianceSnapshot{
 		{Sec: 0, Teams: [][]uint8{{0}, {1}, {2}, {3}}},
-		{Sec: 100, Teams: [][]uint8{{0, 1}, {2}, {3}}},
-		{Sec: 200, Teams: [][]uint8{{0, 1}, {2, 3}}},
+		{Sec: 300, Teams: [][]uint8{{0, 1, 2}, {1, 3}}, Stacking: true},
 	}}
 	s := newTestLibStore(t, r)
-	ctx := context.Background()
 
-	playerRows, err := s.ListReplayPlayersForAlliance(ctx, r.ID)
+	rows, err := s.ListReplayAllianceSnapshots(context.Background(), r.ID)
 	if err != nil {
-		t.Fatalf("ListReplayPlayersForAlliance: %v", err)
+		t.Fatalf("ListReplayAllianceSnapshots: %v", err)
 	}
-	cmdRows, err := s.ListReplayAllianceCommands(ctx, r.ID)
+	id := func(ordinal uint8) int64 { return rowPlayerID(r, ordinal) }
+	want := []ReplayAllianceSnapshotRow{
+		{Second: 0, Teams: [][]int64{{id(0)}, {id(1)}, {id(2)}, {id(3)}}},
+		{Second: 300, Teams: [][]int64{{id(0), id(1), id(2)}, {id(1), id(3)}}, Stacking: true},
+	}
+	if fmt.Sprint(rows) != fmt.Sprint(want) {
+		t.Fatalf("rows = %v, want %v", rows, want)
+	}
+
+	noAlliance := melee("solo")
+	empty, err := newTestLibStore(t, noAlliance).ListReplayAllianceSnapshots(context.Background(), noAlliance.ID)
 	if err != nil {
-		t.Fatalf("ListReplayAllianceCommands: %v", err)
+		t.Fatalf("ListReplayAllianceSnapshots(no timeline): %v", err)
 	}
-
-	ordinalByPID := map[byte]uint8{}
-	pidByPlayerID := map[int64]byte{}
-	players := make([]*models.Player, 0, len(playerRows))
-	pid := byte(1)
-	for i, row := range playerRows {
-		p := &models.Player{
-			SlotID:     uint16(row.SlotID),
-			PlayerID:   pid,
-			Name:       row.Name,
-			Race:       row.Race,
-			Type:       row.Type,
-			Team:       byte(row.Team),
-			IsObserver: row.IsObserver,
-		}
-		ordinalByPID[pid] = uint8(i)
-		pidByPlayerID[row.PlayerID] = pid
-		players = append(players, p)
-		pid++
-	}
-	commands := make([]*models.Command, 0, len(cmdRows))
-	for _, row := range cmdRows {
-		issuer, ok := pidByPlayerID[row.PlayerID]
-		if !ok {
-			t.Fatalf("alliance command names an unknown player id %d", row.PlayerID)
-		}
-		var slots []int64
-		if err := json.Unmarshal([]byte(row.AlliancePlayerIDs), &slots); err != nil {
-			t.Fatalf("alliance ids %q: %v", row.AlliancePlayerIDs, err)
-		}
-		commands = append(commands, &models.Command{
-			ActionType:           "Alliance",
-			SecondsFromGameStart: int(row.SecondsFromGameStart),
-			Player:               players[issuer-1],
-			AlliancePlayerIDs:    &slots,
-		})
-	}
-
-	result := parser.AnalyzeAlliances(players, commands, int(r.Duration), parser.Activity{
-		StoppedSecByPID: map[byte]int{},
-		LeaveSecByPID:   map[byte]int{},
-	})
-	if len(result.Snapshots) != len(r.Alliance.Snapshots) {
-		t.Fatalf("replayed %d snapshots, want %d: %+v", len(result.Snapshots), len(r.Alliance.Snapshots), result.Snapshots)
-	}
-	for i, snap := range result.Snapshots {
-		want := r.Alliance.Snapshots[i]
-		if snap.Sec != int(want.Sec) {
-			t.Fatalf("snapshot %d second = %d, want %d", i, snap.Sec, want.Sec)
-		}
-		got := map[string]bool{}
-		for _, team := range snap.Teams {
-			ordinals := make([]int, 0, len(team))
-			for _, member := range team {
-				ordinals = append(ordinals, int(ordinalByPID[member]))
-			}
-			sort.Ints(ordinals)
-			got[fmt.Sprint(ordinals)] = true
-		}
-		for _, team := range want.Teams {
-			ordinals := make([]int, 0, len(team))
-			for _, member := range team {
-				ordinals = append(ordinals, int(member))
-			}
-			sort.Ints(ordinals)
-			if !got[fmt.Sprint(ordinals)] {
-				t.Fatalf("snapshot %d is missing team %v; replayed %v", i, ordinals, got)
-			}
-		}
+	if empty == nil || len(empty) != 0 {
+		t.Fatalf("a replay with no timeline must yield an empty non-nil slice, got %v", empty)
 	}
 }
 
@@ -725,12 +572,8 @@ func TestLibStoreGameReadsRejectUnknownReplayIDs(t *testing.T) {
 			_, err := s.ListReplayPlayersForDetail(ctx, missing)
 			return err
 		},
-		"ListReplayPlayersForAlliance": func() error {
-			_, err := s.ListReplayPlayersForAlliance(ctx, missing)
-			return err
-		},
-		"ListReplayAllianceCommands": func() error {
-			_, err := s.ListReplayAllianceCommands(ctx, missing)
+		"ListReplayAllianceSnapshots": func() error {
+			_, err := s.ListReplayAllianceSnapshots(ctx, missing)
 			return err
 		},
 		"ListReplayPatterns": func() error {
@@ -855,30 +698,23 @@ func TestLibStoreGameReadsOverTheRealCorpus(t *testing.T) {
 		}
 		totals["detail"] += len(detail)
 
-		alliance, err := s.ListReplayPlayersForAlliance(ctx, r.ID)
+		alliance, err := s.ListReplayAllianceSnapshots(ctx, r.ID)
 		if err != nil {
-			t.Fatalf("ListReplayPlayersForAlliance(%d): %v", r.ID, err)
+			t.Fatalf("ListReplayAllianceSnapshots(%d): %v", r.ID, err)
 		}
-		if len(alliance) != len(r.Players) {
-			t.Fatalf("alliance rows = %d, want %d players", len(alliance), len(r.Players))
-		}
-		allianceCmds, err := s.ListReplayAllianceCommands(ctx, r.ID)
-		if err != nil {
-			t.Fatalf("ListReplayAllianceCommands(%d): %v", r.ID, err)
-		}
-		for i, row := range allianceCmds {
-			if !ids[row.PlayerID] {
-				t.Fatalf("alliance command %d has an unresolvable player id %d", i, row.PlayerID)
+		for i, row := range alliance {
+			for _, team := range row.Teams {
+				for _, member := range team {
+					if !ids[member] {
+						t.Fatalf("alliance snapshot %d has an unresolvable player id %d", i, member)
+					}
+				}
 			}
-			var slots []int64
-			if err := json.Unmarshal([]byte(row.AlliancePlayerIDs), &slots); err != nil {
-				t.Fatalf("alliance ids %q: %v", row.AlliancePlayerIDs, err)
-			}
-			if i > 0 && allianceCmds[i-1].SecondsFromGameStart > row.SecondsFromGameStart {
-				t.Fatalf("alliance commands are not chronological in %s", summary.FileName)
+			if i > 0 && alliance[i-1].Second > row.Second {
+				t.Fatalf("alliance snapshots are not chronological in %s", summary.FileName)
 			}
 		}
-		totals["alliance_commands"] += len(allianceCmds)
+		totals["alliance_snapshots"] += len(alliance)
 
 		replayPatterns, err := s.ListReplayPatterns(ctx, r.ID)
 		if err != nil {

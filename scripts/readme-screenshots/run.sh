@@ -68,6 +68,7 @@ for locale in en ko; do
     --base "http://localhost:$port" \
     --out "$repo/docs/images" \
     --locale "$locale" \
+    --harvest "$harvest" \
     ${only:+--only "$only"}
 done
 

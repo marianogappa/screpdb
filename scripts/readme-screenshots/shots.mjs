@@ -36,7 +36,7 @@ export const SHOTS = [
   {
     name: 'game-summary',
     caption:
-      'Game summary, with progamer identification from play style and one-click staging for watching on the game client',
+      "Game summary: each player's build order, noteworthy events, skill tier and unit composition, with progamers recognised",
     // Larva (Zerg) vs BishOp (Terran): two handles the fingerprint matcher
     // names, so the "Possibly …" line under each name has something to say.
     pick: gameBetween('jsa_larva', 'k_bishop'),
@@ -45,7 +45,7 @@ export const SHOTS = [
   },
   {
     name: 'game-events',
-    caption: 'Rich game events browser with map overlays',
+    caption: 'Curated game events, each drawn on the map',
     pick: gameBetween('jsa_larva', 'k_bishop'),
     route: (g) => `/?view=game&replay=${g.replay_id}&gameTab=events`,
     // Select an attack: that is the event kind that draws movement on the map.
@@ -68,9 +68,12 @@ export const SHOTS = [
     route: (g) => `/?view=game&replay=${g.replay_id}&gameTab=hotkeys`,
     // The rendered map alone, for one player. Each panel crops to that
     // player's own base, so the pair rarely shares a shape, and the panel box
-    // is a grid cell — much larger than the image sitting in it.
+    // is a grid cell — much larger than the image sitting in it. The top part
+    // holds the main base; further down the crop reaches terrain the map
+    // renderer draws poorly.
     clip: (g) => ({
-      selector: `.hk-map-panel:has-text("${nameOf(g, 'hm_ssak')}") .hk-map-img`,
+      selector: `.hk-map-panel:has-text("${nameOf(g, 'hm_ssak')}") .hk-map`,
+      maxHeight: 420,
     }),
   },
   {
@@ -87,11 +90,13 @@ export const SHOTS = [
     clip: { height: 760 },
   },
   {
-    name: 'skill-proxies',
+    name: 'skill',
     caption:
-      'Skill proxies: where every player in your library sits on the distribution, with progamers for reference',
-    route: () => '/?view=players&playersTab=viewport-multitasking',
-    clip: { throughSelector: '.workflow-panel' },
+      'Skill: where every player in your library sits from beginner to pro, metric by metric, with progamers for reference',
+    route: () => '/?view=players&playersTab=skill',
+    libraryWithoutProHandles: true,
+    // The estimate and the first metrics; the full page runs past 2,000px.
+    clip: { height: 880 },
   },
   {
     name: 'player-hotkey-signature',
@@ -106,6 +111,8 @@ export const SHOTS = [
     caption: 'Alliance timeline and team stacking detection on multiplayer melee games',
     pick: byFileName('bgh_team_stacking.rep'),
     route: (g) => `/?view=game&replay=${g.replay_id}&gameTab=alliances`,
-    clip: { height: 1000 },
+    // Down to the row where the teams even out again, so the stacked band
+    // shows both where it starts and where it ends.
+    clip: { height: 1665 },
   },
 ];

@@ -15,7 +15,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 
+import { loadProHandles } from './anonymize.mjs';
+
 const PLAYABLE_SECONDS = 240;
+// Per Skill tier, by the MMR bands its model was fitted on, so the library
+// spans beginner to advanced the way a real one does.
+const REGULAR_TIERS = [
+  { belowMmr: 1400, count: 4 },
+  { belowMmr: 1800, count: 5 },
+  { belowMmr: Infinity, count: 4 },
+];
+const REGULAR_GAMES = 6;
+const REGULAR_MAX_GAMES = 8;
+const REGULAR_SECONDS = 480;
 
 // Curated handles: progamers whose ladder name is recognisable, or who play
 // enough games under one barcode for the fingerprint match to be the point.
@@ -119,6 +131,43 @@ rows
   });
 const featuredCount = picked.length;
 
+// Regulars: a real library is one player and their opponents, mostly not
+// progamers. The Skill tab lists only players with several rated games, so
+// without these the library side would be the progamers' own ladder handles,
+// placed again beside their built-in profiles.
+const pros = loadProHandles(harvest);
+const gamesByRegular = new Map();
+for (const r of rows) {
+  if ((r.duration ?? 0) < REGULAR_SECONDS) continue;
+  for (const [toon, mmr] of [[r.toon, r.mmr], [r.oppToon, r.oppMmr]]) {
+    const key = String(toon || '').toLowerCase();
+    if (!key || pros.has(key) || !mmr) continue;
+    const e = gamesByRegular.get(key) ?? { rows: [], mmrs: [] };
+    e.rows.push(r);
+    e.mmrs.push(mmr);
+    gamesByRegular.set(key, e);
+  }
+}
+const regulars = [...gamesByRegular.entries()]
+  .filter(([, e]) => e.rows.length >= REGULAR_GAMES)
+  .map(([key, e]) => ({ key, rows: e.rows, mmr: e.mmrs.sort((a, b) => a - b)[e.mmrs.length >> 1] }))
+  .sort((a, b) => a.mmr - b.mmr || a.key.localeCompare(b.key));
+// Within a tier, evenly spaced by MMR rank so the picks do not cluster
+// where most harvested opponents sit.
+let floorMmr = -Infinity;
+for (const { belowMmr, count } of REGULAR_TIERS) {
+  const tier = regulars.filter((reg) => reg.mmr >= floorMmr && reg.mmr < belowMmr);
+  floorMmr = belowMmr;
+  for (let i = 0; i < Math.min(count, tier.length); i += 1) {
+    const reg = tier[Math.round((i * (tier.length - 1)) / Math.max(1, count - 1))];
+    reg.rows
+      .sort((a, b) => a.matchId.localeCompare(b.matchId))
+      .slice(0, REGULAR_MAX_GAMES)
+      .forEach((r) => picked.length < budget && push(r));
+  }
+}
+const regularCount = picked.length - featuredCount;
+
 // Top up after dedupe, not before: a match appears in the manifest once per
 // owning handle, so slicing the rows first would under-fill the folder.
 for (const r of rows
@@ -139,5 +188,5 @@ for (const r of picked) {
 
 console.log(
   `staged ${fixtures} fixture replays + ${copied} harvest replays ` +
-  `(${featuredCount} featured, ${missing} missing) -> ${out}`,
+  `(${featuredCount} featured, ${regularCount} regulars, ${missing} missing) -> ${out}`,
 );
