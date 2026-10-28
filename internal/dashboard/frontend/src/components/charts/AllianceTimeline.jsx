@@ -71,12 +71,6 @@ const teamShape = (teams) => {
   return sizes.sort((a, b) => b - a).join('v');
 };
 
-const isStacked = (teams) => {
-  const sizes = teams.map((t) => t.length).filter((n) => n >= 2);
-  if (sizes.length < 2) return false;
-  return new Set(sizes).size > 1;
-};
-
 const phaseTagFor = (sec, earlyEndsAt, midEndsAt) => {
   const s = Number(sec) || 0;
   if (s <= 0) return 'START';
@@ -134,10 +128,6 @@ const diffTopology = (prevTeams, nextTeams, playerByID, rowSec, getPlayerColor) 
     if (departedBy(a) || departedBy(b)) continue;
     out.push({ kind: 'break', a: nameOf(a), b: nameOf(b), colorA: colorOf(a), colorB: colorOf(b) });
   }
-  const wasStacked = isStacked(prevTeams || []);
-  const nowStacked = isStacked(nextTeams || []);
-  if (!wasStacked && nowStacked) out.push({ kind: 'stack' });
-  if (wasStacked && !nowStacked) out.push({ kind: 'unstack' });
   return out;
 };
 
@@ -176,7 +166,7 @@ const AllianceTimeline = ({
     const snaps = (Array.isArray(timeline) ? timeline : []).map((s) => ({
       sec: Math.max(0, Number(s.sec) || 0),
       teams: Array.isArray(s.teams) ? s.teams.map((t) => t.slice()) : [],
-      stackingSrc: !!s.stacking,
+      stacking: !!s.stacking,
     }));
     if (snaps.length === 0) return [];
 
@@ -220,7 +210,9 @@ const AllianceTimeline = ({
       const departures = activePlayers
         .filter((p) => p.left_second != null && Math.abs(Number(p.left_second) - sec) <= ROW_MERGE_SEC)
         .map((p) => p.player_id);
-      return { sec, teams, stacking: isStacked(teams), departures };
+      // Stacking comes from the server, which also discounts players who
+      // stopped playing without leaving; team sizes alone cannot tell.
+      return { sec, teams, stacking: snap.stacking, departures };
     });
   }, [timeline, activePlayers, playerByID, durationSeconds]);
 
@@ -270,6 +262,9 @@ const AllianceTimeline = ({
     for (let ri = 0; ri < rows.length; ri += 1) {
       const prev = ri === 0 ? [] : rows[ri - 1].teams;
       const diffs = diffTopology(prev, rows[ri].teams, playerByID, rows[ri].sec);
+      const wasStacked = ri > 0 && rows[ri - 1].stacking;
+      if (!wasStacked && rows[ri].stacking) diffs.push({ kind: 'stack' });
+      if (wasStacked && !rows[ri].stacking) diffs.push({ kind: 'unstack' });
       for (const d of diffs) {
         out[ri].push({ sec: rows[ri].sec, kind: d.kind, data: d, sort: 0 });
       }

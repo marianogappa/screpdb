@@ -97,18 +97,8 @@ type PlayerApmAggregateRow struct {
 	GamesPlayed int64
 }
 
-type ReplayPlayerForAllianceRow struct {
-	PlayerID   int64
-	Name       string
-	Race       string
-	Type       string
-	Team       int64
-	IsObserver bool
-	SlotID     int64
-}
-
-type ReplayAllianceCommandRow struct {
-	PlayerID             int64
-	SecondsFromGameStart int64
-	AlliancePlayerIDs    string // JSON array of slot IDs
+type ReplayAllianceSnapshotRow struct {
+	Second   int64
+	Teams    [][]int64 // player row ids; a player in two cliques appears in both
+	Stacking bool
 }

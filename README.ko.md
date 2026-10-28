@@ -20,11 +20,11 @@ macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
 ### 고수준 의미 기반 특징으로 리플레이 필터링 및 검색
 <img width="1680" alt="게임 목록: 고수준 의미 기반 특징으로 리플레이를 필터링하고 찾기" src="docs/images/game-list.ko.png" />
 
-### 게임 요약: 플레이어별 주요 의미 기반 이벤트와 유닛 구성
-<img width="1680" alt="게임 요약: 플레이어별 의미 기반 이벤트, 마법 사용, 유닛 구성" src="docs/images/game-summary.ko.png" />
+### 게임 요약: 플레이어별 빌드 오더, 주요 이벤트, 실력 등급, 유닛 구성과 프로게이머 식별
+<img width="1680" alt="게임 요약: 플레이어별 빌드 오더, 의미 기반 이벤트, 실력 등급, 마법 사용, 유닛 구성" src="docs/images/game-summary.ko.png" />
 
-### 맵 오버레이를 갖춘 풍부한 게임 이벤트 브라우저
-<img width="1680" alt="맵 오버레이를 갖춘 게임 이벤트 브라우저" src="docs/images/game-events.ko.png" />
+### 엄선된 게임 이벤트를 맵 위에 표시
+<img width="1680" alt="맵 오버레이를 갖춘 엄선된 게임 이벤트" src="docs/images/game-events.ko.png" />
 
 ### 단축키 분석: 각 플레이어가 어떤 키에 무엇을 두는지 게임 내내 추적
 <img width="1520" alt="두 플레이어의 키별 단축키 타임라인" src="docs/images/game-hotkeys.ko.png" />
@@ -38,8 +38,8 @@ macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
 ### 내 리플레이의 플레이어와 나란히 표시되는 내장 프로게이머 프로필
 <img width="1680" alt="내장 프로게이머 프로필이 포함된 플레이어 목록" src="docs/images/players-list.ko.png" />
 
-### 실력 지표: 화면 전환 멀티태스킹, 유닛 생산 리듬, 첫 유닛 효율
-<img width="1680" alt="실력 지표: 프로게이머가 함께 표시된 분포" src="docs/images/skill-proxies.ko.png" />
+### 실력: 내 리플레이의 모든 플레이어가 초보부터 프로까지 지표별로 어디에 있는지, 프로게이머와 함께 비교
+<img width="1680" alt="실력: 초보부터 프로까지의 추정치와 지표별 위치, 프로게이머 참고 표시" src="docs/images/skill.ko.png" />
 
 ### 내장 프로게이머를 포함한 플레이어별 단축키 시그니처
 <img width="1680" alt="플레이어별 단축키 시그니처" src="docs/images/player-hotkey-signature.ko.png" />

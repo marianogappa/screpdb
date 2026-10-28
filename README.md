@@ -24,11 +24,11 @@ macOS, Linux and other options: see [Installation](#installation).
 ### Filtering and finding replays by high-level semantic features
 <img width="1680" alt="Game list: filter and find replays by high-level semantic features" src="docs/images/game-list.png" />
 
-### Game summary: each player's noteworthy semantic events and unit composition
-<img width="1680" alt="Game summary: per-player semantic events, spellcasts and unit composition" src="docs/images/game-summary.png" />
+### Game summary: each player's build order, noteworthy events, skill tier and unit composition, with progamers recognised
+<img width="1680" alt="Game summary: per-player build order, semantic events, skill tier, spellcasts and unit composition" src="docs/images/game-summary.png" />
 
-### Rich game events browser with map overlays
-<img width="1680" alt="Game events browser with map overlays" src="docs/images/game-events.png" />
+### Curated game events, each drawn on the map
+<img width="1680" alt="Curated game events with map overlays" src="docs/images/game-events.png" />
 
 ### Hotkey intel: what each player keeps on which key, all game long
 <img width="1520" alt="Per-key hotkey timeline for both players" src="docs/images/game-hotkeys.png" />
@@ -42,8 +42,8 @@ macOS, Linux and other options: see [Installation](#installation).
 ### Built-in progamer profiles alongside the players in your own library
 <img width="1680" alt="Players list with built-in progamer profiles" src="docs/images/players-list.png" />
 
-### Skill proxies: viewport multitasking, unit production cadence, first unit efficiency
-<img width="1680" alt="Skill proxies: population distribution with progamers for reference" src="docs/images/skill-proxies.png" />
+### Skill: where every player in your library sits from beginner to pro, metric by metric, with progamers for reference
+<img width="1680" alt="Skill: beginner to pro estimate and per-metric placement, with progamers for reference" src="docs/images/skill.png" />
 
 ### Per-player hotkey signature, including the built-in progamers
 <img width="1680" alt="Per-player hotkey signature" src="docs/images/player-hotkey-signature.png" />
@@ -297,18 +297,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-27  OK. Skill replaces the Skill proxies: one Players page Skill tab (library medians on the tier bands, built-in progamers as stars), the old APM, cadence and screen switch views and endpoints removed; player hotkey signatures name the units the engine saw; pro-pack runs the engine pass over the pro corpus (digest cache under the system temp dir, allowed through iofacade.AllowDir) to bake each pro's Skill and unit-aware hotkeys. Engine event maps also keep the left game and stopped playing marker on screen, anchored on the base the player held just before, read from the engine digest already in memory. No new network calls, no netfacade allowlist widening, no enforcement-test changes.
+2026-10-28  OK. The Alliances tab reads the alliance timeline ingest stored (stacking flag included) instead of replaying rebuilt commands, so stacking bands with overlapping alliances show on the chart; README screenshots regenerated with non-progamer names aliased and non-progamer regulars in the screenshot corpus (scripts only). No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-10-27  OK. Skill replaces the Skill proxies: one Players page Skill tab (library medians on the tier bands, built-in progamers as stars), the old APM, cadence and screen switch views and endpoints removed; player hotkey signatures name the units the engine saw; pro-pack runs the engine pass over the pro corpus (digest cache under the system temp dir, allowed through iofacade.AllowDir) to bake each pro's Skill and unit-aware hotkeys. Engine event maps also keep the left game and stopped playing marker on screen, anchored on the base the player held just before, read from the engine digest already in memory. No new network calls, no netfacade allowlist widening, no enforcement-test changes.
 2026-10-26  OK. Fingerprint outcomes per player refresh when the corpus changes instead of serving a stale cache; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-26  OK. A game page says Downloaded complete replay when its full recording came from a co-player, the build orders event title is shorter, the How Skill works modal no longer inherits uppercase, engine event maps mark where a player left or stopped playing, and the engine queue skips the user's own copy once its complete copy is in the library; reads library flags already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-26  OK. Winners come from the engine whenever it ran, and undecided games are settled from the Battle.net game archive; the only new request is the user's own profile, fetched once at a new outcome priority after an undecided game of theirs ends. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-26  OK. Game Events: engine maps show a wider view with a dim around the event and who holds each base (read from the town halls of the snapshot on screen, with hover details and placed owner labels); the build orders event comes first, only key events show, filters sit above the list, and the map with its title snaps to the viewport; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-2026-10-21  OK. Frontend only: a player with a Skill tab no longer shows Skill proxies, and old Skill proxies links open Skill. No I/O changes.
 ```
 
 </details>
