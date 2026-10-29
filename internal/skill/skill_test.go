@@ -14,7 +14,7 @@ func TestModelLoadsWithEveryRace(t *testing.T) {
 		if _, ok := m.Combined.Races[race]; !ok {
 			t.Fatalf("no combined score for %s", race)
 		}
-		for _, key := range []string{EAPM, UsedRecalls, CheckRecalls, ArmyCadence, UnspentPerIncome, ProductionIdle} {
+		for _, key := range []string{EAPM, UsedRecalls, ArmyCadence, ProductionIdle} {
 			c, ok := m.Metrics[key].Cuts[race]
 			if !ok {
 				t.Fatalf("no %s cuts for %s", key, race)
@@ -75,15 +75,6 @@ func TestEvaluateOrdersPlayers(t *testing.T) {
 	}
 }
 
-func TestQuantileMapConvertsAtEqualPercentile(t *testing.T) {
-	q := QuantileMap{From: []float64{0, 0.2, 0.4}, To: []float64{0, 0.1, 0.2}}
-	for _, tc := range []struct{ in, want float64 }{{-1, 0}, {0.1, 0.05}, {0.3, 0.15}, {9, 0.2}} {
-		if got := q.apply(tc.in); math.Abs(got-tc.want) > 1e-9 {
-			t.Errorf("apply(%v) = %v, want %v", tc.in, got, tc.want)
-		}
-	}
-}
-
 func TestEndsSpreadPlayersBelowTheCuts(t *testing.T) {
 	cuts, ends := [3]float64{160, 194, 218}, [2]float64{40, 300}
 	a, b := place(60, cuts, ends, true), place(115, cuts, ends, true)
@@ -111,7 +102,7 @@ func TestStripsShareOneScaleAcrossRaces(t *testing.T) {
 
 func TestRaceSpecificMetricsUseTheirRaceCuts(t *testing.T) {
 	m, _ := Load()
-	for _, key := range []string{ArmyCadence, UnspentPerIncome, ProductionIdle} {
+	for _, key := range []string{ArmyCadence, ProductionIdle} {
 		if !m.Metrics[key].PerRace {
 			t.Fatalf("%s should place each race on its own cuts", key)
 		}

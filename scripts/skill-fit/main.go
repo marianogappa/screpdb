@@ -46,14 +46,14 @@ func (s sample) tier() int {
 
 // Every metric the Skill tab shows is also in the combined score: one that does not count toward the tier
 // has no business on the page.
-var chartMetrics = []string{skill.EAPM, skill.UsedRecalls, skill.CheckRecalls, skill.ArmyCadence, skill.UnspentPerIncome, skill.ProductionIdle}
+var chartMetrics = []string{skill.EAPM, skill.UsedRecalls, skill.ArmyCadence, skill.ProductionIdle}
 
 var combinedFeatures = chartMetrics
 
 // perRaceMetrics depend on what a race's production makes, so their values only compare within a race:
 // idle production is idle buildings for Terran and Protoss but waiting larva for Zerg, and Protoss, whose
-// gateway units cost the most, starts army units least often. Unspent resources follow the same production differences.
-var perRaceMetrics = map[string]bool{skill.ArmyCadence: true, skill.UnspentPerIncome: true, skill.ProductionIdle: true}
+// gateway units cost the most, starts army units least often.
+var perRaceMetrics = map[string]bool{skill.ArmyCadence: true, skill.ProductionIdle: true}
 
 // Each metric's share of the combined score's weight stays within these bounds: a regression left alone
 // hands most of the weight to whichever mechanics metric correlates best, and the score turns into a
@@ -158,7 +158,7 @@ func main() {
 	}
 
 	if *contextPath != "" {
-		model.ContextAdjust = contextAdjust(&model, readContext(*contextPath), samples)
+		model.ContextShift = contextShift(readContext(*contextPath), samples)
 	}
 
 	b, err := json.MarshalIndent(model, "", "  ")
@@ -171,15 +171,16 @@ func main() {
 	log.Printf("wrote %s: %d players from %d games", *out, model.Players, model.Games)
 }
 
-var adjustedMetrics = []string{skill.ArmyCadence, skill.UnspentPerIncome, skill.ProductionIdle}
+var adjustedMetrics = []string{skill.ArmyCadence, skill.ProductionIdle}
 
-// adjustedTiers are the EAPM tiers the context tables are built from: money-map and team players are
-// almost all below Advanced, so only there do the contexts have enough players to compare. EAPM is the
-// mechanics level here because money and team play do not change it, and the combined score now holds the
-// very macro metrics being adjusted.
-var adjustedTiers = map[int]bool{skill.TierBeginner: true, skill.TierIntermediate: true}
+// eapmBins group players of the same mechanics level. Money-map and team players are mostly far slower than
+// ladder players, so comparing whole populations, or even whole tiers, would credit the context with what is
+// really a skill gap.
+var eapmBins = []float64{50, 70, 90, 110, 130, 160, 200}
 
-const contextQuantiles = 21
+const minBinPlayers = 15
+
+func eapmBin(eapm float64) int { return sort.SearchFloat64s(eapmBins, eapm) }
 
 func readContext(path string) []sample {
 	f, err := os.Open(path)
@@ -199,70 +200,78 @@ func readContext(path string) []sample {
 	return out
 }
 
-// contextAdjust builds, per context and race, quantile tables that convert each macro metric to its 1v1
-// ladder value at the same percentile, among players of the same mechanics level. Per race, because the
-// same metric can live on different scales: idle production is idle buildings for Terran and Protoss but
-// capped larva for Zerg.
-func contextAdjust(model *skill.Model, rows, ladder []sample) map[string]map[string]skill.QuantileMap {
-	matched := func(r sample) bool {
-		res := model.Evaluate(r.Side.Race, skill.ContextOneVsOne, map[string]float64{skill.EAPM: r.Values[skill.EAPM]})
-		p, ok := res.Metrics[skill.EAPM]
-		return ok && adjustedTiers[p.Tier]
+// contextShift measures, per context and race, how much each macro metric differs from 1v1 ladder games
+// between players of the same EAPM, averaged over the context's players.
+func contextShift(rows, ladder []sample) map[string]map[string]float64 {
+	type binKey struct {
+		group string
+		bin   int
 	}
-	from, to := map[string][]sample{}, map[string][]sample{}
+	from, to := map[binKey][]sample{}, map[binKey][]sample{}
 	for _, r := range rows {
-		if !matched(r) {
-			continue
-		}
+		ctx := skill.ContextTeamRegular
 		switch {
 		case r.MapKind == "money":
-			from[skill.AdjustKey(skill.ContextMoney, r.Side.Race)] = append(from[skill.AdjustKey(skill.ContextMoney, r.Side.Race)], r)
-		case r.Humans != 2:
-			from[skill.AdjustKey(skill.ContextTeamRegular, r.Side.Race)] = append(from[skill.AdjustKey(skill.ContextTeamRegular, r.Side.Race)], r)
+			ctx = skill.ContextMoney
+		case r.Humans == 2:
+			continue
 		}
+		k := binKey{skill.AdjustKey(ctx, r.Side.Race), eapmBin(r.Values[skill.EAPM])}
+		from[k] = append(from[k], r)
 	}
 	for _, r := range ladder {
-		if r.Side.Pro == "" && matched(r) {
-			to[r.Side.Race] = append(to[r.Side.Race], r)
+		if r.Side.Pro == "" {
+			k := binKey{r.Side.Race, eapmBin(r.Values[skill.EAPM])}
+			to[k] = append(to[k], r)
 		}
 	}
-	out := map[string]map[string]skill.QuantileMap{}
+	out := map[string]map[string]float64{}
 	for _, ctx := range []string{skill.ContextTeamRegular, skill.ContextMoney} {
 		for _, race := range []string{"T", "P", "Z"} {
 			key := skill.AdjustKey(ctx, race)
 			for _, metric := range adjustedMetrics {
-				f, t := quantiles(from[key], metric), quantiles(to[race], metric)
-				if f == nil || t == nil {
+				var shift, weight float64
+				for bin := 0; bin <= len(eapmBins); bin++ {
+					f, t := values(from[binKey{key, bin}], metric), values(to[binKey{race, bin}], metric)
+					if len(f) < minBinPlayers || len(t) < minBinPlayers {
+						continue
+					}
+					shift += float64(len(f)) * (median(t) - median(f))
+					weight += float64(len(f))
+				}
+				if weight == 0 {
 					log.Printf("%s %s: too few players to adjust", key, metric)
 					continue
 				}
 				if out[key] == nil {
-					out[key] = map[string]skill.QuantileMap{}
+					out[key] = map[string]float64{}
 				}
-				out[key][metric] = skill.QuantileMap{From: f, To: t}
-				log.Printf("%s %s: median %.3f -> %.3f", key, metric, f[contextQuantiles/2], t[contextQuantiles/2])
+				out[key][metric] = round(shift/weight, 4)
+				log.Printf("%s %s: shift %+.3f over %.0f players", key, metric, shift/weight, weight)
 			}
 		}
 	}
 	return out
 }
 
-func quantiles(rows []sample, metric string) []float64 {
+func values(rows []sample, metric string) []float64 {
 	var xs []float64
 	for _, r := range rows {
 		if v, ok := r.Values[metric]; ok {
 			xs = append(xs, v)
 		}
 	}
-	if len(xs) < 30 {
-		return nil
+	return xs
+}
+
+func median(xs []float64) float64 {
+	ys := append([]float64(nil), xs...)
+	sort.Float64s(ys)
+	n := len(ys)
+	if n%2 == 1 {
+		return ys[n/2]
 	}
-	sort.Float64s(xs)
-	out := make([]float64, contextQuantiles)
-	for i := range out {
-		out[i] = round(xs[i*(len(xs)-1)/(contextQuantiles-1)], 4)
-	}
-	return out
+	return (ys[n/2-1] + ys[n/2]) / 2
 }
 
 func read(path string) []sample {

@@ -116,9 +116,9 @@ func summarizeSkill(rated []ratedPlayer) *workflowPlayerSkillSummary {
 			byMetric[k] = append(byMetric[k], p)
 		}
 	}
-	out.Combined = averagePlacement(combined)
+	out.Combined = gamesPlacement(combined)
 	for k, ps := range byMetric {
-		out.Metrics[k] = averagePlacement(ps)
+		out.Metrics[k] = gamesPlacement(ps)
 	}
 	for _, h := range skillHabits {
 		held, measured := 0, 0
@@ -137,17 +137,11 @@ func summarizeSkill(rated []ratedPlayer) *workflowPlayerSkillSummary {
 	return out
 }
 
-// averagePlacement averages values and positions; the tier is the one the average position falls in.
-func averagePlacement(ps []skill.Placement) skill.Placement {
-	var value, position float64
-	for _, p := range ps {
-		value += p.Value
-		position += p.Position
-	}
-	n := float64(len(ps))
-	avg := skill.Placement{Value: value / n, Position: position / n}
-	avg.Tier = min(skill.TierPro, int(avg.Position))
-	return avg
+// gamesPlacement is the median of a player's game placements, with the tier its position falls in. Per-game
+// positions stop at the axis ends, so a mean would pull strong and weak players toward the middle tiers.
+func gamesPlacement(ps []skill.Placement) skill.Placement {
+	m := medianPlacement(ps)
+	return skill.Placement{Value: m.Value, Position: m.Position, Tier: min(skill.TierPro, int(m.Position))}
 }
 
 // workflowSkillModel is what the Skill explainer shows of the model: how many ladder games it was fitted

@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-28T20:14:11Z",
+ "generated_at": "2026-10-29T07:52:15Z",
  "detector_version": 69,
  "source": "public ladder replays labelled by aurora ID (scfingerprint corpus); photos and countries from Liquipedia",
  "pros": [
@@ -531,39 +531,29 @@
    "skill": {
     "games": 36,
     "combined": {
-     "value": 2.4936471189265976,
-     "position": 3.4083390908958537,
+     "value": 2.1040725544023786,
+     "position": 3.1703301112234215,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4953858181834221,
-      "position": 2.7789756819757274,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 131.26987330118814,
-      "position": 3.496493057387868,
+      "value": 0.4859375059604645,
+      "position": 3.0198863937397196,
       "tier": 3
      },
      "eapm": {
-      "value": 238.11111111111111,
-      "position": 3.1482698412698418,
+      "value": 237,
+      "position": 3.144,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.40574393214450943,
-      "position": 2.5301826447694866,
+      "value": 0.41680295765399933,
+      "position": 2.866584509611129,
       "tier": 2
      },
-     "unspent_per_income": {
-      "value": 0.24431892277465928,
-      "position": 3.2364758814797985,
-      "tier": 3
-     },
      "used_recalls_per_min": {
-      "value": 40.42377042770386,
-      "position": 3.2771649005710897,
+      "value": 39.12978744506836,
+      "position": 3.247386759241936,
       "tier": 3
      }
     }
@@ -1434,39 +1424,29 @@
    "skill": {
     "games": 23,
     "combined": {
-     "value": 3.164816294211345,
-     "position": 3.738554945890136,
+     "value": 3.1539859492695363,
+     "position": 3.8241162456644457,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5128589091093644,
-      "position": 3.004941892199817,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 71.64827877542247,
-      "position": 3.014686124220116,
+      "value": 0.5227272510528564,
+      "position": 3.2658456217245275,
       "tier": 3
      },
      "eapm": {
-      "value": 293.4347826086956,
-      "position": 3.595478260869565,
+      "value": 289,
+      "position": 3.56,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.28487209586993506,
-      "position": 3.0581937642879735,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.26648956537246704,
-      "position": 3.3789758379942803,
+      "value": 0.29068100452423096,
+      "position": 3.173325166469667,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 57.30742628678031,
-      "position": 3.7666902472947537,
+      "value": 56.55144119262695,
+      "position": 3.7679178102909243,
       "tier": 3
      }
     }
@@ -1849,39 +1829,29 @@
    "skill": {
     "games": 45,
     "combined": {
-     "value": 1.8938638331229294,
-     "position": 2.631117305817592,
+     "value": 1.9689375250883798,
+     "position": 2.915239770088479,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.46261378683977655,
-      "position": 2.681091787928093,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 41.44515244166056,
-      "position": 2.0537915568460146,
-      "tier": 2
-     },
-     "eapm": {
-      "value": 225.2888888888889,
-      "position": 2.8905396825396825,
-      "tier": 2
-     },
-     "production_idle_share": {
-      "value": 0.28053246405389576,
-      "position": 3.1229737603589154,
+      "value": 0.4888888895511627,
+      "position": 3.1310314324747517,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.2990536060598161,
-      "position": 3.015941521191507,
+     "eapm": {
+      "value": 223,
+      "position": 3.032,
+      "tier": 3
+     },
+     "production_idle_share": {
+      "value": 0.2808573544025421,
+      "position": 3.2531922406297387,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 24.80951346291436,
-      "position": 2.396600963789709,
+      "value": 22.434099197387695,
+      "position": 2.3354993444443504,
       "tier": 2
      }
     }
@@ -2401,40 +2371,30 @@
    "skill": {
     "games": 33,
     "combined": {
-     "value": 1.9989990376834186,
-     "position": 2.9259411205283268,
-     "tier": 2
+     "value": 1.9412565166021567,
+     "position": 3.0457863662527016,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.49860242370403174,
-      "position": 2.8322499715848353,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 69.6991914691347,
-      "position": 2.943779050655816,
-      "tier": 2
+      "value": 0.5068492889404297,
+      "position": 3.1255014592950996,
+      "tier": 3
      },
      "eapm": {
-      "value": 210.6969696969697,
-      "position": 2.671685425685426,
+      "value": 211,
+      "position": 2.7142857142857144,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.40313250413446716,
-      "position": 2.658402695268914,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.26531903581185773,
-      "position": 3.029439810913353,
+      "value": 0.40870118141174316,
+      "position": 3.0129874747569168,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 32.46125955292673,
-      "position": 2.964383704853743,
-      "tier": 2
+      "value": 32.88448715209961,
+      "position": 3.060787210615782,
+      "tier": 3
      }
     }
    }
@@ -2613,17 +2573,17 @@
        "runs": [
         {
          "start_min": 0,
-         "end_min": 9,
+         "end_min": 10,
          "category": "hall",
-         "share": 0.9786516029638325,
-         "presses": 13631
+         "share": 0.9682162162162162,
+         "presses": 13875
         },
         {
-         "start_min": 10,
+         "start_min": 11,
          "end_min": 11,
          "category": "units",
-         "share": 0.4431818181818182,
-         "presses": 440,
+         "share": 0.5153061224489796,
+         "presses": 196,
          "unit": "Medic",
          "median_count": 4
         },
@@ -2996,46 +2956,36 @@
       }
      ],
      "temporal_score": 0.7802017729166255,
-     "prose": "pro:artosis plays a phase-driven layout: armies on 1, Comsats on 8–0, production on 6 and 7. Key 2 is repurposed: army early, then production from ~min 2, then army from ~min 5, then army from ~min 8, then army from ~min 20, then army from ~min 22, then army from ~min 23. Key 3 is repurposed: town hall early, then army from ~min 10, then army from ~min 12, then army from ~min 14. Key 4 is repurposed: army early, then town hall from ~min 3, then army from ~min 11, then army from ~min 12. Key 5 is repurposed: production early, then army from ~min 18. Army groups typically hold ~5 units. Minute for minute, 78% of key presses match this pattern (40 games)."
+     "prose": "pro:artosis plays a phase-driven layout: armies on 1, Comsats on 8–0, production on 6 and 7. Key 2 is repurposed: army early, then production from ~min 2, then army from ~min 5, then army from ~min 8, then army from ~min 20, then army from ~min 22, then army from ~min 23. Key 3 is repurposed: town hall early, then army from ~min 11, then army from ~min 12, then army from ~min 14. Key 4 is repurposed: army early, then town hall from ~min 3, then army from ~min 11, then army from ~min 12. Key 5 is repurposed: production early, then army from ~min 18. Army groups typically hold ~5 units. Minute for minute, 78% of key presses match this pattern (40 games)."
     }
    ],
    "skill": {
     "games": 35,
     "combined": {
-     "value": 1.71125887193393,
-     "position": 2.4762716224809,
+     "value": 1.7947398424714376,
+     "position": 2.820318976718718,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.42830764906747,
-      "position": 1.8865463943033245,
-      "tier": 1
-     },
-     "check_recalls_per_min": {
-      "value": 24.251230130876813,
-      "position": 1.4371853478436316,
+      "value": 0.40860214829444885,
+      "position": 1.5323407429915208,
       "tier": 1
      },
      "eapm": {
-      "value": 233.31428571428572,
-      "position": 3.0765061224489796,
+      "value": 237,
+      "position": 3.144,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.4477468826941082,
-      "position": 2.073181883264924,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.32316604810101646,
-      "position": 2.2772875663848153,
+      "value": 0.44396328926086426,
+      "position": 2.112130853864882,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 33.08050210135324,
-      "position": 2.966887711475222,
-      "tier": 2
+      "value": 31.217966079711914,
+      "position": 3.010994235851442,
+      "tier": 3
      }
     }
    }
@@ -3819,19 +3769,10 @@
        "runs": [
         {
          "start_min": 3,
-         "end_min": 4,
-         "category": "hall",
-         "share": 0.8333333333333334,
-         "presses": 12
-        },
-        {
-         "start_min": 5,
          "end_min": 5,
-         "category": "units",
-         "share": 0.5,
-         "presses": 4,
-         "unit": "Probe",
-         "median_count": 1
+         "category": "hall",
+         "share": 0.75,
+         "presses": 16
         },
         {
          "start_min": 9,
@@ -3901,45 +3842,35 @@
       }
      ],
      "temporal_score": 0.815114709851552,
-     "prose": "pro:barracks plays a phase-driven layout: armies on 1 and 2, production on 3 and 4. Keys 5–8 are repurposed: production early, then army from ~min 14. Key 9 is repurposed: town hall early, then army from ~min 5, then production from ~min 9. Key 0 is repurposed: town hall early, then production from ~min 10. Army groups typically hold ~3 units. Minute for minute, 82% of key presses match this pattern (5 games)."
+     "prose": "pro:barracks plays a phase-driven layout: armies on 1 and 2, production on 3 and 4. Keys 5–8 are repurposed: production early, then army from ~min 14. Keys 9 and 0 are repurposed: town hall early, then production from ~min 10. Army groups typically hold ~3 units. Minute for minute, 82% of key presses match this pattern (5 games)."
     }
    ],
    "skill": {
     "games": 23,
     "combined": {
-     "value": 3.056094292313288,
-     "position": 3.8194170498336404,
+     "value": 3.0744573836065454,
+     "position": 3.912611782763364,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5903971026773038,
-      "position": 3.4497681040235646,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 109.43006963315217,
-      "position": 3.3335775320250653,
+      "value": 0.6060606241226196,
+      "position": 3.626568808700099,
       "tier": 3
      },
      "eapm": {
-      "value": 291.7391304347826,
-      "position": 3.5819130434782607,
+      "value": 293,
+      "position": 3.592,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3768569820601007,
-      "position": 2.809281326068513,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.27608824164971063,
-      "position": 2.786307181951383,
-      "tier": 2
+      "value": 0.3801843225955963,
+      "position": 3.125258572458282,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 57.95411400173021,
-      "position": 3.7855351006533122,
+      "value": 58.07748794555664,
+      "position": 3.8135136378606065,
       "tier": 3
      }
     }
@@ -4854,39 +4785,29 @@
    "skill": {
     "games": 24,
     "combined": {
-     "value": 2.0122481271701007,
-     "position": 2.9780597215223463,
+     "value": 1.528134457466833,
+     "position": 2.348375421493884,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.431534959624211,
-      "position": 2.6819333724617227,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 216.6112314860026,
-      "position": 3.9576869213437145,
+      "value": 0.444597065448761,
+      "position": 3.094174615798458,
       "tier": 3
      },
      "eapm": {
-      "value": 170.41666666666666,
-      "position": 1.5128335730265263,
+      "value": 169.5,
+      "position": 1.4880952380952381,
       "tier": 1
      },
      "production_idle_share": {
-      "value": 0.3477948283155759,
-      "position": 2.729006350158022,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.25845384659866494,
-      "position": 2.876013783609933,
+      "value": 0.3586151897907257,
+      "position": 2.8846183365041558,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 22.584179719289143,
-      "position": 2.342055204926569,
+      "value": 22.41307258605957,
+      "position": 2.3338391303639616,
       "tier": 2
      }
     }
@@ -6339,39 +6260,29 @@
    "skill": {
     "games": 21,
     "combined": {
-     "value": 2.5622340066580254,
-     "position": 3.52942903286807,
+     "value": 2.4462776523232557,
+     "position": 3.4772492636264705,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4782703476292746,
-      "position": 3.1365745477339497,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 83.81824547903878,
-      "position": 3.0989292954032543,
+      "value": 0.46268656849861145,
+      "position": 3.2108810870878157,
       "tier": 3
      },
      "eapm": {
-      "value": 208.8095238095238,
-      "position": 2.574240362811791,
+      "value": 213,
+      "position": 2.7857142857142856,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.30117043427058626,
-      "position": 3.0110269408036165,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.21837910016377768,
-      "position": 3.4215565911484935,
+      "value": 0.3023708164691925,
+      "position": 3.2190503762648985,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 50.361683255150204,
-      "position": 3.582977778097649,
+      "value": 49.965328216552734,
+      "position": 3.5711353257208978,
       "tier": 3
      }
     }
@@ -6950,12 +6861,19 @@
         },
         {
          "start_min": 3,
-         "end_min": 4,
+         "end_min": 3,
          "category": "units",
-         "share": 0.46,
-         "presses": 50,
+         "share": 0.475,
+         "presses": 40,
          "unit": "Overlord",
          "median_count": 1
+        },
+        {
+         "start_min": 4,
+         "end_min": 4,
+         "category": "tech",
+         "share": 0.4,
+         "presses": 10
         },
         {
          "start_min": 5,
@@ -7154,45 +7072,35 @@
       }
      ],
      "temporal_score": 0.8778072502210433,
-     "prose": "pro:bishop plays a phase-driven layout: armies on 2 and 3, 5, Hatcheries on 4, 6 and 7. Key 1 is repurposed: town hall early, then army from ~min 2, then army from ~min 6. Army groups typically hold ~3 units. Minute for minute, 88% of key presses match this pattern (7 games)."
+     "prose": "pro:bishop plays a phase-driven layout: armies on 2, 5, Hatcheries on 4, 6 and 7. Key 1 is repurposed: town hall early, then army from ~min 2, then army from ~min 6. Key 3 is repurposed: army early, then army from ~min 3, then tech from ~min 4, then army from ~min 5, then army from ~min 12. Army groups typically hold ~3 units. Minute for minute, 88% of key presses match this pattern (7 games)."
     }
    ],
    "skill": {
     "games": 40,
     "combined": {
-     "value": 2.141650085869153,
-     "position": 3.0426236869100527,
+     "value": 1.9617660511804726,
+     "position": 3.0614748345295437,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.43745512142777443,
-      "position": 2.0409390407185866,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 84.88710985183715,
-      "position": 3.1064073104915826,
-      "tier": 3
+      "value": 0.4298820495605469,
+      "position": 1.8597238393930287,
+      "tier": 1
      },
      "eapm": {
-      "value": 238.7,
-      "position": 3.1534428571428563,
+      "value": 237.5,
+      "position": 3.148,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.41421426832675934,
-      "position": 2.5106038062264693,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.29292137920856476,
-      "position": 2.598332519065752,
-      "tier": 2
+      "value": 0.39843112230300903,
+      "position": 3.05342077833461,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 37.99903078079224,
-      "position": 3.198137649798819,
+      "value": 34.715280532836914,
+      "position": 3.1154883782854856,
       "tier": 3
      }
     }
@@ -8584,39 +8492,29 @@
    "skill": {
     "games": 18,
     "combined": {
-     "value": 2.5830096938443283,
-     "position": 3.3503518837397412,
+     "value": 2.647977219455516,
+     "position": 3.4572837606608062,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.505796793434355,
-      "position": 2.8072460368583783,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 56.94970936245389,
-      "position": 2.6032951536507047,
-      "tier": 2
+      "value": 0.4959016442298889,
+      "position": 3.1589706941429836,
+      "tier": 3
      },
      "eapm": {
-      "value": 254.33333333333334,
-      "position": 3.2826666666666666,
+      "value": 250.5,
+      "position": 3.2520000000000002,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.2764806275566419,
-      "position": 3.1904705786744296,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.2804623295863469,
-      "position": 3.2165479991483603,
+      "value": 0.2705490291118622,
+      "position": 3.336999763318194,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 42.30012162526449,
-      "position": 3.3408710092165985,
+      "value": 41.719797134399414,
+      "position": 3.324772091619093,
       "tier": 3
      }
     }
@@ -9084,39 +8982,29 @@
    "skill": {
     "games": 18,
     "combined": {
-     "value": 2.4840164908900912,
-     "position": 3.4561320579895476,
+     "value": 2.2226785757951744,
+     "position": 3.2641556997952677,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.43949542939662933,
-      "position": 2.751459155407302,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 100.67102177937825,
-      "position": 3.2682388090005534,
+      "value": 0.4374280869960785,
+      "position": 3.047923141910184,
       "tier": 3
      },
      "eapm": {
-      "value": 244.66666666666666,
-      "position": 3.205333333333334,
+      "value": 236.5,
+      "position": 3.14,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3808753498726421,
-      "position": 2.3981451347683724,
+      "value": 0.3818929046392441,
+      "position": 2.5319256872841804,
       "tier": 2
      },
-     "unspent_per_income": {
-      "value": 0.22394613756073845,
-      "position": 3.410648762801797,
-      "tier": 3
-     },
      "used_recalls_per_min": {
-      "value": 41.63154570261637,
-      "position": 3.3221352804869095,
+      "value": 40.667903900146484,
+      "position": 3.2933432101391285,
       "tier": 3
      }
     }
@@ -9663,39 +9551,29 @@
    "skill": {
     "games": 29,
     "combined": {
-     "value": 2.3345133815199595,
-     "position": 3.152430113171348,
+     "value": 2.170966698044243,
+     "position": 3.111473610297407,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.39177264478699914,
-      "position": 1.8936321300566363,
+      "value": 0.3857142925262451,
+      "position": 1.6156942609330298,
       "tier": 1
      },
-     "check_recalls_per_min": {
-      "value": 82.29311726011079,
-      "position": 3.107024219618097,
-      "tier": 3
-     },
      "eapm": {
-      "value": 254,
-      "position": 3.2675763546798033,
+      "value": 250,
+      "position": 3.248,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3631497508492963,
-      "position": 1.8457273242191399,
+      "value": 0.3590225577354431,
+      "position": 1.728696713844935,
       "tier": 1
      },
-     "unspent_per_income": {
-      "value": 0.3500421309265597,
-      "position": 2.463149211701305,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 39.14169482527108,
-      "position": 3.192654878633116,
+      "value": 36.6435432434082,
+      "position": 3.173101773085787,
       "tier": 3
      }
     }
@@ -10179,40 +10057,30 @@
    "skill": {
     "games": 39,
     "combined": {
-     "value": 2.0342323456043525,
-     "position": 2.937362172990394,
-     "tier": 2
+     "value": 1.9964724433716554,
+     "position": 3.088022981237402,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5105003485312829,
-      "position": 2.885972400056648,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 46.75901926480807,
-      "position": 2.2543956904115863,
-      "tier": 2
+      "value": 0.5263158082962036,
+      "position": 3.22381721361719,
+      "tier": 3
      },
      "eapm": {
-      "value": 212.07692307692307,
-      "position": 2.6514432234432235,
+      "value": 210,
+      "position": 2.678571428571429,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3642907761610471,
-      "position": 3.0858834641549917,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.26814066102871525,
-      "position": 3.015912888245851,
+      "value": 0.3609314262866974,
+      "position": 3.201057376824026,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 35.111932509984726,
-      "position": 3.046207912170235,
-      "tier": 3
+      "value": 30.533586502075195,
+      "position": 2.975016699729585,
+      "tier": 2
      }
     }
    }
@@ -10599,40 +10467,30 @@
    "skill": {
     "games": 29,
     "combined": {
-     "value": 2.101965660324793,
-     "position": 3.0685602606732854,
+     "value": 1.958818511068925,
+     "position": 3.012692758094849,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4053195632737258,
-      "position": 2.2970956733746326,
+      "value": 0.40909090638160706,
+      "position": 2.449760694252817,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 83.70853608230064,
-      "position": 3.1194043600934664,
-      "tier": 3
-     },
      "eapm": {
-      "value": 230.44827586206895,
-      "position": 3.0571822660098515,
+      "value": 230,
+      "position": 3.088,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3333731612254833,
-      "position": 2.8316387839995576,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.27091734779292137,
-      "position": 2.743573371378516,
-      "tier": 2
+      "value": 0.3163538873195648,
+      "position": 3.156063570632591,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 31.718451730136213,
-      "position": 2.933513641565644,
-      "tier": 2
+      "value": 31.711572647094727,
+      "position": 3.0257424078130426,
+      "tier": 3
      }
     }
    }
@@ -11114,40 +10972,30 @@
    "skill": {
     "games": 45,
     "combined": {
-     "value": 1.8443949926594614,
-     "position": 2.7576112079146315,
+     "value": 1.9150706423156059,
+     "position": 2.952491244833108,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4611117038461897,
-      "position": 2.9267094378568466,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 36.827454545762805,
-      "position": 1.8985228303948225,
-      "tier": 1
+      "value": 0.4711538553237915,
+      "position": 3.2655087440244612,
+      "tier": 3
      },
      "eapm": {
-      "value": 208.35555555555555,
-      "position": 2.609119576719577,
+      "value": 212,
+      "position": 2.75,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.37347630593511794,
-      "position": 2.4372235922887735,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.26976856059498255,
-      "position": 2.7416809812222787,
+      "value": 0.37740132212638855,
+      "position": 2.5999799677819913,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 32.08928616841634,
-      "position": 2.9832658351009758,
-      "tier": 2
+      "value": 32.05898666381836,
+      "position": 3.036122581009841,
+      "tier": 3
      }
     }
    }
@@ -11503,39 +11351,29 @@
    "skill": {
     "games": 10,
     "combined": {
-     "value": 2.1683384984616105,
-     "position": 3.1430343212535976,
-     "tier": 3
+     "value": 1.8223915376942057,
+     "position": 2.8077931892181196,
+     "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.49581941962242126,
-      "position": 3.200129856473054,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 138.4923583984375,
-      "position": 3.550369684299379,
+      "value": 0.527731329202652,
+      "position": 3.6305247045332387,
       "tier": 3
      },
      "eapm": {
-      "value": 214.1,
-      "position": 2.6512380952380954,
+      "value": 212,
+      "position": 2.75,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3349964529275894,
-      "position": 2.669006169587141,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.22194676697254181,
-      "position": 3.433472123980522,
+      "value": 0.28462381660938263,
+      "position": 3.298991817074853,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 20.811763191223143,
-      "position": 2.201026692524168,
+      "value": 20.44783592224121,
+      "position": 2.178668450236179,
       "tier": 2
      }
     }
@@ -12142,39 +11980,29 @@
    "skill": {
     "games": 38,
     "combined": {
-     "value": 2.4533893737308694,
-     "position": 3.249418352867064,
+     "value": 2.0834711280707356,
+     "position": 3.048043445027356,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4594519785360286,
-      "position": 2.4951795170917666,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 163.31033124421774,
-      "position": 3.7236183457821435,
+      "value": 0.47333332896232605,
+      "position": 3.069057087499307,
       "tier": 3
      },
      "eapm": {
-      "value": 214.47368421052633,
-      "position": 2.707390977443609,
+      "value": 213,
+      "position": 2.7857142857142856,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.2874317447605886,
-      "position": 3.085358021508219,
+      "value": 0.28755372762680054,
+      "position": 3.1987501818959307,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.3436169055731673,
-      "position": 2.4276727836286924,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 32.00950326417622,
-      "position": 2.9372014026766,
+      "value": 30.598029136657715,
+      "position": 2.9801049456500364,
       "tier": 2
      }
     }
@@ -12516,39 +12344,29 @@
    "skill": {
     "games": 40,
     "combined": {
-     "value": 2.017415762960539,
-     "position": 2.955034909648152,
-     "tier": 2
+     "value": 1.8963478872316788,
+     "position": 3.004952859141218,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.48769873529672625,
-      "position": 2.6931260668135115,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 77.6584403038025,
-      "position": 2.9994129118305852,
+      "value": 0.4747881293296814,
+      "position": 2.8322820774344515,
       "tier": 2
      },
      "eapm": {
-      "value": 232.55,
-      "position": 3.0924642857142857,
+      "value": 233,
+      "position": 3.112,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3903797060251236,
-      "position": 2.7652055331556253,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2725018609315157,
-      "position": 2.9458319089047875,
-      "tier": 2
+      "value": 0.38663041591644287,
+      "position": 3.099880252297469,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 29.56673836708069,
-      "position": 2.7598512896012184,
+      "value": 26.36215877532959,
+      "position": 2.6456501204366036,
       "tier": 2
      }
     }
@@ -13114,39 +12932,29 @@
    "skill": {
     "games": 48,
     "combined": {
-     "value": 2.1643588579511466,
-     "position": 3.1080447171966874,
+     "value": 2.199533163805242,
+     "position": 3.2433513071255584,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5456393870214621,
-      "position": 3.1416943806916797,
+      "value": 0.5554418861865997,
+      "position": 3.370918617104039,
       "tier": 3
      },
-     "check_recalls_per_min": {
-      "value": 47.172444780667625,
-      "position": 2.293992986138678,
-      "tier": 2
-     },
      "eapm": {
-      "value": 211,
-      "position": 2.629251984126985,
+      "value": 210,
+      "position": 2.678571428571429,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.35553185796986025,
-      "position": 3.0321925173318185,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.2593756563340624,
-      "position": 3.0599255903482176,
+      "value": 0.3444017618894577,
+      "position": 3.2661347957107965,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 38.22159091631571,
-      "position": 3.208979563000552,
+      "value": 38.22900199890137,
+      "position": 3.2204727359317986,
       "tier": 3
      }
     }
@@ -13732,39 +13540,29 @@
    "skill": {
     "games": 47,
     "combined": {
-     "value": 2.2378663479548906,
-     "position": 3.170354718173712,
+     "value": 2.128542571486169,
+     "position": 3.189048092623093,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5067720673185714,
-      "position": 2.7696706496239116,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 58.29872301791577,
-      "position": 2.5905872353787767,
-      "tier": 2
+      "value": 0.5103448033332825,
+      "position": 3.1431555723903157,
+      "tier": 3
      },
      "eapm": {
-      "value": 227.89361702127658,
-      "position": 2.9405835866261407,
-      "tier": 2
+      "value": 228,
+      "position": 3.072,
+      "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3811513435967425,
-      "position": 2.7562812475939595,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2508278168896411,
-      "position": 3.2103412083450777,
+      "value": 0.3803159296512604,
+      "position": 3.1247404344438565,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 40.592915190027114,
-      "position": 3.2582304636202664,
+      "value": 38.08041763305664,
+      "position": 3.2160332735682764,
       "tier": 3
      }
     }
@@ -14300,39 +14098,29 @@
    "skill": {
     "games": 31,
     "combined": {
-     "value": 2.3508301224914496,
-     "position": 3.3299526703839417,
+     "value": 2.0120316677699086,
+     "position": 3.063405763623281,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4363613801617776,
-      "position": 2.741381122760516,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 121.17521544425718,
-      "position": 3.421191259207027,
+      "value": 0.43478259444236755,
+      "position": 3.0308554480152745,
       "tier": 3
      },
      "eapm": {
-      "value": 207.32258064516128,
-      "position": 2.5584331797235023,
+      "value": 207,
+      "position": 2.571428571428571,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.2904927636827192,
-      "position": 3.17207806901429,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.2359048185809966,
-      "position": 3.244694356574725,
+      "value": 0.3149038553237915,
+      "position": 3.1625952462892273,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 35.27193924688524,
-      "position": 3.1230813975378315,
+      "value": 34.5191650390625,
+      "position": 3.109628762110087,
       "tier": 3
      }
     }
@@ -14814,39 +14602,29 @@
    "skill": {
     "games": 31,
     "combined": {
-     "value": 2.084131555494204,
-     "position": 2.951320499338558,
-     "tier": 2
+     "value": 2.227002754561219,
+     "position": 3.1520971107446853,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4683384837642793,
-      "position": 2.7040625715143323,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 23.504939909904234,
-      "position": 1.4113490523375076,
-      "tier": 1
+      "value": 0.47191011905670166,
+      "position": 3.0633869285127555,
+      "tier": 3
      },
      "eapm": {
-      "value": 223.1290322580645,
-      "position": 2.911447004608295,
-      "tier": 2
+      "value": 219,
+      "position": 3,
+      "tier": 3
      },
      "production_idle_share": {
-      "value": 0.31334804046538567,
-      "position": 2.677722467513176,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3354867566977778,
-      "position": 2.6302845894809432,
-      "tier": 2
+      "value": 0.30692052841186523,
+      "position": 3.0412965169767054,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 37.40876714644894,
-      "position": 3.1934111214987557,
+      "value": 37.39931106567383,
+      "position": 3.1956829025568085,
       "tier": 3
      }
     }
@@ -15348,39 +15126,29 @@
    "skill": {
     "games": 36,
     "combined": {
-     "value": 1.6782127902434816,
-     "position": 2.387580676774813,
+     "value": 1.7843136141177482,
+     "position": 2.590996863571739,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.43676823377609253,
-      "position": 2.4162449100911076,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 62.52026865217421,
-      "position": 2.7400295161820516,
+      "value": 0.4573742598295212,
+      "position": 2.9571068526683915,
       "tier": 2
      },
      "eapm": {
-      "value": 187.77777777777777,
-      "position": 1.9903544973544978,
+      "value": 184.5,
+      "position": 1.8452380952380953,
       "tier": 1
      },
      "production_idle_share": {
-      "value": 0.2870850053926309,
-      "position": 3.0062945621485593,
+      "value": 0.28402264416217804,
+      "position": 3.227458177543268,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.342108572108878,
-      "position": 2.5261876813757045,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 21.55270987086826,
-      "position": 2.2481483180976607,
+      "value": 22.443618774414062,
+      "position": 2.33625098889965,
       "tier": 2
      }
     }
@@ -15773,40 +15541,30 @@
    "skill": {
     "games": 29,
     "combined": {
-     "value": 1.435360017989577,
-     "position": 2.0159026022018884,
+     "value": 1.673356208490926,
+     "position": 2.39612962502797,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4435040760656883,
-      "position": 2.4973479767437294,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 23.89116744337411,
-      "position": 1.400124255253003,
-      "tier": 1
+      "value": 0.46296295523643494,
+      "position": 3.027740857515677,
+      "tier": 3
      },
      "eapm": {
-      "value": 200.79310344827587,
-      "position": 2.3390443349753696,
+      "value": 199,
+      "position": 2.2857142857142856,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3199951345550603,
-      "position": 2.598745757126735,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.40888916726770075,
-      "position": 2.0905479323587484,
-      "tier": 2
+      "value": 0.3020663261413574,
+      "position": 3.080761576086525,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 17.91360593664235,
-      "position": 1.9188440832531548,
-      "tier": 1
+      "value": 18.293128967285156,
+      "position": 2.0085376207884056,
+      "tier": 2
      }
     }
    }
@@ -16064,19 +15822,12 @@
         },
         {
          "start_min": 1,
-         "end_min": 6,
+         "end_min": 8,
          "category": "units",
-         "share": 0.7722063037249284,
-         "presses": 1396,
+         "share": 0.7690120824449183,
+         "presses": 1407,
          "unit": "Drone",
          "median_count": 1
-        },
-        {
-         "start_min": 8,
-         "end_min": 8,
-         "category": "tech",
-         "share": 0.36363636363636365,
-         "presses": 11
         },
         {
          "start_min": 9,
@@ -16383,7 +16134,7 @@
       }
      ],
      "temporal_score": 0.724257375307456,
-     "prose": "pro:hbq plays a phase-driven layout: armies on 2 and 3, 6, Hatcheries on 5, 7, 9 and 0. Key 1 is repurposed: town hall early, then army from ~min 3, then army from ~min 7, then army from ~min 12. Key 4 is repurposed: army early, then army from ~min 1, then tech from ~min 8, then army from ~min 9, then army from ~min 15. Key 8 is repurposed: army early, then army from ~min 8, then town hall from ~min 12, then army from ~min 15, then town hall from ~min 17. Army groups typically hold ~4 units. Minute for minute, 72% of key presses match this pattern (40 games)."
+     "prose": "pro:hbq plays a phase-driven layout: armies on 2–4, 6, Hatcheries on 5, 7, 9 and 0. Key 1 is repurposed: town hall early, then army from ~min 3, then army from ~min 7, then army from ~min 12. Key 8 is repurposed: army early, then army from ~min 8, then town hall from ~min 12, then army from ~min 15, then town hall from ~min 17. Army groups typically hold ~4 units. Minute for minute, 72% of key presses match this pattern (40 games)."
     },
     {
      "race": "Terran",
@@ -16864,39 +16615,29 @@
    "skill": {
     "games": 42,
     "combined": {
-     "value": 2.0109433786031925,
-     "position": 2.8283688988381366,
-     "tier": 2
+     "value": 2.0277850674363407,
+     "position": 3.007673675102465,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4927417944584574,
-      "position": 2.8095555507498906,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 62.1072017124721,
-      "position": 2.7506492142286163,
-      "tier": 2
+      "value": 0.5108747184276581,
+      "position": 3.218624376205809,
+      "tier": 3
      },
      "eapm": {
-      "value": 240.47619047619048,
-      "position": 3.127895691609978,
+      "value": 242.5,
+      "position": 3.188,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3186266060386385,
-      "position": 2.535770338791077,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.32906959809008096,
-      "position": 2.6166464936169618,
+      "value": 0.3146357387304306,
+      "position": 2.922478272634394,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 24.848216306595575,
-      "position": 2.4506267736682625,
+      "value": 23.479836463928223,
+      "position": 2.418068414048814,
       "tier": 2
      }
     }
@@ -17431,39 +17172,29 @@
    "skill": {
     "games": 36,
     "combined": {
-     "value": 3.0145312255411394,
-     "position": 3.6370355429056977,
+     "value": 2.738776927896735,
+     "position": 3.523109270622543,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.47836800871623886,
-      "position": 2.735532979358855,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 128.81497955322266,
-      "position": 3.478180607755137,
+      "value": 0.4858490526676178,
+      "position": 3.118920528556246,
       "tier": 3
      },
      "eapm": {
-      "value": 263.25,
-      "position": 3.3501507936507933,
+      "value": 263.5,
+      "position": 3.356,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.2770685056845347,
-      "position": 3.2038172977888957,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.29930591997173095,
-      "position": 3.0183513292346795,
+      "value": 0.28727906942367554,
+      "position": 3.200983175417272,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 47.89601516723633,
-      "position": 3.5093075731941896,
+      "value": 48.200008392333984,
+      "position": 3.5183904028304998,
       "tier": 3
      }
     }
@@ -17892,39 +17623,29 @@
    "skill": {
     "games": 27,
     "combined": {
-     "value": 2.549862999895856,
-     "position": 3.4400801487920485,
+     "value": 2.331815256036898,
+     "position": 3.34453855736013,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.48510145478778416,
-      "position": 2.596768258159563,
+      "value": 0.4647887349128723,
+      "position": 2.599738021229589,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 119.39779126202619,
-      "position": 3.4079324406369444,
-      "tier": 3
-     },
      "eapm": {
-      "value": 239.14814814814815,
-      "position": 3.1273121693121686,
+      "value": 233,
+      "position": 3.112,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.34748018229449235,
-      "position": 3.0407056709031854,
+      "value": 0.35549911856651306,
+      "position": 3.2224444150924683,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.27065540574215075,
-      "position": 2.9052749028505,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 44.23206399988245,
-      "position": 3.3632734771212562,
+      "value": 43.05218505859375,
+      "position": 3.3645817042216306,
       "tier": 3
      }
     }
@@ -18433,17 +18154,17 @@
         },
         {
          "start_min": 13,
-         "end_min": 16,
+         "end_min": 19,
          "category": "hall",
-         "share": 0.5707317073170732,
-         "presses": 205
+         "share": 0.5525525525525524,
+         "presses": 333
         },
         {
-         "start_min": 17,
+         "start_min": 20,
          "end_min": 22,
          "category": "units",
-         "share": 0.5459183673469387,
-         "presses": 196,
+         "share": 0.5882352941176471,
+         "presses": 68,
          "unit": "Hatchery",
          "median_count": 1
         }
@@ -18567,45 +18288,35 @@
       }
      ],
      "temporal_score": 0.6388665132336019,
-     "prose": "pro:hm plays a phase-driven layout: armies on 1 and 2, 4, 6, Hatcheries on 5, 9 and 0. Key 3 is repurposed: army early, then army from ~min 1, then army from ~min 2, then tech from ~min 4, then army from ~min 7, then army from ~min 8, then army from ~min 9. Key 7 is repurposed: army early, then town hall from ~min 5. Key 8 is repurposed: army early, then town hall from ~min 13, then army from ~min 17. Army groups typically hold ~7 units. Minute for minute, 64% of key presses match this pattern (40 games)."
+     "prose": "pro:hm plays a phase-driven layout: armies on 1 and 2, 4, 6, Hatcheries on 5, 9 and 0. Key 3 is repurposed: army early, then army from ~min 1, then army from ~min 2, then tech from ~min 4, then army from ~min 7, then army from ~min 8, then army from ~min 9. Key 7 is repurposed: army early, then town hall from ~min 5. Key 8 is repurposed: army early, then town hall from ~min 13, then army from ~min 20. Army groups typically hold ~7 units. Minute for minute, 64% of key presses match this pattern (40 games)."
     }
    ],
    "skill": {
     "games": 33,
     "combined": {
-     "value": 2.253490378652859,
-     "position": 3.091239247035185,
+     "value": 2.048262966430563,
+     "position": 3.0225191869150088,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5038635179851995,
-      "position": 2.962608294129192,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 137.32845907500297,
-      "position": 3.538606459512988,
+      "value": 0.5116279125213623,
+      "position": 3.2216251494874992,
       "tier": 3
      },
      "eapm": {
-      "value": 225.84848484848484,
-      "position": 2.91382683982684,
-      "tier": 2
+      "value": 226,
+      "position": 3.056,
+      "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3289954513311386,
-      "position": 2.4482552994889692,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.32462702420624817,
-      "position": 2.7836552774607677,
-      "tier": 2
+      "value": 0.31094104051589966,
+      "position": 3.0086094267000028,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 25.92580327120694,
-      "position": 2.547615327175295,
+      "value": 24.72540855407715,
+      "position": 2.516415993215724,
       "tier": 2
      }
     }
@@ -19027,39 +18738,29 @@
    "skill": {
     "games": 45,
     "combined": {
-     "value": 2.21303963241144,
-     "position": 3.198974408600746,
+     "value": 2.1929024519246334,
+     "position": 3.2357785684976967,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.493762782547209,
-      "position": 3.3395319165529265,
+      "value": 0.4862385392189026,
+      "position": 3.3628292852832424,
       "tier": 3
      },
-     "check_recalls_per_min": {
-      "value": 59.10036019219292,
-      "position": 2.649583199874873,
-      "tier": 2
-     },
      "eapm": {
-      "value": 235.64444444444445,
-      "position": 3.133155555555556,
+      "value": 234,
+      "position": 3.12,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3437011950545841,
-      "position": 2.7306014404834373,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.25234416094091205,
-      "position": 3.066916761557493,
+      "value": 0.3410138189792633,
+      "position": 3.0449827973907055,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 36.07665786743164,
-      "position": 3.143390458385816,
+      "value": 35.20796203613281,
+      "position": 3.1302089108169593,
       "tier": 3
      }
     }
@@ -19904,39 +19605,29 @@
    "skill": {
     "games": 23,
     "combined": {
-     "value": 3.483964037823026,
-     "position": 3.8925813690356095,
+     "value": 3.3087352477646883,
+     "position": 3.936302194986725,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5167921405771504,
-      "position": 3.04751523325121,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 120.3531603605851,
-      "position": 3.4150590824773617,
+      "value": 0.52173912525177,
+      "position": 3.2619088655449007,
       "tier": 3
      },
      "eapm": {
-      "value": 316.69565217391306,
-      "position": 3.751999999999999,
+      "value": 312,
+      "position": 3.7439999999999998,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.28839545923730603,
-      "position": 3.022281229101165,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.28391723529152246,
-      "position": 3.296559610812941,
+      "value": 0.2829965651035309,
+      "position": 3.235800283711131,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 62.03871221127717,
-      "position": 3.824272317856879,
+      "value": 62.699893951416016,
+      "position": 3.951623710042607,
       "tier": 3
      }
     }
@@ -20387,39 +20078,29 @@
    "skill": {
     "games": 20,
     "combined": {
-     "value": 2.1148654852152466,
-     "position": 2.9377315668393353,
-     "tier": 2
+     "value": 2.15533946206712,
+     "position": 3.100144600599623,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4020221583545208,
-      "position": 1.9290019065323107,
+      "value": 0.3771551698446274,
+      "position": 1.495143237248273,
       "tier": 1
      },
-     "check_recalls_per_min": {
-      "value": 57.52726383209229,
-      "position": 2.661986229982769,
-      "tier": 2
-     },
      "eapm": {
-      "value": 231.4,
-      "position": 3.041,
+      "value": 229.5,
+      "position": 3.084,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3300091542303562,
-      "position": 2.3225480171185056,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.39030256271362307,
-      "position": 2.0286617653708303,
+      "value": 0.33355167508125305,
+      "position": 2.3661272034925567,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 35.85437631607056,
-      "position": 3.0709184992663294,
+      "value": 35.98068618774414,
+      "position": 3.1532966681927794,
       "tier": 3
      }
     }
@@ -20924,39 +20605,29 @@
    "skill": {
     "games": 23,
     "combined": {
-     "value": 2.392317635418668,
-     "position": 3.2206339070382533,
+     "value": 2.3775007030293134,
+     "position": 3.2612010316291964,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4380010178555613,
-      "position": 2.3719355881441397,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 66.935046652089,
-      "position": 2.9418960719494485,
-      "tier": 2
+      "value": 0.4683544337749481,
+      "position": 3.04922085169302,
+      "tier": 3
      },
      "eapm": {
-      "value": 234.8695652173913,
-      "position": 3.114906832298137,
+      "value": 236,
+      "position": 3.136,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.26784650074399036,
-      "position": 3.2505059769516156,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.27509365651918494,
-      "position": 3.2735033763234687,
+      "value": 0.27285200357437134,
+      "position": 3.318276393704298,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 38.7036073104195,
-      "position": 3.228160047752305,
+      "value": 39.08957290649414,
+      "position": 3.2461852133763824,
       "tier": 3
      }
     }
@@ -21538,39 +21209,29 @@
    "skill": {
     "games": 42,
     "combined": {
-     "value": 2.3751007352030746,
-     "position": 3.3075213865261395,
+     "value": 2.024612365347649,
+     "position": 3.109548202667826,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5157186055467242,
-      "position": 2.9419683604233846,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 107.5612964630127,
-      "position": 3.3165040534917747,
+      "value": 0.5064102709293365,
+      "position": 3.123284196612811,
       "tier": 3
      },
      "eapm": {
-      "value": 207.1904761904762,
-      "position": 2.513786848072562,
+      "value": 206.5,
+      "position": 2.5535714285714284,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.37063723234903245,
-      "position": 2.9506088495743477,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.25482019249882015,
-      "position": 3.125900153089718,
+      "value": 0.3694470375776291,
+      "position": 3.1675313481195704,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 40.38469337281727,
-      "position": 3.270593203319958,
+      "value": 35.901288986206055,
+      "position": 3.1509244072486795,
       "tier": 3
      }
     }
@@ -22064,39 +21725,29 @@
    "skill": {
     "games": 47,
     "combined": {
-     "value": 2.9026721865058422,
-     "position": 3.561135343426737,
+     "value": 2.6135699596738946,
+     "position": 3.432340118655861,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5550481670714439,
-      "position": 3.1265169119451754,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 149.68369228281873,
-      "position": 3.62800162433071,
+      "value": 0.5625,
+      "position": 3.4243027888446216,
       "tier": 3
      },
      "eapm": {
-      "value": 239.2340425531915,
-      "position": 3.1542066869300913,
+      "value": 240,
+      "position": 3.168,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.245983989948922,
-      "position": 3.4511512135133704,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.25812096893787384,
-      "position": 3.408615919695878,
+      "value": 0.23662015795707703,
+      "position": 3.612844244251406,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 39.89992478553285,
-      "position": 3.2439225138823815,
+      "value": 38.526145935058594,
+      "position": 3.2293509198081387,
       "tier": 3
      }
     }
@@ -22591,39 +22242,29 @@
    "skill": {
     "games": 23,
     "combined": {
-     "value": 2.419202835634506,
-     "position": 3.329129827806252,
+     "value": 2.4730640916601105,
+     "position": 3.452584786705508,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5228453174881313,
-      "position": 2.9879087235599404,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 53.319101582402766,
-      "position": 2.4793810859209144,
-      "tier": 2
+      "value": 0.5370370149612427,
+      "position": 3.277964722026478,
+      "tier": 3
      },
      "eapm": {
-      "value": 235.95652173913044,
-      "position": 3.0922732919254656,
+      "value": 236,
+      "position": 3.136,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3537498816199925,
-      "position": 3.0579316092921287,
+      "value": 0.35031846165657043,
+      "position": 3.2428407021394863,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.278995833967043,
-      "position": 2.8131102678073416,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 47.76411039932914,
-      "position": 3.4960562708633707,
+      "value": 46.130855560302734,
+      "position": 3.4565674373391118,
       "tier": 3
      }
     }
@@ -23169,39 +22810,29 @@
    "skill": {
     "games": 34,
     "combined": {
-     "value": 2.052226929329766,
-     "position": 2.877100035665929,
+     "value": 1.9778804208877991,
+     "position": 2.930945593410255,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4545214759076343,
-      "position": 2.4949737902350213,
+      "value": 0.4508928507566452,
+      "position": 2.801389102430811,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 79.79304571712719,
-      "position": 3.0429606288841287,
-      "tier": 3
-     },
      "eapm": {
-      "value": 234.44117647058823,
-      "position": 3.0640252100840337,
+      "value": 228,
+      "position": 3.072,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3252984105664141,
-      "position": 2.506765906054783,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3523104379282278,
-      "position": 2.5264093822205607,
+      "value": 0.31262920796871185,
+      "position": 2.9733363107196,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 26.845766740686752,
-      "position": 2.579435237157338,
+      "value": 25.41184425354004,
+      "position": 2.570615416781685,
       "tier": 2
      }
     }
@@ -23684,39 +23315,29 @@
    "skill": {
     "games": 27,
     "combined": {
-     "value": 2.570638361541895,
-     "position": 3.2709681742811108,
+     "value": 2.5601281199748622,
+     "position": 3.39359730315707,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.41637341360803004,
-      "position": 2.2296188452132935,
+      "value": 0.43209877610206604,
+      "position": 2.4441575837689777,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 94.17230404747858,
-      "position": 3.0981104027763737,
-      "tier": 3
-     },
      "eapm": {
-      "value": 270.7037037037037,
-      "position": 3.3443915343915345,
+      "value": 269,
+      "position": 3.4,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3064841517695674,
-      "position": 2.7633650655080864,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2952605921913076,
-      "position": 3.1504212716309543,
+      "value": 0.3096506893634796,
+      "position": 3.0191000864757753,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 39.55011592087922,
-      "position": 3.122322839429064,
+      "value": 40.8205680847168,
+      "position": 3.297904570937787,
       "tier": 3
      }
     }
@@ -24247,39 +23868,29 @@
    "skill": {
     "games": 41,
     "combined": {
-     "value": 1.7946146479895877,
-     "position": 2.636450425126179,
+     "value": 1.5246897146299483,
+     "position": 2.260397500787784,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.45388758255214223,
-      "position": 2.2886377816298955,
+      "value": 0.46236559748649597,
+      "position": 2.543385988058046,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 92.87695749794564,
-      "position": 3.1853644673253525,
-      "tier": 3
-     },
      "eapm": {
-      "value": 190.85365853658536,
-      "position": 2.0516840882694547,
+      "value": 191,
+      "position": 2,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.47955251757691547,
-      "position": 1.7408812694245854,
+      "value": 0.47077369689941406,
+      "position": 1.570307605671433,
       "tier": 1
      },
-     "unspent_per_income": {
-      "value": 0.2880725366313283,
-      "position": 2.674501366538066,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 29.56201478911609,
-      "position": 2.8380098988316895,
+      "value": 28.952756881713867,
+      "position": 2.8501979377586943,
       "tier": 2
      }
     }
@@ -24798,39 +24409,29 @@
    "skill": {
     "games": 36,
     "combined": {
-     "value": 2.4815166109504587,
-     "position": 3.4074774188580768,
+     "value": 2.237665387960547,
+     "position": 3.272519993850338,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5399849994315041,
-      "position": 3.1755825080962397,
+      "value": 0.533362627029419,
+      "position": 3.2594072072192875,
       "tier": 3
      },
-     "check_recalls_per_min": {
-      "value": 63.68428791893853,
-      "position": 2.795612808528421,
-      "tier": 2
-     },
      "eapm": {
-      "value": 217.33333333333334,
-      "position": 2.8065238095238088,
+      "value": 216,
+      "position": 2.892857142857143,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3495358961323897,
-      "position": 3.106226388596996,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.23290254920721054,
-      "position": 3.4001482573374022,
+      "value": 0.34950949251651764,
+      "position": 3.24602562001371,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 47.51565588845147,
-      "position": 3.4920456736053946,
+      "value": 45.04860496520996,
+      "position": 3.4242315266428625,
       "tier": 3
      }
     }
@@ -25648,39 +25249,29 @@
    "skill": {
     "games": 34,
     "combined": {
-     "value": 1.851570910619281,
-     "position": 2.683962619969857,
+     "value": 1.7354523444946868,
+     "position": 2.697392379213533,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.46979794870404634,
-      "position": 2.444575197306641,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 55.21438980102539,
-      "position": 2.589329315644916,
+      "value": 0.4625874161720276,
+      "position": 2.5485445621401768,
       "tier": 2
      },
      "eapm": {
-      "value": 217.14705882352942,
-      "position": 2.829487394957983,
+      "value": 216.5,
+      "position": 2.9107142857142856,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.39951225063380075,
-      "position": 2.6144841872469806,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3039471967255368,
-      "position": 2.467289198214405,
-      "tier": 2
+      "value": 0.39774809777736664,
+      "position": 3.05610985127021,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 30.840208614573758,
-      "position": 2.838079965475605,
+      "value": 28.270612716674805,
+      "position": 2.796337364127501,
       "tier": 2
      }
     }
@@ -26320,40 +25911,30 @@
    "skill": {
     "games": 29,
     "combined": {
-     "value": 1.964654488921142,
-     "position": 2.9275631527031205,
-     "tier": 2
+     "value": 1.890744956388216,
+     "position": 3.0071482876066824,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5110703562868053,
-      "position": 2.997198761411244,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 59.02600518588362,
-      "position": 2.6615840800441,
-      "tier": 2
+      "value": 0.5074626803398132,
+      "position": 3.1285993956556224,
+      "tier": 3
      },
      "eapm": {
-      "value": 197.20689655172413,
-      "position": 2.2376912972085385,
+      "value": 198,
+      "position": 2.25,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.35065099031760777,
-      "position": 3.1228600117985796,
+      "value": 0.3581191897392273,
+      "position": 3.2121291742550104,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.2677390477780638,
-      "position": 2.9717458406120336,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 31.24786376953125,
-      "position": 2.945856746961761,
-      "tier": 2
+      "value": 31.05234718322754,
+      "position": 3.0060458090539766,
+      "tier": 3
      }
     }
    }
@@ -26661,19 +26242,10 @@
        "runs": [
         {
          "start_min": 1,
-         "end_min": 11,
-         "category": "prod",
-         "share": 0.9795918367346939,
-         "presses": 2156
-        },
-        {
-         "start_min": 12,
          "end_min": 13,
-         "category": "units",
-         "share": 0.34328358208955223,
-         "presses": 67,
-         "unit": "Zealot",
-         "median_count": 5
+         "category": "prod",
+         "share": 0.9604138551506972,
+         "presses": 2223
         }
        ],
        "assign_runs": [
@@ -26944,7 +26516,7 @@
       }
      ],
      "temporal_score": 0.7994956827385955,
-     "prose": "pro:mighty plays a phase-driven layout: armies on 3 and 4, production on 6–0. Key 1 is repurposed: town hall early, then army from ~min 11, then army from ~min 12. Key 2 is repurposed: army early, then town hall from ~min 3, then army from ~min 10, then army from ~min 11. Key 5 is repurposed: production early, then army from ~min 12. Minute for minute, 80% of key presses match this pattern (26 games)."
+     "prose": "pro:mighty plays a phase-driven layout: armies on 3 and 4, production on 5–0. Key 1 is repurposed: town hall early, then army from ~min 11, then army from ~min 12. Key 2 is repurposed: army early, then town hall from ~min 3, then army from ~min 10, then army from ~min 11. Minute for minute, 80% of key presses match this pattern (26 games)."
     },
     {
      "race": "Terran",
@@ -27430,39 +27002,29 @@
    "skill": {
     "games": 17,
     "combined": {
-     "value": 2.3204918102659864,
-     "position": 3.2987520756240882,
+     "value": 2.3001352551603733,
+     "position": 3.337973177509171,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.46992281605215636,
-      "position": 3.0177736661851924,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 72.52582056382123,
-      "position": 3.0104184317444185,
+      "value": 0.4868420958518982,
+      "position": 3.366723199044505,
       "tier": 3
      },
      "eapm": {
-      "value": 235.35294117647058,
-      "position": 3.1210420168067223,
+      "value": 235,
+      "position": 3.128,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.32948274209218864,
-      "position": 2.816697400219432,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2275891786112505,
-      "position": 3.3379534044846944,
+      "value": 0.32231104373931885,
+      "position": 3.1292295327057706,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 38.03938888101017,
-      "position": 3.2133472058804067,
+      "value": 37.37568664550781,
+      "position": 3.194977042801034,
       "tier": 3
      }
     }
@@ -28028,39 +27590,29 @@
    "skill": {
     "games": 37,
     "combined": {
-     "value": 2.0796881879396225,
-     "position": 3.0497426904332836,
-     "tier": 3
+     "value": 1.7944084168836247,
+     "position": 2.819631799468432,
+     "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.46567200083990357,
-      "position": 2.4019015120020257,
+      "value": 0.4560000002384186,
+      "position": 2.3953488427539207,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 106.92155765842747,
-      "position": 3.3148651135229117,
-      "tier": 3
-     },
      "eapm": {
-      "value": 203.05405405405406,
-      "position": 2.4274208494208493,
+      "value": 203,
+      "position": 2.4285714285714284,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.41596751358058004,
-      "position": 2.4937656280043687,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3008042521573402,
-      "position": 2.5072009733323246,
-      "tier": 2
+      "value": 0.4044564366340637,
+      "position": 3.029699068369828,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 35.28231363038759,
-      "position": 3.1055149615486917,
+      "value": 34.43982696533203,
+      "position": 3.1072582678099745,
       "tier": 3
      }
     }
@@ -28640,39 +28192,29 @@
    "skill": {
     "games": 38,
     "combined": {
-     "value": 2.24417296793306,
-     "position": 3.188471499404138,
+     "value": 2.2279863124200068,
+     "position": 3.2651161266886,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5384879880829861,
-      "position": 3.1768739710881815,
+      "value": 0.5399686694145203,
+      "position": 3.2927710576490923,
       "tier": 3
      },
-     "check_recalls_per_min": {
-      "value": 62.519943538465,
-      "position": 2.733656209109293,
-      "tier": 2
-     },
      "eapm": {
-      "value": 218.55263157894737,
-      "position": 2.9026616541353385,
+      "value": 218.5,
+      "position": 2.982142857142857,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3469676167557114,
-      "position": 3.076853310661857,
+      "value": 0.34919895231723785,
+      "position": 3.247248219223473,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.26848821498845754,
-      "position": 2.9208616078594396,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 38.77518528386166,
-      "position": 3.228966619464736,
+      "value": 39.207176208496094,
+      "position": 3.2496990112789774,
       "tier": 3
      }
     }
@@ -29128,40 +28670,30 @@
    "skill": {
     "games": 28,
     "combined": {
-     "value": 1.9311271321540084,
-     "position": 2.7252606980850613,
-     "tier": 2
+     "value": 1.9084187139287798,
+     "position": 3.020667569745873,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.48296108096838,
-      "position": 2.508420437009572,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 66.61780759266445,
-      "position": 2.6133520594579775,
+      "value": 0.467803031206131,
+      "position": 2.669837935026302,
       "tier": 2
      },
      "eapm": {
-      "value": 193.67857142857142,
-      "position": 2.1723689905492396,
+      "value": 202,
+      "position": 2.392857142857143,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.41684631045375553,
-      "position": 2.3999200744492564,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2733622289129666,
-      "position": 2.919240407419332,
+      "value": 0.4094354212284088,
+      "position": 2.987681226597892,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 34.01186047281538,
-      "position": 2.9783460086748463,
-      "tier": 2
+      "value": 34.259592056274414,
+      "position": 3.101873138016505,
+      "tier": 3
      }
     }
    }
@@ -29664,39 +29196,29 @@
    "skill": {
     "games": 29,
     "combined": {
-     "value": 2.135294924303716,
-     "position": 3.0959745181152227,
+     "value": 1.9924899651880805,
+     "position": 3.0447822025999054,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.45798471570014954,
-      "position": 2.8917656804209635,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 89.17458988058156,
-      "position": 3.180240270795407,
+      "value": 0.46666666865348816,
+      "position": 3.2365591526031494,
       "tier": 3
      },
      "eapm": {
-      "value": 194.48275862068965,
-      "position": 2.1798095238095234,
+      "value": 196,
+      "position": 2.1785714285714284,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3811069356984106,
-      "position": 2.369633503586944,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.28144040755156813,
-      "position": 2.6192264734328523,
+      "value": 0.3817470967769623,
+      "position": 2.534134897318753,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 38.431683507458914,
-      "position": 3.2109548953205973,
+      "value": 38.75261306762695,
+      "position": 3.236117394234275,
       "tier": 3
      }
     }
@@ -30095,39 +29617,29 @@
    "skill": {
     "games": 29,
     "combined": {
-     "value": 1.974079289771052,
-     "position": 2.868706888527445,
+     "value": 1.637309967986842,
+     "position": 2.493904142622521,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.42950195125464735,
-      "position": 1.9859106696489048,
+      "value": 0.4305555522441864,
+      "position": 1.8700854191413292,
       "tier": 1
      },
-     "check_recalls_per_min": {
-      "value": 102.96394769076643,
-      "position": 3.2581437292838302,
-      "tier": 3
-     },
      "eapm": {
-      "value": 202.44827586206895,
-      "position": 2.4151921182266007,
+      "value": 202,
+      "position": 2.392857142857143,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.4767000711169736,
-      "position": 1.700778538710452,
+      "value": 0.47176283597946167,
+      "position": 1.5516446041611007,
       "tier": 1
      },
-     "unspent_per_income": {
-      "value": 0.2925256172130848,
-      "position": 2.6695033998252367,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 35.72468836554165,
-      "position": 3.0776986359173732,
+      "value": 36.83845901489258,
+      "position": 3.178925543484794,
       "tier": 3
      }
     }
@@ -30295,26 +29807,10 @@
         },
         {
          "start_min": 12,
-         "end_min": 17,
-         "category": "units",
-         "share": 0.2883693045563549,
-         "presses": 1668
-        },
-        {
-         "start_min": 18,
-         "end_min": 19,
-         "category": "units",
-         "share": 0.41037735849056606,
-         "presses": 424,
-         "unit": "Vulture",
-         "median_count": 7
-        },
-        {
-         "start_min": 20,
          "end_min": 20,
          "category": "units",
-         "share": 0.24324324324324326,
-         "presses": 222
+         "share": 0.30639585133967157,
+         "presses": 2314
         },
         {
          "start_min": 21,
@@ -30602,45 +30098,35 @@
       }
      ],
      "temporal_score": 0.801337626950706,
-     "prose": "pro:noel plays a phase-driven layout: armies on 1 and 2, a Comsat on 0, production on 5 and 6. Keys 7 and 8 are repurposed: production early, then Comsat from ~min 19. Key 3 is repurposed: town hall early, then army from ~min 12, then army from ~min 18, then army from ~min 20, then army from ~min 21. Key 4 is repurposed: production early, then army from ~min 15, then army from ~min 22. Key 9 is repurposed: town hall early, then Comsat from ~min 8. Army groups typically hold ~6 units. Minute for minute, 80% of key presses match this pattern (40 games)."
+     "prose": "pro:noel plays a phase-driven layout: armies on 1 and 2, a Comsat on 0, production on 5 and 6. Keys 7 and 8 are repurposed: production early, then Comsat from ~min 19. Key 3 is repurposed: town hall early, then army from ~min 12, then army from ~min 21. Key 4 is repurposed: production early, then army from ~min 15, then army from ~min 22. Key 9 is repurposed: town hall early, then Comsat from ~min 8. Army groups typically hold ~6 units. Minute for minute, 80% of key presses match this pattern (40 games)."
     }
    ],
    "skill": {
     "games": 41,
     "combined": {
-     "value": 2.1720844766072918,
-     "position": 3.0928948795835702,
+     "value": 2.1140031924550553,
+     "position": 3.177926407446688,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5332092155770558,
-      "position": 3.037745947245618,
+      "value": 0.5370370149612427,
+      "position": 3.277964722026478,
       "tier": 3
      },
-     "check_recalls_per_min": {
-      "value": 67.83745816858803,
-      "position": 2.8819663576455414,
-      "tier": 2
-     },
      "eapm": {
-      "value": 215.46341463414635,
-      "position": 2.8060975609756103,
+      "value": 216,
+      "position": 2.892857142857143,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.36720731345618646,
-      "position": 2.887867980368737,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.26170625119674495,
-      "position": 3.0016926916197906,
+      "value": 0.3483123481273651,
+      "position": 3.250738786900137,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 36.04850801607458,
-      "position": 3.119972493574664,
+      "value": 33.14936447143555,
+      "position": 3.0687013197715958,
       "tier": 3
      }
     }
@@ -31138,39 +30624,29 @@
    "skill": {
     "games": 42,
     "combined": {
-     "value": 2.891591670632047,
-     "position": 3.8065914917065933,
+     "value": 2.50247289234776,
+     "position": 3.5308042431599738,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4344764635676429,
-      "position": 2.719119809094704,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 201.3209748041062,
-      "position": 3.9454686047267646,
+      "value": 0.4427083283662796,
+      "position": 3.08198921526632,
       "tier": 3
      },
      "eapm": {
-      "value": 228.26190476190476,
-      "position": 3.0193265306122457,
+      "value": 227,
+      "position": 3.064,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.31320636932338985,
-      "position": 2.911955574692444,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2758935136454446,
-      "position": 2.6357436245394417,
-      "tier": 2
+      "value": 0.28073441982269287,
+      "position": 3.316511622420302,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 52.362413588024324,
-      "position": 3.640588865872574,
+      "value": 52.78984260559082,
+      "position": 3.6555272821294578,
       "tier": 3
      }
     }
@@ -31666,39 +31142,29 @@
    "skill": {
     "games": 47,
     "combined": {
-     "value": 2.7231256335275758,
-     "position": 3.6819498455539037,
+     "value": 2.381276311626358,
+     "position": 3.415301926642865,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.42407702068065073,
-      "position": 2.5292508321791556,
+      "value": 0.4124999940395355,
+      "position": 2.539473527356198,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 141.73914726744306,
-      "position": 3.5745893303354053,
-      "tier": 3
-     },
      "eapm": {
-      "value": 240.9787234042553,
-      "position": 3.1722917933130708,
+      "value": 240,
+      "position": 3.168,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3043444102748911,
-      "position": 3.0702477083897546,
+      "value": 0.29520294070243835,
+      "position": 3.2513381049439714,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.2575431849728239,
-      "position": 2.9247628329273088,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 44.60419346423859,
-      "position": 3.4088567885929524,
+      "value": 45.08604431152344,
+      "position": 3.4253501542180356,
       "tier": 3
      }
     }
@@ -32178,39 +31644,29 @@
    "skill": {
     "games": 49,
     "combined": {
-     "value": 2.792437483484754,
-     "position": 3.739431528388544,
+     "value": 2.904927419401604,
+     "position": 3.9143499660741483,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4936196524269727,
-      "position": 3.3603408669324595,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 73.2106408099739,
-      "position": 3.046435225073821,
+      "value": 0.49504950642585754,
+      "position": 3.4196742350055325,
       "tier": 3
      },
      "eapm": {
-      "value": 265.3673469387755,
-      "position": 3.3709387755102025,
+      "value": 267,
+      "position": 3.384,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.2739529299492739,
-      "position": 3.2413478910822584,
+      "value": 0.285505473613739,
+      "position": 3.2950203891273016,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.2607895616365939,
-      "position": 2.914167264512662,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 52.92704002224669,
-      "position": 3.657207081136396,
+      "value": 53.69424819946289,
+      "position": 3.682549469642442,
       "tier": 3
      }
     }
@@ -32735,39 +32191,29 @@
    "skill": {
     "games": 36,
     "combined": {
-     "value": 2.4831844951565785,
-     "position": 3.3977701565707985,
+     "value": 2.4128333169703495,
+     "position": 3.4065121372067235,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5268540109197298,
-      "position": 2.9843839252132813,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 107.90527089436848,
-      "position": 3.32220319041571,
+      "value": 0.5304998159408569,
+      "position": 3.244948565357863,
       "tier": 3
      },
      "eapm": {
-      "value": 259.5,
-      "position": 3.3101428571428566,
+      "value": 260,
+      "position": 3.328,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3628269862383604,
-      "position": 2.859634346220801,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.29828043282032013,
-      "position": 2.577845622007174,
-      "tier": 2
+      "value": 0.3628747761249542,
+      "position": 3.1934063932088415,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 39.950172636244034,
-      "position": 3.2516948024374512,
+      "value": 38.02406883239746,
+      "position": 3.2143496618482015,
       "tier": 3
      }
     }
@@ -33437,39 +32883,29 @@
    "skill": {
     "games": 27,
     "combined": {
-     "value": 2.667970420230218,
-     "position": 3.619598257959321,
+     "value": 2.4066781325272193,
+     "position": 3.4395102759241585,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.35496557255585987,
-      "position": 1.5222300102739157,
+      "value": 0.3499999940395355,
+      "position": 1.249999893563134,
       "tier": 1
      },
-     "check_recalls_per_min": {
-      "value": 114.86027795297129,
-      "position": 3.3685625112510555,
-      "tier": 3
-     },
      "eapm": {
-      "value": 265.55555555555554,
-      "position": 3.370391534391535,
+      "value": 268,
+      "position": 3.392,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.384695581263966,
-      "position": 2.30439327003125,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2981703375224714,
-      "position": 2.3520295340074635,
+      "value": 0.39421942830085754,
+      "position": 2.345160177259734,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 51.082248546459056,
-      "position": 3.604507112446115,
+      "value": 54.12394332885742,
+      "position": 3.6953880704191167,
       "tier": 3
      }
     }
@@ -33657,19 +33093,12 @@
         },
         {
          "start_min": 1,
-         "end_min": 3,
+         "end_min": 4,
          "category": "units",
-         "share": 0.5657286854262915,
-         "presses": 2381,
+         "share": 0.5452786377708978,
+         "presses": 2584,
          "unit": "Overlord",
          "median_count": 1
-        },
-        {
-         "start_min": 4,
-         "end_min": 4,
-         "category": "tech",
-         "share": 0.3054187192118227,
-         "presses": 203
         },
         {
          "start_min": 5,
@@ -34039,45 +33468,35 @@
       }
      ],
      "temporal_score": 0.743491124260355,
-     "prose": "pro:queen plays a phase-driven layout: armies on 1 and 2, Hatcheries on 4, 8 and 9. Keys 5 and 6 are repurposed: army early, then town hall from ~min 3. Keys 7, 0 are repurposed: army early, then army from ~min 12, then town hall from ~min 18. Key 3 is repurposed: army early, then army from ~min 1, then tech from ~min 4, then army from ~min 5, then army from ~min 10. Army groups typically hold ~8 units. Minute for minute, 74% of key presses match this pattern (35 games)."
+     "prose": "pro:queen plays a phase-driven layout: armies on 1–3, Hatcheries on 4, 8 and 9. Keys 5 and 6 are repurposed: army early, then town hall from ~min 3. Keys 7, 0 are repurposed: army early, then army from ~min 12, then town hall from ~min 18. Army groups typically hold ~5 units. Minute for minute, 74% of key presses match this pattern (35 games)."
     }
    ],
    "skill": {
     "games": 28,
     "combined": {
-     "value": 2.366365265008718,
-     "position": 3.1977243101061803,
+     "value": 2.3213531764293363,
+     "position": 3.2204967206244284,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.47800922819546293,
-      "position": 2.724239920496115,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 71.61130687168666,
-      "position": 2.988505706227446,
-      "tier": 2
+      "value": 0.5,
+      "position": 3.1752988047808763,
+      "tier": 3
      },
      "eapm": {
-      "value": 234.21428571428572,
-      "position": 3.092020408163265,
+      "value": 232.5,
+      "position": 3.108,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3239067266029971,
-      "position": 2.449822870904856,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.33053187440548626,
-      "position": 2.6370456322201328,
+      "value": 0.32548201084136963,
+      "position": 2.6034702693714813,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 39.30371413912092,
-      "position": 3.244986684972449,
+      "value": 39.214487075805664,
+      "position": 3.249917448259753,
       "tier": 3
      }
     }
@@ -34542,39 +33961,29 @@
    "skill": {
     "games": 20,
     "combined": {
-     "value": 2.351302062891583,
-     "position": 3.333620110976534,
+     "value": 1.9479851927019056,
+     "position": 3.000897992802609,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.43019251376390455,
-      "position": 2.5811495996347262,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 132.35806999206542,
-      "position": 3.5040549646195336,
+      "value": 0.4419191926717758,
+      "position": 3.076898017237263,
       "tier": 3
      },
      "eapm": {
-      "value": 221.55,
-      "position": 2.8790571428571425,
-      "tier": 2
+      "value": 221.5,
+      "position": 3.02,
+      "tier": 3
      },
      "production_idle_share": {
-      "value": 0.40188722014427186,
-      "position": 2.2620536156004887,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3049843169748783,
-      "position": 2.26772915351872,
+      "value": 0.3852540850639343,
+      "position": 2.48099871115251,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 38.50253973007202,
-      "position": 3.2286456042926894,
+      "value": 37.287431716918945,
+      "position": 3.1923401271899055,
       "tier": 3
      }
     }
@@ -35064,39 +34473,29 @@
    "skill": {
     "games": 28,
     "combined": {
-     "value": 2.4712311107753924,
-     "position": 3.35775688295315,
+     "value": 2.1459574019153047,
+     "position": 3.2023693122583223,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4799513630568981,
-      "position": 2.5380286702004313,
+      "value": 0.47883598506450653,
+      "position": 2.9264182573141055,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 120.66126087733677,
-      "position": 3.406759244364526,
-      "tier": 3
-     },
      "eapm": {
-      "value": 204.46428571428572,
-      "position": 2.463724489795919,
+      "value": 209,
+      "position": 2.642857142857143,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3682720826140472,
-      "position": 2.9692444017328405,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2465374618768692,
-      "position": 3.244562716062821,
+      "value": 0.3528960049152374,
+      "position": 3.232692894034498,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 44.70210501125881,
-      "position": 3.346231235159347,
+      "value": 42.99655342102051,
+      "position": 3.3629195201834685,
       "tier": 3
      }
     }
@@ -35518,39 +34917,29 @@
    "skill": {
     "games": 30,
     "combined": {
-     "value": 2.7429888595348144,
-     "position": 3.68876874316839,
+     "value": 2.7488112426399995,
+     "position": 3.765568705460783,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.41443943977355957,
-      "position": 2.4287704853586094,
+      "value": 0.4156503975391388,
+      "position": 2.6223788826089156,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 87.45346196492513,
-      "position": 3.1696415077648528,
-      "tier": 3
-     },
      "eapm": {
-      "value": 311.1333333333333,
-      "position": 3.7250666666666663,
+      "value": 314,
+      "position": 3.76,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3133303791284561,
-      "position": 3.009879571382737,
+      "value": 0.32807087898254395,
+      "position": 3.10328432890746,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.2675242438912392,
-      "position": 2.749774315892016,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 44.91488145192464,
-      "position": 3.4193059287017182,
+      "value": 45.89521789550781,
+      "position": 3.449526962129368,
       "tier": 3
      }
     }
@@ -35993,39 +35382,29 @@
    "skill": {
     "games": 22,
     "combined": {
-     "value": 2.69808066715126,
-     "position": 3.566459958965569,
+     "value": 2.3640494916599852,
+     "position": 3.3691956640862735,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5360562625256452,
-      "position": 3.12499578496755,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 154.5057223926891,
-      "position": 3.6698224801030106,
+      "value": 0.5566875636577606,
+      "position": 3.3772099174634373,
       "tier": 3
      },
      "eapm": {
-      "value": 221.77272727272728,
-      "position": 2.93525974025974,
-      "tier": 2
-     },
-     "production_idle_share": {
-      "value": 0.3415885506705804,
-      "position": 3.0858811300805598,
+      "value": 222.5,
+      "position": 3.028,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.21394487538120963,
-      "position": 3.607316691366379,
+     "production_idle_share": {
+      "value": 0.3280688673257828,
+      "position": 3.3304375302134535,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 41.04723861000755,
-      "position": 3.3046771224120093,
+      "value": 39.804847717285156,
+      "position": 3.2675564766585543,
       "tier": 3
      }
     }
@@ -36515,40 +35894,30 @@
    "skill": {
     "games": 20,
     "combined": {
-     "value": 2.1718838245023955,
-     "position": 2.9662316114837486,
-     "tier": 2
+     "value": 2.2804534668668373,
+     "position": 3.1908463584651567,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4687651515007019,
-      "position": 2.529987646203783,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 65.3659257888794,
-      "position": 2.8701411517494515,
-      "tier": 2
+      "value": 0.4968253970146179,
+      "position": 3.1626509841219836,
+      "tier": 3
      },
      "eapm": {
-      "value": 227.25,
-      "position": 2.9304047619047617,
-      "tier": 2
+      "value": 233.5,
+      "position": 3.116,
+      "tier": 3
      },
      "production_idle_share": {
-      "value": 0.29716236144304276,
-      "position": 2.8650219407539064,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.29744870960712433,
-      "position": 3.079923097996436,
+      "value": 0.2893064320087433,
+      "position": 3.1845005527744448,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 32.378640460968015,
-      "position": 2.930397443913641,
-      "tier": 2
+      "value": 31.0823335647583,
+      "position": 3.0034713526891443,
+      "tier": 3
      }
     }
    }
@@ -37084,39 +36453,29 @@
    "skill": {
     "games": 39,
     "combined": {
-     "value": 3.151188005859079,
-     "position": 3.7272433315386344,
+     "value": 2.768529040121655,
+     "position": 3.5446781500084494,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4111738865956282,
-      "position": 2.1520296493708733,
+      "value": 0.44262295961380005,
+      "position": 2.6889060375302334,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 155.3727571536333,
-      "position": 3.675671440516055,
-      "tier": 3
-     },
      "eapm": {
-      "value": 256.79487179487177,
-      "position": 3.3023589743589743,
+      "value": 260,
+      "position": 3.328,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.31590851568258727,
-      "position": 2.6494287845344937,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3174022608078443,
-      "position": 2.951994751613154,
+      "value": 0.3165586590766907,
+      "position": 2.8659217918620388,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 56.52402731088492,
-      "position": 3.7415862330985985,
+      "value": 57.385169982910156,
+      "position": 3.792828288353705,
       "tier": 3
      }
     }
@@ -37565,39 +36924,29 @@
    "skill": {
     "games": 75,
     "combined": {
-     "value": 2.370252619680315,
-     "position": 3.1674169937922327,
+     "value": 2.247656920231615,
+     "position": 3.1670704075914275,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4715590674678485,
-      "position": 2.5633408806831257,
+      "value": 0.4444444477558136,
+      "position": 2.731266226879386,
       "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 99.16689977010091,
-      "position": 3.239763187748339,
-      "tier": 3
      },
      "eapm": {
-      "value": 228.58666666666667,
-      "position": 2.9957676190476192,
-      "tier": 2
+      "value": 229,
+      "position": 3.08,
+      "tier": 3
      },
      "production_idle_share": {
-      "value": 0.31991119662920636,
-      "position": 2.5309498374488406,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3189781953891118,
-      "position": 2.841575072982682,
+      "value": 0.31423911452293396,
+      "position": 2.9341436905019425,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 36.1209808476766,
-      "position": 3.0817754055324014,
+      "value": 36.15419387817383,
+      "position": 3.158480799491285,
       "tier": 3
      }
     }
@@ -38100,39 +37449,29 @@
    "skill": {
     "games": 77,
     "combined": {
-     "value": 2.3869312071319673,
-     "position": 3.3060866862257394,
+     "value": 2.1100361768076286,
+     "position": 3.1748918968925484,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4425423652320713,
-      "position": 2.0850079329178217,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 112.806986325747,
-      "position": 3.3587678755575796,
-      "tier": 3
+      "value": 0.43113771080970764,
+      "position": 1.879041704764733,
+      "tier": 1
      },
      "eapm": {
-      "value": 225.55844155844156,
-      "position": 2.9686048237476816,
-      "tier": 2
+      "value": 224,
+      "position": 3.04,
+      "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3999617760638138,
-      "position": 2.5246277803568846,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.30131061007450155,
-      "position": 2.5069605095835796,
-      "tier": 2
+      "value": 0.40487441420555115,
+      "position": 3.02805348737972,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 45.50967238785385,
-      "position": 3.435829741100662,
+      "value": 43.93794631958008,
+      "position": 3.391046828993399,
       "tier": 3
      }
     }
@@ -38650,39 +37989,29 @@
    "skill": {
     "games": 30,
     "combined": {
-     "value": 2.401283571320059,
-     "position": 3.322813941875737,
+     "value": 2.3452945121434516,
+     "position": 3.3548493170224525,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5498702218135197,
-      "position": 3.260895261953282,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 85.57648620605468,
-      "position": 3.106858917116442,
+      "value": 0.5555894374847412,
+      "position": 3.3716638256805114,
       "tier": 3
      },
      "eapm": {
-      "value": 244.63333333333333,
-      "position": 3.205066666666667,
+      "value": 249,
+      "position": 3.24,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3808374618490537,
-      "position": 2.815197868934305,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3256064747770627,
-      "position": 2.3212428576465913,
-      "tier": 2
+      "value": 0.38833583891391754,
+      "position": 3.0931659885278835,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 43.134131558736165,
-      "position": 3.3593748752748342,
+      "value": 39.77754592895508,
+      "position": 3.266740743044461,
       "tier": 3
      }
     }
@@ -39530,9 +38859,11 @@
         {
          "start_min": 1,
          "end_min": 1,
-         "category": "hall",
+         "category": "units",
          "share": 0.3333333333333333,
-         "presses": 3
+         "presses": 3,
+         "unit": "Drone",
+         "median_count": 1
         },
         {
          "start_min": 2,
@@ -39580,7 +38911,7 @@
       }
      ],
      "temporal_score": 0.7460058689272905,
-     "prose": "pro:shine plays a phase-driven layout: armies on 1 and 2, a Hatchery on 7. Key 3 is repurposed: town hall early, then army from ~min 10. Key 4 is repurposed: army early, then town hall from ~min 9, then army from ~min 11, then army from ~min 15. Key 5 is repurposed: army early, then army from ~min 3, then town hall from ~min 4, then army from ~min 14. Key 6 is repurposed: army early, then town hall from ~min 6. Key 8 is repurposed: town hall early, then army from ~min 2, then town hall from ~min 12. Army groups typically hold ~7 units. Minute for minute, 75% of key presses match this pattern (11 games)."
+     "prose": "pro:shine plays a phase-driven layout: armies on 1 and 2, a Hatchery on 7. Key 3 is repurposed: town hall early, then army from ~min 10. Key 4 is repurposed: army early, then town hall from ~min 9, then army from ~min 11, then army from ~min 15. Key 5 is repurposed: army early, then army from ~min 3, then town hall from ~min 4, then army from ~min 14. Key 6 is repurposed: army early, then town hall from ~min 6. Key 8 is repurposed: army early, then army from ~min 2, then town hall from ~min 12. Army groups typically hold ~7 units. Minute for minute, 75% of key presses match this pattern (11 games)."
     },
     {
      "race": "Protoss",
@@ -39951,39 +39282,29 @@
    "skill": {
     "games": 21,
     "combined": {
-     "value": 2.0782395401892315,
-     "position": 3.0247494577336362,
-     "tier": 3
+     "value": 1.8262499800945626,
+     "position": 2.8856520424933914,
+     "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4625338514645894,
-      "position": 2.2660854969341995,
+      "value": 0.44285714626312256,
+      "position": 2.089701075886571,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 92.44362059093658,
-      "position": 3.2068659410316323,
-      "tier": 3
-     },
      "eapm": {
-      "value": 212.9047619047619,
-      "position": 2.692031746031746,
+      "value": 213,
+      "position": 2.7857142857142856,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.38629003223918734,
-      "position": 2.8048131252670565,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3155357738335927,
-      "position": 2.3867953750503728,
-      "tier": 2
+      "value": 0.3919597864151001,
+      "position": 3.078898478680708,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 35.769118808564684,
-      "position": 3.112359444364906,
+      "value": 34.28700637817383,
+      "position": 3.102692233953026,
       "tier": 3
      }
     }
@@ -40430,39 +39751,29 @@
    "skill": {
     "games": 30,
     "combined": {
-     "value": 2.158702768533306,
-     "position": 3.063561460050533,
+     "value": 2.270219810651489,
+     "position": 3.2974220229874467,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.562435423831145,
-      "position": 3.274708346709835,
+      "value": 0.5730336904525757,
+      "position": 3.4597661133968467,
       "tier": 3
      },
-     "check_recalls_per_min": {
-      "value": 39.81387182871501,
-      "position": 2.013734654863794,
-      "tier": 2
-     },
      "eapm": {
-      "value": 227.33333333333334,
-      "position": 2.9927619047619056,
-      "tier": 2
+      "value": 228,
+      "position": 3.072,
+      "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3959331934650739,
-      "position": 2.665062615564169,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.27085383584101996,
-      "position": 3.0734495851657466,
+      "value": 0.3756202757358551,
+      "position": 3.14322726088246,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 38.863268280029295,
-      "position": 3.1979419190216634,
+      "value": 37.26393127441406,
+      "position": 3.191637971687653,
       "tier": 3
      }
     }
@@ -40956,40 +40267,30 @@
    "skill": {
     "games": 34,
     "combined": {
-     "value": 1.9128685120000521,
-     "position": 2.8509517408583878,
-     "tier": 2
+     "value": 2.034600807215743,
+     "position": 3.084914521314918,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4119114306043176,
-      "position": 2.3898826297195863,
+      "value": 0.4086538553237915,
+      "position": 2.438259350626092,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 33.345528939191034,
-      "position": 1.766747204312037,
-      "tier": 1
-     },
      "eapm": {
-      "value": 232.94117647058823,
-      "position": 3.0935966386554616,
+      "value": 232,
+      "position": 3.104,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.31029703818699894,
-      "position": 2.932291846945556,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.27712361383087497,
-      "position": 2.6813339177596283,
-      "tier": 2
+      "value": 0.29221510887145996,
+      "position": 3.2647968068853155,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 31.708864212036133,
-      "position": 2.9545263490514646,
-      "tier": 2
+      "value": 31.532343864440918,
+      "position": 3.0203873394616187,
+      "tier": 3
      }
     }
    }
@@ -41465,39 +40766,29 @@
    "skill": {
     "games": 26,
     "combined": {
-     "value": 2.8015922338792842,
-     "position": 3.644949073668291,
+     "value": 2.811157947604699,
+     "position": 3.711204733117646,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.528196863256968,
-      "position": 3.076397541884398,
-      "tier": 3
-     },
-     "check_recalls_per_min": {
-      "value": 80.6098334972675,
-      "position": 3.061479837755841,
+      "value": 0.5446571111679077,
+      "position": 3.3164500564035744,
       "tier": 3
      },
      "eapm": {
-      "value": 294.7307692307692,
-      "position": 3.5962527472527475,
+      "value": 304,
+      "position": 3.6799999999999997,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.41478710678907543,
-      "position": 2.474579172562549,
+      "value": 0.4255993068218231,
+      "position": 2.6222414771715794,
       "tier": 2
      },
-     "unspent_per_income": {
-      "value": 0.2527907702785272,
-      "position": 3.1081690997267817,
-      "tier": 3
-     },
      "used_recalls_per_min": {
-      "value": 56.53248933645395,
-      "position": 3.686555032380054,
+      "value": 53.68099594116211,
+      "position": 3.682153513435182,
       "tier": 3
      }
     }
@@ -41801,39 +41092,29 @@
    "skill": {
     "games": 83,
     "combined": {
-     "value": 1.7648506354924585,
-     "position": 2.6586464552946905,
+     "value": 1.7564159823500234,
+     "position": 2.7047868576893417,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.41042349370847264,
-      "position": 2.3736557969089653,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 59.855582087872975,
-      "position": 2.699759432927143,
+      "value": 0.4098360538482666,
+      "position": 2.4693698381122786,
       "tier": 2
      },
      "eapm": {
-      "value": 207.46987951807228,
-      "position": 2.569421686746989,
+      "value": 207,
+      "position": 2.571428571428571,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3249682945659362,
-      "position": 2.9367828192169156,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.29501879484538573,
-      "position": 2.351848700000682,
-      "tier": 2
+      "value": 0.32833132147789,
+      "position": 3.102111164514009,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 25.548839224390235,
-      "position": 2.5669791511337103,
+      "value": 25.514602661132812,
+      "position": 2.578728990219725,
       "tier": 2
      }
     }
@@ -42657,39 +41938,29 @@
    "skill": {
     "games": 25,
     "combined": {
-     "value": 2.2673453031566546,
-     "position": 3.223683393320824,
+     "value": 2.434736462634168,
+     "position": 3.4662503217708642,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4108442658185959,
-      "position": 2.553720541496879,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 38.945114364624025,
-      "position": 1.986548210169433,
-      "tier": 1
+      "value": 0.4318181872367859,
+      "position": 3.0117302402373283,
+      "tier": 3
      },
      "eapm": {
-      "value": 247.6,
-      "position": 3.2287999999999992,
+      "value": 245,
+      "position": 3.208,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.4016912931203842,
-      "position": 2.333050343883789,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2674020880460739,
-      "position": 2.724062343246932,
+      "value": 0.37280702590942383,
+      "position": 2.669590516523881,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 48.89650131225586,
-      "position": 3.4999015786109795,
+      "value": 48.2771110534668,
+      "position": 3.520694106590182,
       "tier": 3
      }
     }
@@ -43268,39 +42539,29 @@
    "skill": {
     "games": 29,
     "combined": {
-     "value": 2.661822563518057,
-     "position": 3.3749766185263734,
+     "value": 2.5625924636069835,
+     "position": 3.3953838361657125,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4763042988448307,
-      "position": 2.630062638552013,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 92.8444797910493,
-      "position": 3.20985617794839,
+      "value": 0.46000000834465027,
+      "position": 3.0159362882256984,
       "tier": 3
      },
      "eapm": {
-      "value": 234.3793103448276,
-      "position": 3.007566502463054,
+      "value": 239,
+      "position": 3.16,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.30819796693736107,
-      "position": 2.745066819090833,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3104089991799716,
-      "position": 2.9599991273905384,
-      "tier": 2
+      "value": 0.29088449478149414,
+      "position": 3.171670774134194,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 48.8616732893319,
-      "position": 3.4684771903405176,
+      "value": 45.47269058227539,
+      "position": 3.436902524194789,
       "tier": 3
      }
     }
@@ -43839,39 +43100,29 @@
    "skill": {
     "games": 57,
     "combined": {
-     "value": 2.9214622439426723,
-     "position": 3.530015541953439,
+     "value": 3.060500536289923,
+     "position": 3.756343726467974,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5112145788836897,
-      "position": 2.847342630767159,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 87.46565474125377,
-      "position": 3.1527162952621866,
+      "value": 0.5270270109176636,
+      "position": 3.2829761391141976,
       "tier": 3
      },
      "eapm": {
-      "value": 278.0877192982456,
-      "position": 3.402426065162907,
+      "value": 290,
+      "position": 3.568,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.28010004392841403,
-      "position": 3.0963831333748404,
+      "value": 0.27229228615760803,
+      "position": 3.322826941808065,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.3539433683219709,
-      "position": 2.6547945334605263,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 49.3865160858422,
-      "position": 3.4577352101932886,
+      "value": 49.280616760253906,
+      "position": 3.5506772464147094,
       "tier": 3
      }
     }
@@ -44823,40 +44074,30 @@
    "skill": {
     "games": 18,
     "combined": {
-     "value": 2.0492777877265818,
-     "position": 2.891551684230778,
+     "value": 1.9460871802259765,
+     "position": 2.8751092030663443,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.43416551914479995,
-      "position": 2.3826308938133023,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 86.1455586751302,
-      "position": 3.159885112752359,
+      "value": 0.4626532942056656,
+      "position": 3.0265071482297436,
       "tier": 3
      },
      "eapm": {
-      "value": 188.66666666666666,
-      "position": 2.0227142857142857,
-      "tier": 2
+      "value": 187,
+      "position": 1.9047619047619047,
+      "tier": 1
      },
      "production_idle_share": {
-      "value": 0.2836586477027999,
-      "position": 3.1489990085923205,
+      "value": 0.28836391866207123,
+      "position": 3.19216326290999,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.30774827632639146,
-      "position": 2.961539822434916,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 31.875896559821236,
-      "position": 2.943472463071771,
-      "tier": 2
+      "value": 32.36923789978027,
+      "position": 3.0453923899662456,
+      "tier": 3
      }
     }
    }
@@ -45316,39 +44557,29 @@
    "skill": {
     "games": 33,
     "combined": {
-     "value": 2.7228804111457667,
-     "position": 3.5568815365636746,
+     "value": 2.783690624241054,
+     "position": 3.6901940061508864,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5016950152137063,
-      "position": 2.811417316971464,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 102.64981911399148,
-      "position": 3.282999784522822,
+      "value": 0.5099999904632568,
+      "position": 3.141414093248772,
       "tier": 3
      },
      "eapm": {
-      "value": 289.4848484848485,
-      "position": 3.5638787878787865,
+      "value": 289,
+      "position": 3.56,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3797317291751052,
-      "position": 2.768687033321638,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2901420787428365,
-      "position": 2.665580174812399,
-      "tier": 2
+      "value": 0.3805561363697052,
+      "position": 3.123794738701948,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 50.69216826467803,
-      "position": 3.536407507582994,
+      "value": 45.62717819213867,
+      "position": 3.4415183660144812,
       "tier": 3
      }
     }
@@ -45411,17 +44642,17 @@
         },
         {
          "start_min": 7,
-         "end_min": 18,
+         "end_min": 17,
          "category": "units",
-         "share": 0.5937219730941704,
-         "presses": 2230
+         "share": 0.6019553072625698,
+         "presses": 2148
         },
         {
-         "start_min": 19,
+         "start_min": 18,
          "end_min": 19,
          "category": "units",
-         "share": 0.5789473684210527,
-         "presses": 57,
+         "share": 0.460431654676259,
+         "presses": 139,
          "unit": "Vulture",
          "median_count": 10
         }
@@ -45808,7 +45039,7 @@
       }
      ],
      "temporal_score": 0.8245942780659193,
-     "prose": "pro:ssak plays a phase-driven layout: armies on 2 and 3, Comsats on 9 and 0, production on 5–8. Key 1 is repurposed: town hall early, then army from ~min 7, then army from ~min 19. Key 4 is repurposed: army early, then town hall from ~min 2, then tech from ~min 3, then army from ~min 7, then army from ~min 12. Army groups typically hold ~2 units. Minute for minute, 82% of key presses match this pattern (40 games)."
+     "prose": "pro:ssak plays a phase-driven layout: armies on 2 and 3, Comsats on 9 and 0, production on 5–8. Key 1 is repurposed: town hall early, then army from ~min 7, then army from ~min 18. Key 4 is repurposed: army early, then town hall from ~min 2, then tech from ~min 3, then army from ~min 7, then army from ~min 12. Army groups typically hold ~2 units. Minute for minute, 82% of key presses match this pattern (40 games)."
     },
     {
      "race": "Protoss",
@@ -46363,39 +45594,29 @@
    "skill": {
     "games": 35,
     "combined": {
-     "value": 2.3393904224086555,
-     "position": 3.265163279889538,
+     "value": 2.3396729624277093,
+     "position": 3.350549194850233,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5474302683557782,
-      "position": 3.1860300099819274,
+      "value": 0.5327102541923523,
+      "position": 3.25611239491087,
       "tier": 3
      },
-     "check_recalls_per_min": {
-      "value": 62.00483910696847,
-      "position": 2.715654758775624,
-      "tier": 2
-     },
      "eapm": {
-      "value": 237.02857142857144,
-      "position": 3.1014693877551016,
+      "value": 239,
+      "position": 3.16,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3676787870270865,
-      "position": 2.8509947562028657,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.2796696305274963,
-      "position": 2.820563618046701,
-      "tier": 2
+      "value": 0.37622788548469543,
+      "position": 3.140835096516947,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 41.90179252624512,
-      "position": 3.3302098218125757,
+      "value": 40.66167449951172,
+      "position": 3.293157085646769,
       "tier": 3
      }
     }
@@ -46894,39 +46115,29 @@
    "skill": {
     "games": 25,
     "combined": {
-     "value": 2.07260877517915,
-     "position": 3.0326764844923337,
+     "value": 1.971507091100829,
+     "position": 3.0247851816456963,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.43051220297813414,
-      "position": 2.725558451312671,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 73.28915641784668,
-      "position": 2.926821759261277,
-      "tier": 2
+      "value": 0.4385964870452881,
+      "position": 3.0554612067437943,
+      "tier": 3
      },
      "eapm": {
-      "value": 200.84,
-      "position": 2.340365714285714,
+      "value": 199,
+      "position": 2.2857142857142856,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3068482530117035,
-      "position": 3.0638198617353987,
+      "value": 0.3109833896160126,
+      "position": 3.180255001729673,
       "tier": 3
      },
-     "unspent_per_income": {
-      "value": 0.2591784459352493,
-      "position": 2.9411279476224217,
-      "tier": 2
-     },
      "used_recalls_per_min": {
-      "value": 35.128525772094726,
-      "position": 3.1120496737056187,
+      "value": 34.168243408203125,
+      "position": 3.0991437870328697,
       "tier": 3
      }
     }
@@ -47487,39 +46698,29 @@
    "skill": {
     "games": 37,
     "combined": {
-     "value": 2.164044893434272,
-     "position": 2.992364351862743,
-     "tier": 2
+     "value": 2.238840266599664,
+     "position": 3.1606787491660606,
+     "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4724471859029821,
-      "position": 2.5788778584461824,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 52.10033756977803,
-      "position": 2.477861261851649,
-      "tier": 2
+      "value": 0.47999998927116394,
+      "position": 3.0956174871361113,
+      "tier": 3
      },
      "eapm": {
-      "value": 216.1891891891892,
-      "position": 2.771534105534105,
+      "value": 214,
+      "position": 2.821428571428571,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3098723223885974,
-      "position": 2.733705962544097,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3116960771180488,
-      "position": 2.8798111353674845,
-      "tier": 2
+      "value": 0.31065744161605835,
+      "position": 3.010915108812534,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 36.79635970656936,
-      "position": 3.138436954563976,
+      "value": 34.883243560791016,
+      "position": 3.1205068439687773,
       "tier": 3
      }
     }
@@ -47944,40 +47145,30 @@
    "skill": {
     "games": 69,
     "combined": {
-     "value": 2.232667217456432,
-     "position": 3.058441065807408,
+     "value": 2.307384674727432,
+     "position": 3.210370215113406,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4738408700711485,
-      "position": 2.600305555933021,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 49.278422839399695,
-      "position": 2.3761492891425844,
-      "tier": 2
+      "value": 0.4749999940395355,
+      "position": 3.075697187408508,
+      "tier": 3
      },
      "eapm": {
-      "value": 267.1449275362319,
-      "position": 3.3736563146997933,
+      "value": 268,
+      "position": 3.392,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.32402950892413873,
-      "position": 2.5020187416914537,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.3381778634544732,
-      "position": 2.656781697075794,
+      "value": 0.3194710612297058,
+      "position": 2.7802629050086525,
       "tier": 2
      },
      "used_recalls_per_min": {
-      "value": 31.862518752830617,
-      "position": 2.9216239223219787,
-      "tier": 2
+      "value": 31.522682189941406,
+      "position": 3.0200986641352117,
+      "tier": 3
      }
     }
    }
@@ -48496,39 +47687,29 @@
    "skill": {
     "games": 29,
     "combined": {
-     "value": 2.9089956201854186,
-     "position": 3.564412438538621,
+     "value": 2.8407631609163495,
+     "position": 3.5970444837729083,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.46751481397398587,
-      "position": 2.6194088674383558,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 87.34567839523842,
-      "position": 3.167109465532841,
+      "value": 0.4647887349128723,
+      "position": 3.0350148801309653,
       "tier": 3
      },
      "eapm": {
-      "value": 279.2068965517241,
-      "position": 3.4816551724137934,
+      "value": 281,
+      "position": 3.496,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.2873486347239593,
-      "position": 3.083987721944953,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.29960376640845987,
-      "position": 3.0135990382630222,
+      "value": 0.28495901823043823,
+      "position": 3.2198453802403395,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 49.373886634563576,
-      "position": 3.526869723330671,
+      "value": 48.039207458496094,
+      "position": 3.513585929023756,
       "tier": 3
      }
     }
@@ -48733,8 +47914,8 @@
          "category": "units",
          "share": 0.18796992481203006,
          "presses": 133,
-         "unit": "Corsair",
-         "median_count": 5
+         "unit": "Zealot",
+         "median_count": 1
         },
         {
          "start_min": 13,
@@ -49413,39 +48594,29 @@
    "skill": {
     "games": 27,
     "combined": {
-     "value": 1.6924691701948054,
-     "position": 2.545079359044323,
+     "value": 1.7721583823407994,
+     "position": 2.729365155879468,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.42309015106271813,
-      "position": 2.5729330458112165,
+      "value": 0.42222222685813904,
+      "position": 2.7953217594247115,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 33.765762399744105,
-      "position": 1.786906197813524,
-      "tier": 1
-     },
      "eapm": {
-      "value": 203.22222222222223,
-      "position": 2.4083880070546733,
+      "value": 204,
+      "position": 2.4642857142857144,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.3236856366749163,
-      "position": 2.840973424268439,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.29639846638396933,
-      "position": 2.4220966060064004,
-      "tier": 2
+      "value": 0.3067164123058319,
+      "position": 3.1994756202440002,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 27.631561915079754,
-      "position": 2.6950714504260995,
+      "value": 27.43353271484375,
+      "position": 2.7302434042513815,
       "tier": 2
      }
     }
@@ -49860,39 +49031,29 @@
    "skill": {
     "games": 42,
     "combined": {
-     "value": 1.887526344825956,
-     "position": 2.6682165684722796,
+     "value": 1.7282619537382935,
+     "position": 2.4925569963791596,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.44518262218861354,
-      "position": 2.460947953624702,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 96.70451999845959,
-      "position": 3.2162097094737327,
+      "value": 0.47037671506404877,
+      "position": 3.0572777492591587,
       "tier": 3
      },
      "eapm": {
-      "value": 207.26190476190476,
-      "position": 2.5502471655328796,
+      "value": 204.5,
+      "position": 2.482142857142857,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.32896261094581514,
-      "position": 2.4183768688987266,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.348847885571775,
-      "position": 2.4705953269995824,
-      "tier": 2
+      "value": 0.3046925365924835,
+      "position": 3.0594102716058247,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 23.133335840134393,
-      "position": 2.3658955418151715,
+      "value": 22.101689338684082,
+      "position": 2.309253007397085,
       "tier": 2
      }
     }
@@ -50420,39 +49581,29 @@
    "skill": {
     "games": 30,
     "combined": {
-     "value": 2.037277377719751,
-     "position": 2.9751041242235488,
+     "value": 1.8770467490197988,
+     "position": 2.9862508882956273,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5652506371339162,
-      "position": 3.2837654558839953,
+      "value": 0.5574788749217987,
+      "position": 3.3812064389989835,
       "tier": 3
      },
-     "check_recalls_per_min": {
-      "value": 67.96243387858073,
-      "position": 2.878412953067133,
-      "tier": 2
-     },
      "eapm": {
-      "value": 186.3,
-      "position": 1.9373015873015873,
+      "value": 183,
+      "position": 1.8095238095238095,
       "tier": 1
      },
      "production_idle_share": {
-      "value": 0.3764626304308573,
-      "position": 2.8088469765448223,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.22818498760461808,
-      "position": 3.4621159071418273,
+      "value": 0.39350350201129913,
+      "position": 3.0728208582232317,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 30.789003372192383,
-      "position": 2.885709454865517,
+      "value": 29.41852378845215,
+      "position": 2.8869738482788905,
       "tier": 2
      }
     }
@@ -50816,39 +49967,29 @@
    "skill": {
     "games": 32,
     "combined": {
-     "value": 2.294964990883079,
-     "position": 3.105161351925317,
+     "value": 2.1874030596167806,
+     "position": 3.1233891979243014,
      "tier": 3
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.4480670227203518,
-      "position": 2.5007489129445064,
+      "value": 0.45941558480262756,
+      "position": 2.999592219779238,
       "tier": 2
      },
-     "check_recalls_per_min": {
-      "value": 81.92724645137787,
-      "position": 3.069635852803012,
-      "tier": 3
-     },
      "eapm": {
-      "value": 231.0625,
-      "position": 3.005934523809524,
+      "value": 235.5,
+      "position": 3.132,
       "tier": 3
      },
      "production_idle_share": {
-      "value": 0.3144243289716542,
-      "position": 2.6126600857971036,
-      "tier": 2
-     },
-     "unspent_per_income": {
-      "value": 0.30265603493899107,
-      "position": 2.959995102819565,
-      "tier": 2
+      "value": 0.30636781454086304,
+      "position": 3.0457901256840403,
+      "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 36.146995171904564,
-      "position": 3.058054748280938,
+      "value": 36.412118911743164,
+      "position": 3.16618718550728,
       "tier": 3
      }
     }
@@ -51131,39 +50272,29 @@
    "skill": {
     "games": 46,
     "combined": {
-     "value": 2.0139526004619612,
-     "position": 2.772664746315253,
+     "value": 1.936579745425933,
+     "position": 2.8584119168000233,
      "tier": 2
     },
     "metrics": {
      "army_cadence": {
-      "value": 0.5001149919369946,
-      "position": 2.880171472641052,
-      "tier": 2
-     },
-     "check_recalls_per_min": {
-      "value": 80.1167394389277,
-      "position": 3.0354984447848445,
+      "value": 0.5092592537403107,
+      "position": 3.212188261913588,
       "tier": 3
      },
      "eapm": {
-      "value": 216.3913043478261,
-      "position": 2.7135569358178047,
+      "value": 214.5,
+      "position": 2.8392857142857144,
       "tier": 2
      },
      "production_idle_share": {
-      "value": 0.26426928943913913,
-      "position": 3.3009786932227128,
-      "tier": 3
-     },
-     "unspent_per_income": {
-      "value": 0.28384289955315384,
-      "position": 3.173512221153765,
+      "value": 0.2562127113342285,
+      "position": 3.453555192404646,
       "tier": 3
      },
      "used_recalls_per_min": {
-      "value": 22.729394767595373,
-      "position": 2.2422715515728058,
+      "value": 23.094685554504395,
+      "position": 2.387657761903229,
       "tier": 2
      }
     }

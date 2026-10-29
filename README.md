@@ -297,7 +297,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-28  OK. Skill tuning: Zerg idle production reads waiting larva, unspent resources are measured from 2:00 to 12:00, army rhythm, unspent and idle production compare each race with itself, the model is refitted, and built-in progamers are rebuilt from recent ladder replays with Skill averaged over their main race; reads engine digests already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+2026-10-29  OK. Skill tuning: Zerg idle production reads waiting larva, army rhythm and idle production compare each race with itself, hotkey checks and unspent resources leave the Skill tab, team and money games shift macro values by players of the same EAPM, players are placed at their median game, the model is refitted, and built-in progamers are rebuilt from recent ladder replays over their main race; reads engine digests already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>

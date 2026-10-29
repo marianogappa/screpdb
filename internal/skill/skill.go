@@ -54,9 +54,9 @@ type Model struct {
 	ConfidentMargin float64               `json:"confident_margin"`
 	Metrics         map[string]MetricCuts `json:"metrics"`
 	Combined        Combined              `json:"combined"`
-	// ContextAdjust maps macro values from team games and money maps onto their 1v1 regular-map
-	// equivalents, keyed by AdjustKey and metric.
-	ContextAdjust map[string]map[string]QuantileMap `json:"context_adjust,omitempty"`
+	// ContextShift is added to macro values from team games and money maps to make them their 1v1
+	// regular-map equivalents, keyed by AdjustKey and metric.
+	ContextShift map[string]map[string]float64 `json:"context_shift,omitempty"`
 }
 
 // Game contexts whose macro values are adjusted: team games on regular maps, and money maps (mostly team
@@ -67,39 +67,8 @@ const (
 	ContextMoney       = "money"
 )
 
-// AdjustKey is the ContextAdjust key of a context and a race.
+// AdjustKey is the ContextShift key of a context and a race.
 func AdjustKey(context, race string) string { return context + "/" + race }
-
-// QuantileMap holds the same quantiles of one metric in a context (From) and in 1v1 regular-map games (To),
-// both among players of the same mechanics level, so a value converts at equal percentile.
-type QuantileMap struct {
-	From []float64 `json:"from"`
-	To   []float64 `json:"to"`
-}
-
-func (q QuantileMap) apply(v float64) float64 {
-	n := len(q.From)
-	if n < 2 || len(q.To) != n {
-		return v
-	}
-	if v <= q.From[0] {
-		return q.To[0]
-	}
-	if v >= q.From[n-1] {
-		return q.To[n-1]
-	}
-	for i := 1; i < n; i++ {
-		if v <= q.From[i] {
-			span := q.From[i] - q.From[i-1]
-			f := 0.0
-			if span > 0 {
-				f = (v - q.From[i-1]) / span
-			}
-			return q.To[i-1] + f*(q.To[i]-q.To[i-1])
-		}
-	}
-	return v
-}
 
 // MetricCuts are, per race ("T", "P", "Z"), the values between Beginner|Intermediate, Intermediate|Advanced
 // and Advanced|Pro, where as many of the lower tier score past the cut as of the upper tier fall short of it.
@@ -215,10 +184,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 	res := Result{Metrics: map[string]Placement{}}
 	adjusted := map[string]float64{}
 	for key, v := range values {
-		adjusted[key] = v
-		if q, ok := m.ContextAdjust[AdjustKey(context, race)][key]; ok {
-			adjusted[key] = q.apply(v)
-		}
+		adjusted[key] = v + m.ContextShift[AdjustKey(context, race)][key]
 	}
 	for key, mc := range m.Metrics {
 		scale := AllRaces
