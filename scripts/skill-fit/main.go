@@ -50,6 +50,11 @@ var chartMetrics = []string{skill.EAPM, skill.UsedRecalls, skill.CheckRecalls, s
 
 var combinedFeatures = chartMetrics
 
+// perRaceMetrics depend on what a race's production makes, so their values only compare within a race:
+// idle production is idle buildings for Terran and Protoss but waiting larva for Zerg, and Protoss, whose
+// gateway units cost the most, starts army units least often. Unspent resources follow the same production differences.
+var perRaceMetrics = map[string]bool{skill.ArmyCadence: true, skill.UnspentPerIncome: true, skill.ProductionIdle: true}
+
 // Each metric's share of the combined score's weight stays within these bounds: a regression left alone
 // hands most of the weight to whichever mechanics metric correlates best, and the score turns into a
 // mirror of that one number.
@@ -81,7 +86,19 @@ func main() {
 			}
 		}
 		rho := spearman(all, key)
-		mc := skill.MetricCuts{HigherIsBetter: rho >= 0, Rho: round(rho, 2), Cuts: map[string][3]float64{}, Ends: map[string][2]float64{}}
+		if perRaceMetrics[key] {
+			rho = 0
+			for _, race := range []string{"T", "P", "Z"} {
+				var own []sample
+				for _, s := range all {
+					if s.Side.Race == race {
+						own = append(own, s)
+					}
+				}
+				rho += spearman(own, key) / 3
+			}
+		}
+		mc := skill.MetricCuts{HigherIsBetter: rho >= 0, PerRace: perRaceMetrics[key], Rho: round(rho, 2), Cuts: map[string][3]float64{}, Ends: map[string][2]float64{}}
 		sign := 1.0
 		if rho < 0 {
 			sign = -1

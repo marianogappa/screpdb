@@ -113,7 +113,7 @@ func TestTerranMacro(t *testing.T) {
 	}
 }
 
-func TestZergLarvaCap(t *testing.T) {
+func TestZergLarvaWaiting(t *testing.T) {
 	d := &engine.Digest{
 		LastFrame: f(400),
 		Players:   []engine.Player{{Slot: 1, Race: zerg}},
@@ -127,8 +127,8 @@ func TestZergLarvaCap(t *testing.T) {
 		Drift: engine.Drift{DesyncFrame: engine.NoFrame, ErrorFrame: engine.NoFrame},
 	}
 	p := Compute(d)[0]
-	if math.Abs(p.ProductionIdleShare-0.25) > 0.01 || !math.IsNaN(p.WorkerIdleShare) {
-		t.Fatalf("larva capped %v worker idle %v, want 0.25 and NaN", p.ProductionIdleShare, p.WorkerIdleShare)
+	if math.Abs(p.ProductionIdleShare-0.5) > 0.01 || !math.IsNaN(p.WorkerIdleShare) {
+		t.Fatalf("larva waiting %v worker idle %v, want 0.5 and NaN", p.ProductionIdleShare, p.WorkerIdleShare)
 	}
 }
 

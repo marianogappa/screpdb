@@ -70,6 +70,11 @@ var skillHabits = []struct {
 const habitShare = 0.6
 
 func (d *Dashboard) playerSkill(playerKey string) *workflowPlayerSkillSummary {
+	return d.playerSkillAs(playerKey, "")
+}
+
+// playerSkillAs is playerSkill over the games a player played as race only, or every game when race is empty.
+func (d *Dashboard) playerSkillAs(playerKey, race string) *workflowPlayerSkillSummary {
 	if d.library == nil {
 		return nil
 	}
@@ -81,7 +86,7 @@ func (d *Dashboard) playerSkill(playerKey string) *workflowPlayerSkillSummary {
 	var rated []ratedPlayer
 	var timeline []workflowSkillPoint
 	for _, ref := range d.library.lib.View().PlayerGames(playerKey) {
-		if ref.Player().IsObserver() {
+		if ref.Player().IsObserver() || race != "" && ref.Player().Race.String() != race {
 			continue
 		}
 		if r, ok := rateGame(model, ref.Replay).players[int(ref.Ordinal)]; ok && r.result.Combined != nil {

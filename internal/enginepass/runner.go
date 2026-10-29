@@ -627,6 +627,7 @@ func enginePlayer(p macro.Player) library.EnginePlayer {
 		SpendingQuotient:     float32(p.SpendingQuotient),
 		IncomePerMinute:      float32(p.IncomePerMinute),
 		AverageUnspent:       float32(p.AverageUnspent),
+		UnspentPerIncome:     float32(p.UnspentPerIncome),
 		WorkerIdleShare:      float32(p.WorkerIdleShare),
 		ProductionIdleShare:  float32(p.ProductionIdleShare),
 		WorkersBy6Min:        uint16(min(p.WorkersBy6Min, math.MaxUint16)),

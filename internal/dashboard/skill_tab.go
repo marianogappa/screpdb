@@ -107,9 +107,7 @@ func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 		}
 		values := skillValues(p)
 		if e, ok := engine[p.Slot]; ok {
-			if e.IncomePerMinute > 0 {
-				addFinite(values, skill.UnspentPerIncome, e.AverageUnspent/e.IncomePerMinute)
-			}
+			addFinite(values, skill.UnspentPerIncome, e.UnspentPerIncome)
 			addFinite(values, skill.ProductionIdle, e.ProductionIdleShare)
 		}
 		g.players[ordinal] = ratedPlayer{values: values, result: model.Evaluate(race, skillContext(rec, len(humans)), values)}

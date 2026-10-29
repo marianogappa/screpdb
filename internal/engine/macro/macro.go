@@ -34,6 +34,7 @@ const (
 	floatFreeSupply    = 4
 	nearlyMaxedSupply  = maxSupply - 4
 	reportedBlockAtSec = 15
+	unspentUntilSecond = 720
 )
 
 // Episode is a stretch of whole seconds, To exclusive.
@@ -55,6 +56,9 @@ type Player struct {
 	SpendingQuotient float64
 	IncomePerMinute  float64
 	AverageUnspent   float64
+	// UnspentPerIncome is the average bank in minutes of income from 2:00 to 12:00: banks pile up late, so
+	// measured over a whole game it rated short games as better spending than long ones.
+	UnspentPerIncome float64
 
 	WorkerIdleShare     float64
 	ProductionIdleShare float64
@@ -197,6 +201,18 @@ func scoreResources(p *Player, samples []engine.EconomySample) {
 	p.AverageUnspent = unspent / float64(len(steady))
 	p.IncomePerMinute = float64(gathered(steady[len(steady)-1])-gathered(steady[0])) / minutes
 	p.SpendingQuotient = 35*(0.00137*p.IncomePerMinute-math.Log(max(p.AverageUnspent, 1))) + 240
+
+	window := samples[:min(unspentUntilSecond, len(samples))]
+	window = window[min(steadyFromSecond, len(window)-1):]
+	income := float64(gathered(window[len(window)-1])-gathered(window[0])) / (float64(len(window)) / secondsPerMin)
+	p.UnspentPerIncome = math.NaN()
+	if income > 0 {
+		unspent = 0
+		for _, s := range window {
+			unspent += float64(s.Minerals + s.Gas)
+		}
+		p.UnspentPerIncome = unspent / float64(len(window)) / income
+	}
 }
 
 func scoreWorkers(p *Player, d *engine.Digest, samples []engine.EconomySample) {
@@ -359,8 +375,10 @@ func (b *building) busyAt(s int) bool {
 	return false
 }
 
-// zergTimeline uses larva: production is free whenever a larva waits, and idle when every hatchery sits
-// at its 3-larva cap, so no larva is being made at all.
+// zergTimeline uses larva: production is free whenever a larva waits, and idle in proportion to the larva
+// left waiting out of the 3 each hatchery holds. Counting only the seconds every hatchery sat full left
+// almost every Zerg at zero, pros and beginners alike; the waiting share follows MMR as closely as idle
+// buildings do for Terran.
 func zergTimeline(d *engine.Digest, slot int8, samples []engine.EconomySample) facilityTimeline {
 	deaths := deathSeconds(d)
 	var halls []interval
@@ -382,7 +400,7 @@ func zergTimeline(d *engine.Digest, slot int8, samples []engine.EconomySample) f
 		}
 	}
 	t := facilityTimeline{productionFree: make([]bool, len(samples)), workerIdle: math.NaN()}
-	var capped, counted float64
+	var waiting, counted float64
 	for i, s := range samples {
 		t.productionFree[i] = s.Larva > 0
 		n := 0
@@ -395,11 +413,9 @@ func zergTimeline(d *engine.Digest, slot int8, samples []engine.EconomySample) f
 			continue
 		}
 		counted++
-		if int(s.Larva) >= larvaPerHatch*n {
-			capped++
-		}
+		waiting += min(1, float64(s.Larva)/float64(larvaPerHatch*n))
 	}
-	t.productionIdle = share(capped, counted)
+	t.productionIdle = share(waiting, counted)
 	return t
 }
 

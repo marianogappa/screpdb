@@ -263,6 +263,7 @@ type EnginePlayer struct {
 	SpendingQuotient     float32
 	IncomePerMinute      float32
 	AverageUnspent       float32
+	UnspentPerIncome     float32
 	WorkerIdleShare      float32
 	ProductionIdleShare  float32
 	WorkersBy6Min        uint16

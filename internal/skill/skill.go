@@ -27,7 +27,8 @@ const (
 )
 
 // AllRaces keys the cuts every race shares. Metric strips place players on them, so on one strip a higher
-// value always sits further right; the combined estimate stays per race.
+// value always sits further right; the combined estimate stays per race, and so do the strips of metrics
+// measured differently per race (MetricCuts.PerRace).
 const AllRaces = "all"
 
 // Metric keys, as the miner names them.
@@ -103,9 +104,12 @@ func (q QuantileMap) apply(v float64) float64 {
 // MetricCuts are, per race ("T", "P", "Z"), the values between Beginner|Intermediate, Intermediate|Advanced
 // and Advanced|Pro, where as many of the lower tier score past the cut as of the upper tier fall short of it.
 type MetricCuts struct {
-	HigherIsBetter bool                  `json:"higher_is_better"`
-	Rho            float64               `json:"rho"`
-	Cuts           map[string][3]float64 `json:"cuts"`
+	HigherIsBetter bool `json:"higher_is_better"`
+	// PerRace places each race on its own cuts: the metric depends on what the race's production makes, so
+	// its values only compare within a race.
+	PerRace bool                  `json:"per_race,omitempty"`
+	Rho     float64               `json:"rho"`
+	Cuts    map[string][3]float64 `json:"cuts"`
 	// Ends are, per race, the worst and best values the axis reaches (the 2nd and 98th percentile of the
 	// fitted players), so players far below or above the cuts still spread out instead of piling up.
 	Ends map[string][2]float64 `json:"ends,omitempty"`
@@ -218,7 +222,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 	}
 	for key, mc := range m.Metrics {
 		scale := AllRaces
-		if _, ok := mc.Cuts[scale]; !ok {
+		if _, ok := mc.Cuts[scale]; !ok || mc.PerRace {
 			scale = race
 		}
 		cuts, ok := mc.Cuts[scale]

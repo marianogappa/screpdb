@@ -108,3 +108,18 @@ func TestStripsShareOneScaleAcrossRaces(t *testing.T) {
 		t.Fatalf("no recalls at all is the very start of the axis, got %v", none.Metrics[UsedRecalls].Position)
 	}
 }
+
+func TestRaceSpecificMetricsUseTheirRaceCuts(t *testing.T) {
+	m, _ := Load()
+	for _, key := range []string{ArmyCadence, UnspentPerIncome, ProductionIdle} {
+		if !m.Metrics[key].PerRace {
+			t.Fatalf("%s should place each race on its own cuts", key)
+		}
+	}
+	for _, race := range []string{"T", "P", "Z"} {
+		mid := m.Metrics[ProductionIdle].Cuts[race][0]
+		if p := m.Evaluate(race, ContextOneVsOne, map[string]float64{ProductionIdle: mid}).Metrics[ProductionIdle]; math.Abs(p.Position-1) > 1e-9 {
+			t.Errorf("%s idle production at its own Beginner cut sits at %v, want 1", race, p.Position)
+		}
+	}
+}
