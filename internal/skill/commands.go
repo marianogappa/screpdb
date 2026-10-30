@@ -13,6 +13,9 @@ type Commands struct {
 	CheckRecalls float64
 	// ArmyCadence is the share of 10-second windows in which the player started army production.
 	ArmyCadence float64
+	// MicroActions are unit abilities used per minute: Hold Position, unloads, sieging, Stim Packs, cloaking,
+	// Archon merges and spells.
+	MicroActions float64
 }
 
 const (
@@ -23,6 +26,9 @@ const (
 	cadenceBinFrames   = 10 * 1000 / millisPerFrame
 	// doubleTapFrames joins presses of one group into one recall: a double tap only moves the camera there.
 	doubleTapFrames = 8
+	// repeatFrames joins presses of one ability within a second into one use: spamming Stim or Hold Position
+	// is one decision.
+	repeatFrames = 1000 / millisPerFrame
 )
 
 // nonArmy are the SCV, Drone, Overlord and Probe unit IDs.
@@ -44,7 +50,7 @@ func CommandsOf(cmds []repcmd.Cmd, endFrame int32) map[byte]Commands {
 	out := map[byte]Commands{}
 	for id, own := range byPlayer {
 		used, checks := recalls(own)
-		out[id] = Commands{UsedRecalls: used / minutes, CheckRecalls: checks / minutes, ArmyCadence: armyCadence(own, bins)}
+		out[id] = Commands{UsedRecalls: used / minutes, CheckRecalls: checks / minutes, ArmyCadence: armyCadence(own, bins), MicroActions: microActions(own) / minutes}
 	}
 	return out
 }
@@ -104,6 +110,58 @@ func armyCadence(cmds []repcmd.Cmd, bins int) float64 {
 		}
 	}
 	return float64(n) / float64(bins)
+}
+
+// Burrowing and lifting off are left out of micro actions: on ladder, Zerg who burrowed more were rated lower,
+// and a floating building is not micro.
+func microAction(c repcmd.Cmd) (kind byte, ok bool) {
+	switch id := c.BaseCmd().Type.ID; id {
+	case repcmd.TypeIDHoldPosition, repcmd.TypeIDStim:
+		return id, true
+	case repcmd.TypeIDSiege, repcmd.TypeIDUnsiege:
+		return repcmd.TypeIDSiege, true
+	case repcmd.TypeIDCloack, repcmd.TypeIDDecloack:
+		return repcmd.TypeIDCloack, true
+	case repcmd.TypeIDMergeArchon, repcmd.TypeIDMergeDarkArchon:
+		return repcmd.TypeIDMergeArchon, true
+	case repcmd.TypeIDUnloadAll, repcmd.TypeIDUnload, repcmd.TypeIDUnload121:
+		return repcmd.TypeIDUnload, true
+	}
+	t, ok := c.(*repcmd.TargetedOrderCmd)
+	switch {
+	case !ok || t.Order == nil:
+		return 0, false
+	case t.Order.ID == repcmd.OrderIDUnload || t.Order.ID == repcmd.OrderIDMoveUnload:
+		return repcmd.TypeIDUnload, true
+	case spellOrders[t.Order.ID]:
+		return t.Order.ID, true
+	}
+	return 0, false
+}
+
+// spellOrders are every spell a unit can be ordered to cast, plus painting a Nuke.
+var spellOrders = map[byte]bool{
+	0x7e: true, 0x73: true, 0x77: true, 0x78: true, 0x79: true, 0x7a: true, 0x89: true, 0x8d: true, 0x8e: true,
+	0x8f: true, 0x90: true, 0x91: true, 0x92: true, 0x93: true, 0x94: true, 0xb4: true, 0xb5: true, 0xb6: true,
+	0xb8: true, 0xb9: true, 0xba: true,
+}
+
+func microActions(cmds []repcmd.Cmd) float64 {
+	n := 0.0
+	last := map[byte]int32{}
+	for _, c := range cmds {
+		f := int32(c.BaseCmd().Frame)
+		kind, ok := microAction(c)
+		if !ok || f < fromFrame {
+			continue
+		}
+		if prev, seen := last[kind]; seen && f-prev < repeatFrames {
+			continue
+		}
+		last[kind] = f
+		n++
+	}
+	return n
 }
 
 func hotkeySelect(c repcmd.Cmd) (*repcmd.HotkeyCmd, bool) {

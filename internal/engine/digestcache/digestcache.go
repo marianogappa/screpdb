@@ -100,12 +100,28 @@ func (c *Cache) scan(b []byte) (valid int64) {
 		c.size = off + recLen
 		off += recLen
 	}
+	for k := range c.index {
+		c.dropOlder(k)
+	}
 	for k, loc := range c.index {
 		if !c.current(k) {
 			c.stale += int64(headerLen + loc.length)
 		}
 	}
 	return int64(len(b))
+}
+
+// dropOlder forgets the same replay's records from earlier engine versions: a newer digest supersedes
+// them, so compaction can reclaim their space.
+func (c *Cache) dropOlder(k Key) {
+	older := k
+	for v := int32(0); v < k.EngineVersion; v++ {
+		older.EngineVersion = v
+		if loc, ok := c.index[older]; ok {
+			c.stale += int64(headerLen + loc.length)
+			delete(c.index, older)
+		}
+	}
 }
 
 func recordAt(b []byte, off int64) ([]byte, bool) {
@@ -222,6 +238,7 @@ func (c *Cache) Put(k Key, e Entry) error {
 	}
 	c.index[k] = location{offset: c.size + headerLen, length: len(payload)}
 	c.size += int64(headerLen + len(payload))
+	c.dropOlder(k)
 	return nil
 }
 

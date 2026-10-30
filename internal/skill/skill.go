@@ -27,7 +27,8 @@ const (
 )
 
 // AllRaces keys the cuts every race shares. Metric strips place players on them, so on one strip a higher
-// value always sits further right; the combined estimate stays per race.
+// value always sits further right; the combined estimate stays per race, and so do the strips of metrics
+// measured differently per race (MetricCuts.PerRace).
 const AllRaces = "all"
 
 // Metric keys, as the miner names them.
@@ -38,6 +39,8 @@ const (
 	ArmyCadence      = "army_cadence"
 	UnspentPerIncome = "unspent_per_income"
 	ProductionIdle   = "production_idle_share"
+	IdleArmy         = "idle_army_share"
+	MicroActions     = "micro_actions_per_min"
 )
 
 // MinGameSeconds and MinAPM bound what the model was fitted on: shorter games and idle players are not
@@ -53,9 +56,9 @@ type Model struct {
 	ConfidentMargin float64               `json:"confident_margin"`
 	Metrics         map[string]MetricCuts `json:"metrics"`
 	Combined        Combined              `json:"combined"`
-	// ContextAdjust maps macro values from team games and money maps onto their 1v1 regular-map
-	// equivalents, keyed by AdjustKey and metric.
-	ContextAdjust map[string]map[string]QuantileMap `json:"context_adjust,omitempty"`
+	// ContextShift is added to macro values from team games and money maps to make them their 1v1
+	// regular-map equivalents, keyed by AdjustKey and metric.
+	ContextShift map[string]map[string]float64 `json:"context_shift,omitempty"`
 }
 
 // Game contexts whose macro values are adjusted: team games on regular maps, and money maps (mostly team
@@ -66,49 +69,27 @@ const (
 	ContextMoney       = "money"
 )
 
-// AdjustKey is the ContextAdjust key of a context and a race.
+// AdjustKey is the ContextShift key of a context and a race.
 func AdjustKey(context, race string) string { return context + "/" + race }
-
-// QuantileMap holds the same quantiles of one metric in a context (From) and in 1v1 regular-map games (To),
-// both among players of the same mechanics level, so a value converts at equal percentile.
-type QuantileMap struct {
-	From []float64 `json:"from"`
-	To   []float64 `json:"to"`
-}
-
-func (q QuantileMap) apply(v float64) float64 {
-	n := len(q.From)
-	if n < 2 || len(q.To) != n {
-		return v
-	}
-	if v <= q.From[0] {
-		return q.To[0]
-	}
-	if v >= q.From[n-1] {
-		return q.To[n-1]
-	}
-	for i := 1; i < n; i++ {
-		if v <= q.From[i] {
-			span := q.From[i] - q.From[i-1]
-			f := 0.0
-			if span > 0 {
-				f = (v - q.From[i-1]) / span
-			}
-			return q.To[i-1] + f*(q.To[i]-q.To[i-1])
-		}
-	}
-	return v
-}
 
 // MetricCuts are, per race ("T", "P", "Z"), the values between Beginner|Intermediate, Intermediate|Advanced
 // and Advanced|Pro, where as many of the lower tier score past the cut as of the upper tier fall short of it.
 type MetricCuts struct {
-	HigherIsBetter bool                  `json:"higher_is_better"`
-	Rho            float64               `json:"rho"`
-	Cuts           map[string][3]float64 `json:"cuts"`
+	HigherIsBetter bool `json:"higher_is_better"`
+	// PerRace places each race on its own cuts: the metric depends on what the race's production makes, so
+	// its values only compare within a race.
+	PerRace bool `json:"per_race,omitempty"`
+	// PerMatchup also places 1v1 games on cuts of their matchup ("PvT"): the metric depends on what the
+	// opponent's race makes a player do, like Protoss holding a position against Terran.
+	PerMatchup bool                  `json:"per_matchup,omitempty"`
+	Rho        float64               `json:"rho"`
+	Cuts       map[string][3]float64 `json:"cuts"`
 	// Ends are, per race, the worst and best values the axis reaches (the 2nd and 98th percentile of the
 	// fitted players), so players far below or above the cuts still spread out instead of piling up.
 	Ends map[string][2]float64 `json:"ends,omitempty"`
+	// Medians are, per race, each tier's median value: the middle of its band on the axis, so a typical
+	// player of a tier sits mid-band and the band's edges are for players past the tier's middle.
+	Medians map[string][4]float64 `json:"medians,omitempty"`
 }
 
 type Combined struct {
@@ -123,6 +104,7 @@ type CombinedForRace struct {
 	Intercept float64    `json:"intercept"`
 	Cuts      [3]float64 `json:"cuts"`
 	Ends      [2]float64 `json:"ends"`
+	Medians   [4]float64 `json:"medians"`
 }
 
 var (
@@ -152,10 +134,11 @@ type Placement struct {
 	Tier     int     `json:"tier"`
 }
 
-func place(value float64, cuts [3]float64, ends [2]float64, higherIsBetter bool) Placement {
-	v, c, e := value, cuts, ends
+func place(value float64, cuts [3]float64, ends [2]float64, medians [4]float64, higherIsBetter bool) Placement {
+	v, c, e, m := value, cuts, ends, medians
 	if !higherIsBetter {
 		v, c, e = -value, [3]float64{-cuts[0], -cuts[1], -cuts[2]}, [2]float64{-ends[0], -ends[1]}
+		m = [4]float64{-medians[0], -medians[1], -medians[2], -medians[3]}
 	}
 	// The outer tiers reach the data's ends; without ends past the cuts, they are as wide as their neighbour.
 	lo, hi := c[0]-(c[1]-c[0]), c[2]+(c[2]-c[1])
@@ -165,26 +148,7 @@ func place(value float64, cuts [3]float64, ends [2]float64, higherIsBetter bool)
 	if e[1] > c[2] {
 		hi = e[1]
 	}
-	edges := [5]float64{lo, c[0], c[1], c[2], hi}
-	pos := 0.0
-	switch {
-	case v <= edges[0]:
-		pos = 0
-	case v >= edges[4]:
-		pos = 4
-	default:
-		for i := 0; i < 4; i++ {
-			if v <= edges[i+1] {
-				span := edges[i+1] - edges[i]
-				if span <= 0 {
-					pos = float64(i + 1)
-				} else {
-					pos = float64(i) + (v-edges[i])/span
-				}
-				break
-			}
-		}
-	}
+	pos := axisPosition(v, axisPoints(lo, c, hi, m, medians != [4]float64{}))
 	tier := 0
 	for _, cut := range c {
 		if v >= cut {
@@ -192,6 +156,38 @@ func place(value float64, cuts [3]float64, ends [2]float64, higherIsBetter bool)
 		}
 	}
 	return Placement{Value: value, Position: pos, Tier: tier}
+}
+
+type axisPoint struct{ value, position float64 }
+
+// axisPoints are the values the axis passes through: its ends, the cuts, and each tier's median mid-band
+// when that median lies inside its band.
+func axisPoints(lo float64, c [3]float64, hi float64, m [4]float64, haveMedians bool) []axisPoint {
+	edges := [5]float64{lo, c[0], c[1], c[2], hi}
+	points := []axisPoint{{lo, 0}}
+	for i := 0; i < 4; i++ {
+		if haveMedians && m[i] > edges[i] && m[i] < edges[i+1] {
+			points = append(points, axisPoint{m[i], float64(i) + 0.5})
+		}
+		points = append(points, axisPoint{edges[i+1], float64(i + 1)})
+	}
+	return points
+}
+
+func axisPosition(v float64, points []axisPoint) float64 {
+	if v <= points[0].value {
+		return 0
+	}
+	for i := 1; i < len(points); i++ {
+		a, b := points[i-1], points[i]
+		if v <= b.value {
+			if b.value <= a.value {
+				return b.position
+			}
+			return a.position + (v-a.value)/(b.value-a.value)*(b.position-a.position)
+		}
+	}
+	return 4
 }
 
 // Result is one player's game.
@@ -204,29 +200,31 @@ type Result struct {
 	Confident bool `json:"confident"`
 }
 
-// Evaluate places a player's measured values; race is "T", "P" or "Z", and context says what kind of game
-// it was. Macro values of team games and money maps are placed as their 1v1 regular-map equivalents;
+// Evaluate places a player's measured values; race is "T", "P" or "Z", opponent is the 1v1 opponent's
+// race ("" in team games), and context says what kind of game it was. Macro values of team games and money maps are placed as their 1v1 regular-map equivalents;
 // Placement.Value stays the measured value.
-func (m *Model) Evaluate(race, context string, values map[string]float64) Result {
+func (m *Model) Evaluate(race, opponent, context string, values map[string]float64) Result {
 	res := Result{Metrics: map[string]Placement{}}
 	adjusted := map[string]float64{}
 	for key, v := range values {
-		adjusted[key] = v
-		if q, ok := m.ContextAdjust[AdjustKey(context, race)][key]; ok {
-			adjusted[key] = q.apply(v)
-		}
+		adjusted[key] = v + m.ContextShift[AdjustKey(context, race)][key]
 	}
 	for key, mc := range m.Metrics {
 		scale := AllRaces
-		if _, ok := mc.Cuts[scale]; !ok {
+		if _, ok := mc.Cuts[scale]; !ok || mc.PerRace {
 			scale = race
+		}
+		if matchup := race + "v" + opponent; mc.PerMatchup && opponent != "" {
+			if _, ok := mc.Cuts[matchup]; ok {
+				scale = matchup
+			}
 		}
 		cuts, ok := mc.Cuts[scale]
 		v, has := values[key]
 		if !ok || !has {
 			continue
 		}
-		p := place(adjusted[key], cuts, mc.Ends[scale], mc.HigherIsBetter)
+		p := place(adjusted[key], cuts, mc.Ends[scale], mc.Medians[scale], mc.HigherIsBetter)
 		p.Value = v
 		res.Metrics[key] = p
 	}
@@ -243,7 +241,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 		z := (v - cr.Mean[i]) / cr.SD[i]
 		score += cr.Weights[i] * max(-3, min(3, z))
 	}
-	p := place(score, cr.Cuts, cr.Ends, true)
+	p := place(score, cr.Cuts, cr.Ends, cr.Medians, true)
 	res.Combined = &p
 	res.Confident = true
 	for _, c := range cr.Cuts {

@@ -245,6 +245,7 @@ func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 		if c, ok := data.SkillCommands[p.PlayerID]; ok {
 			lp.Flags |= library.PlayerHasSkillCommands
 			lp.UsedRecalls, lp.CheckRecalls, lp.ArmyCadence = float32(c.UsedRecalls), float32(c.CheckRecalls), float32(c.ArmyCadence)
+			lp.MicroActions = float32(c.MicroActions)
 		}
 		if blob, ok := data.HotkeyStreams[p.PlayerID]; ok && len(blob) > 0 && !streamClaimed[p.PlayerID] {
 			streamClaimed[p.PlayerID] = true

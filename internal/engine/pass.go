@@ -66,6 +66,7 @@ type passState struct {
 	carriedBy    map[openbw.UnitID]openbw.UnitID
 	lastSeen     map[openbw.UnitID]seenAt
 	hotkeyGroups map[hotkeyGroupKey][]openbw.UnitID
+	commanded    map[openbw.UnitID]int32
 }
 
 type seenAt struct {
@@ -85,6 +86,7 @@ func newPassState(g *screpsim.Game) *passState {
 		carriedBy:    map[openbw.UnitID]openbw.UnitID{},
 		lastSeen:     map[openbw.UnitID]seenAt{},
 		hotkeyGroups: map[hotkeyGroupKey][]openbw.UnitID{},
+		commanded:    map[openbw.UnitID]int32{},
 	}
 	for _, s := range e.PlayingSlots() {
 		if s > maxPlayerSlot {
@@ -155,6 +157,13 @@ func (p *passState) handle(e openbw.Event) {
 		p.tick(e.Frame)
 	}
 	p.d.LastFrame = e.Base().Frame
+}
+
+func (p *passState) lastCommanded(id openbw.UnitID) int32 {
+	if f, ok := p.commanded[id]; ok {
+		return f
+	}
+	return NoFrame
 }
 
 func isProduction(e *openbw.UnitCreated) bool {
@@ -275,7 +284,7 @@ func (p *passState) tick(frame int32) {
 		}
 		seen[u.ID] = seenAt{x: u.X, y: u.Y, owner: u.Owner, typ: u.Type}
 		if snapshot && !info.Worker {
-			army = append(army, ArmyUnit{Owner: u.Owner, Type: uint16(u.Type), X: u.X / ArmyCellPixels, Y: u.Y / ArmyCellPixels})
+			army = append(army, ArmyUnit{Owner: u.Owner, Type: uint16(u.Type), X: u.X / ArmyCellPixels, Y: u.Y / ArmyCellPixels, ID: uint32(u.ID), Order: uint8(u.Order), Energy: u.Energy, Commanded: p.lastCommanded(u.ID)})
 		}
 	}
 	p.trackUnloads(frame, carried)

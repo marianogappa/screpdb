@@ -10,7 +10,10 @@ type job struct {
 	id       int64
 	date     time.Time
 	path     string
-	index    int
+	// upgrade re-runs a replay whose digest is from an older, still readable engine version: it waits
+	// until every replay without engine data is done.
+	upgrade bool
+	index   int
 }
 
 // queue orders pending engine passes: the replay the user has open first, then newest first. New replays
@@ -66,6 +69,9 @@ type jobHeap []*job
 func (h jobHeap) Len() int { return len(h) }
 
 func (h jobHeap) Less(i, k int) bool {
+	if h[i].upgrade != h[k].upgrade {
+		return !h[i].upgrade
+	}
 	if !h[i].date.Equal(h[k].date) {
 		return h[i].date.After(h[k].date)
 	}

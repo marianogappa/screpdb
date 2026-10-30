@@ -22,13 +22,14 @@ func TestQueueOrder(t *testing.T) {
 		q.push(&job{checksum: [32]byte{byte(i)}, id: int64(i), date: base.Add(time.Duration(i) * time.Hour)})
 	}
 	q.push(&job{checksum: [32]byte{1}, id: 1, date: base.Add(10 * time.Hour)})
+	q.push(&job{checksum: [32]byte{9}, id: 9, date: base.Add(20 * time.Hour), upgrade: true})
 	q.remove([32]byte{3})
 	q.setFocus([32]byte{0})
 	var got []byte
 	for j := q.pop(); j != nil; j = q.pop() {
 		got = append(got, j.checksum[0])
 	}
-	if want := []byte{0, 1, 4, 2}; string(got) != string(want) {
+	if want := []byte{0, 1, 4, 2, 9}; string(got) != string(want) {
 		t.Fatalf("order %v, want %v", got, want)
 	}
 	if q.len() != 0 {

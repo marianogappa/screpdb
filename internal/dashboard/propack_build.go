@@ -220,10 +220,21 @@ func (c *ProCorpus) Metrics(ctx context.Context, playerKeys []string) (map[strin
 			return nil, fmt.Errorf("%s: hotkeys: %w", key, err)
 		}
 		m.Hotkeys = payload.Cards
-		if s := d.playerSkill(key); s != nil {
+		// A progamer's off-race games are practice, not their level: their Skill is their main race's.
+		if s := d.playerSkillAs(key, mainRace(m.Races)); s != nil {
 			m.Skill = &propack.Skill{Games: s.Games, Combined: s.Combined, Metrics: s.Metrics}
 		}
 		out[key] = m
 	}
 	return out, nil
+}
+
+func mainRace(races map[string]int) string {
+	best, bestGames := "", -1
+	for race, games := range races {
+		if games > bestGames || (games == bestGames && race < best) {
+			best, bestGames = race, games
+		}
+	}
+	return best
 }

@@ -13,10 +13,10 @@ const percent = (v) => `${Math.round(v * 100)}%`;
 const METRICS = [
   { key: 'eapm', format: (v) => Math.round(v) },
   { key: 'used_recalls_per_min', format: (v) => Math.round(v) },
-  { key: 'check_recalls_per_min', format: (v) => Math.round(v) },
   { key: 'army_cadence', format: percent },
-  { key: 'unspent_per_income', format: (v) => v.toFixed(2) },
   { key: 'production_idle_share', format: percent },
+  { key: 'idle_army_share', format: percent },
+  { key: 'micro_actions_per_min', format: (v) => v.toFixed(1) },
 ];
 
 const ROW_PX = 22;

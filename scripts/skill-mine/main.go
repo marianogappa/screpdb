@@ -276,6 +276,7 @@ func run(j job, data *engine.Data) []sample {
 	}
 	var scorecards, early map[uint8]macro.Player
 	var at8 map[int8]engine.EconomySample
+	var windowed map[int8]map[string]float64
 	engineState := ""
 	d, err := engine.Pass(context.Background(), b, data)
 	switch {
@@ -294,6 +295,7 @@ func run(j job, data *engine.Data) []sample {
 			early[uint8(m.Slot)] = m
 		}
 		at8 = economyAt(d, earlySeconds)
+		windowed = windowedUnspent(d)
 	}
 	actions := actionStats(b)
 	minutes := float64(j.row.Duration) / 60
@@ -310,6 +312,15 @@ func run(j job, data *engine.Data) []sample {
 		}
 		if m, ok := scorecards[p.Slot]; ok {
 			for k, v := range engineValues(m) {
+				values[k] = v
+			}
+			for k, v := range candidateValues(d, int8(p.Slot), m.Seconds, p.Race == library.RaceZerg) {
+				values[k] = v
+			}
+			for k, v := range armyUseValues(d, int8(p.Slot)) {
+				values[k] = v
+			}
+			for k, v := range windowed[int8(p.Slot)] {
 				values[k] = v
 			}
 		}
@@ -416,9 +427,7 @@ func engineValues(m macro.Player) map[string]float64 {
 		"seconds_to_40_workers": m.SecondsTo40Workers,
 		"float_share":           float64(m.FloatSeconds) / math.Max(1, float64(m.Seconds)),
 	}
-	if m.IncomePerMinute > 0 {
-		values[skill.UnspentPerIncome] = m.AverageUnspent / m.IncomePerMinute
-	}
+	values[skill.UnspentPerIncome] = m.UnspentPerIncome
 	if m.Seconds >= 360 {
 		values["workers_by_6min"] = float64(m.WorkersBy6Min)
 	}
@@ -426,6 +435,14 @@ func engineValues(m macro.Player) map[string]float64 {
 		if math.IsNaN(v) || math.IsInf(v, 0) {
 			delete(values, k)
 		}
+	}
+	return values
+}
+
+func armyUseValues(d *engine.Digest, slot int8) map[string]float64 {
+	values := map[string]float64{}
+	if idle := macro.IdleArmyShare(d, slot); !math.IsNaN(idle) {
+		values[skill.IdleArmy] = idle
 	}
 	return values
 }
@@ -498,7 +515,7 @@ func actionStats(b []byte) map[uint8]map[string]float64 {
 	}
 	for id, c := range skill.CommandsOf(r.Commands.Cmds, int32(r.Header.Frames)) {
 		if v, ok := out[id]; ok {
-			v[skill.UsedRecalls], v[skill.CheckRecalls], v[skill.ArmyCadence] = c.UsedRecalls, c.CheckRecalls, c.ArmyCadence
+			v[skill.UsedRecalls], v[skill.CheckRecalls], v[skill.ArmyCadence], v[skill.MicroActions] = c.UsedRecalls, c.CheckRecalls, c.ArmyCadence, c.MicroActions
 		}
 	}
 	return out
@@ -616,6 +633,7 @@ func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, 
 	banked := map[uint8]float64{}
 	engineState := ""
 	scorecards := map[uint8]macro.Player{}
+	var windowed map[int8]map[string]float64
 	var d *engine.Digest
 	if dg, err := engine.Pass(context.Background(), b, data); err != nil {
 		engineState = "error"
@@ -626,6 +644,7 @@ func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, 
 		for _, m := range macro.Compute(dg) {
 			scorecards[uint8(m.Slot)] = m
 		}
+		windowed = windowedUnspent(dg)
 		if money {
 			for _, m := range macro.Compute(macro.FirstSeconds(dg, macro.MoneyMapBankedWindowEnd)) {
 				banked[uint8(m.Slot)] = float64(m.FloatSeconds) / math.Max(1, float64(m.Seconds))
@@ -642,6 +661,15 @@ func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, 
 		}
 		if m, ok := scorecards[p.Slot]; ok {
 			for k, v := range engineValues(m) {
+				values[k] = v
+			}
+			for k, v := range candidateValues(d, int8(p.Slot), m.Seconds, p.Race == library.RaceZerg) {
+				values[k] = v
+			}
+			for k, v := range armyUseValues(d, int8(p.Slot)) {
+				values[k] = v
+			}
+			for k, v := range windowed[int8(p.Slot)] {
 				values[k] = v
 			}
 			until := macro.WorkerWindowEnd

@@ -50,3 +50,24 @@ func TestCommandsSplitRecallsAndCountArmyWindows(t *testing.T) {
 		t.Fatal("under a minute past 2:00 measures nothing")
 	}
 }
+
+func TestMicroActionsCountAbilitiesOncePerSecond(t *testing.T) {
+	at := func(s int) int { return fromFrame + s*sec }
+	storm := &repcmd.TargetedOrderCmd{Base: base(at(10), repcmd.TypeIDTargetedOrder), Order: repcmd.OrderByID(0x8e)}
+	dropAt := &repcmd.TargetedOrderCmd{Base: base(at(20), repcmd.TypeIDTargetedOrder), Order: repcmd.OrderByID(repcmd.OrderIDMoveUnload)}
+	cmds := []repcmd.Cmd{
+		&repcmd.GeneralCmd{Base: base(at(0)-sec, repcmd.TypeIDStim)},
+		&repcmd.GeneralCmd{Base: base(at(1), repcmd.TypeIDStim)}, &repcmd.GeneralCmd{Base: base(at(1)+5, repcmd.TypeIDStim)},
+		&repcmd.GeneralCmd{Base: base(at(1)+6, repcmd.TypeIDHoldPosition)},
+		&repcmd.GeneralCmd{Base: base(at(2), repcmd.TypeIDSiege)}, &repcmd.GeneralCmd{Base: base(at(2)+3, repcmd.TypeIDUnsiege)},
+		&repcmd.GeneralCmd{Base: base(at(3), repcmd.TypeIDBurrow)},
+		storm, dropAt, order(at(30)),
+	}
+	end := int32(at(120))
+	minutes := float64(end-fromFrame) * millisPerFrame / 60000
+	// Stim once (the opening's and the spam are dropped), Hold Position, one siege toggle, Psionic Storm and an
+	// unload; burrowing and moving are not micro actions.
+	if got := CommandsOf(cmds, end)[1].MicroActions; math.Abs(got-5/minutes) > 1e-9 {
+		t.Fatalf("micro actions %v per minute, want %v", got, 5/minutes)
+	}
+}

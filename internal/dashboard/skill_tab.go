@@ -107,12 +107,11 @@ func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 		}
 		values := skillValues(p)
 		if e, ok := engine[p.Slot]; ok {
-			if e.IncomePerMinute > 0 {
-				addFinite(values, skill.UnspentPerIncome, e.AverageUnspent/e.IncomePerMinute)
-			}
+			addFinite(values, skill.UnspentPerIncome, e.UnspentPerIncome)
 			addFinite(values, skill.ProductionIdle, e.ProductionIdleShare)
+			addFinite(values, skill.IdleArmy, e.IdleArmyShare)
 		}
-		g.players[ordinal] = ratedPlayer{values: values, result: model.Evaluate(race, skillContext(rec, len(humans)), values)}
+		g.players[ordinal] = ratedPlayer{values: values, result: model.Evaluate(race, opponentRace(rec, humans, ordinal), skillContext(rec, len(humans)), values)}
 	}
 	return g
 }
@@ -124,6 +123,7 @@ func skillValues(p *library.Player) map[string]float64 {
 		values[skill.UsedRecalls] = float64(p.UsedRecalls)
 		values[skill.CheckRecalls] = float64(p.CheckRecalls)
 		values[skill.ArmyCadence] = float64(p.ArmyCadence)
+		values[skill.MicroActions] = float64(p.MicroActions)
 	}
 	return values
 }
@@ -132,6 +132,19 @@ func addFinite(values map[string]float64, key string, v float32) {
 	if f := float64(v); !math.IsNaN(f) && !math.IsInf(f, 0) {
 		values[key] = f
 	}
+}
+
+// opponentRace is the other player's race in a 1v1, and "" in team games.
+func opponentRace(rec *library.Replay, humans []int, ordinal int) string {
+	if len(humans) != 2 {
+		return ""
+	}
+	for _, o := range humans {
+		if o != ordinal {
+			return skillRace(rec.Players[o].Race)
+		}
+	}
+	return ""
 }
 
 func skillRace(r library.Race) string {
