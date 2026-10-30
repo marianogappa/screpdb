@@ -2,7 +2,19 @@ package engine
 
 // EngineVersion keys the digest cache: bump it when Pass or the digest format changes what a digest holds.
 // Detector changes do not need a bump; detectors read digests at load time.
-const EngineVersion = 7
+//
+// A bump does not discard older digests: an engine pass costs seconds per replay, and a library of
+// thousands would take hours to redo. Digests from OldestReadableEngineVersion on stay in use, and a feature
+// that needs newer data checks for it (UnitOrdersKnown) and is simply missing on older games. Raise
+// OldestReadableEngineVersion only when older digests would mislead the features that read them.
+const (
+	EngineVersion               = 10
+	OldestReadableEngineVersion = 7
+)
+
+func Readable(version int32) bool {
+	return version >= OldestReadableEngineVersion && version <= EngineVersion
+}
 
 const (
 	EconomyEveryFrames = 24
@@ -125,11 +137,17 @@ type ArmySnapshot struct {
 	Units []ArmyUnit
 }
 
-// ArmyUnit coordinates are in ArmyCellPixels cells.
+// ArmyUnit coordinates are in ArmyCellPixels cells. ID follows one unit from snapshot to snapshot, and
+// Order is its orders.dat order, so a unit standing idle can be told from one walking to a rally point.
 type ArmyUnit struct {
-	Owner int8
-	Type  uint16
-	X, Y  int32
+	Owner  int8
+	Type   uint16
+	X, Y   int32
+	ID     uint32
+	Order  uint8
+	Energy int32
+	// Commanded is the frame of the player's last order to this unit, NoFrame when it never had one.
+	Commanded int32
 }
 
 // Unload is a transport emptying some or all of its cargo within one second.
@@ -185,6 +203,14 @@ func (d *Digest) Confidence() Confidence {
 }
 
 // TrustedUntil is the first frame whose engine data may disagree with the real game.
+// UnitOrdersKnown says the army snapshots carry each unit's ID, order and energy, which digests before
+// EngineVersion 8 lack.
+func (d *Digest) UnitOrdersKnown() bool { return d.EngineVersion >= 8 }
+
+// CommandsKnown says army snapshots carry when the player last ordered each unit, which digests before
+// EngineVersion 10 lack.
+func (d *Digest) CommandsKnown() bool { return d.EngineVersion >= 10 }
+
 func (d *Digest) TrustedUntil() int32 {
 	until := d.LastFrame + 1
 	for _, f := range []int32{d.Drift.DesyncFrame, d.Drift.ErrorFrame} {

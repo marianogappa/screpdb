@@ -14,7 +14,7 @@ func TestModelLoadsWithEveryRace(t *testing.T) {
 		if _, ok := m.Combined.Races[race]; !ok {
 			t.Fatalf("no combined score for %s", race)
 		}
-		for _, key := range []string{EAPM, UsedRecalls, ArmyCadence, ProductionIdle} {
+		for _, key := range m.Combined.Features {
 			c, ok := m.Metrics[key].Cuts[race]
 			if !ok {
 				t.Fatalf("no %s cuts for %s", key, race)
@@ -54,30 +54,30 @@ func TestPlaceIsLinearBetweenCuts(t *testing.T) {
 		pos  float64
 		tier int
 	}{{-50, 0, TierBeginner}, {50, 0.5, TierBeginner}, {150, 1.5, TierIntermediate}, {300, 3, TierPro}, {350, 3.5, TierPro}, {999, 4, TierPro}} {
-		if p := place(tc.v, cuts, [2]float64{}, true); p.Position != tc.pos || p.Tier != tc.tier {
+		if p := place(tc.v, cuts, [2]float64{}, [4]float64{}, true); p.Position != tc.pos || p.Tier != tc.tier {
 			t.Errorf("place(%v) = %+v, want position %v tier %d", tc.v, p, tc.pos, tc.tier)
 		}
 	}
-	if p := place(0.05, [3]float64{0.2, 0.1, 0.05}, [2]float64{1, 0}, false); p.Tier != TierPro {
+	if p := place(0.05, [3]float64{0.2, 0.1, 0.05}, [2]float64{1, 0}, [4]float64{}, false); p.Tier != TierPro {
 		t.Errorf("lower is better: %+v", p)
 	}
 }
 
 func TestEvaluateOrdersPlayers(t *testing.T) {
 	m, _ := Load()
-	slow := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 90, UsedRecalls: 3, CheckRecalls: 4, ArmyCadence: 0.2, UnspentPerIncome: 0.9, ProductionIdle: 0.6})
-	fast := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 260, UsedRecalls: 45, CheckRecalls: 90, ArmyCadence: 0.6, UnspentPerIncome: 0.25, ProductionIdle: 0.25})
+	slow := m.Evaluate("T", "", ContextOneVsOne, map[string]float64{EAPM: 90, UsedRecalls: 3, CheckRecalls: 4, ArmyCadence: 0.2, UnspentPerIncome: 0.9, ProductionIdle: 0.6, IdleArmy: 0.4, MicroActions: 0.3})
+	fast := m.Evaluate("T", "", ContextOneVsOne, map[string]float64{EAPM: 260, UsedRecalls: 45, CheckRecalls: 90, ArmyCadence: 0.6, UnspentPerIncome: 0.25, ProductionIdle: 0.25, IdleArmy: 0.05, MicroActions: 4})
 	if slow.Combined == nil || fast.Combined == nil || slow.Combined.Tier != TierBeginner || fast.Combined.Tier != TierPro {
 		t.Fatalf("slow %+v fast %+v", slow.Combined, fast.Combined)
 	}
-	if missing := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 150}); missing.Combined != nil {
+	if missing := m.Evaluate("T", "", ContextOneVsOne, map[string]float64{EAPM: 150}); missing.Combined != nil {
 		t.Fatal("a combined score needs every combined feature")
 	}
 }
 
 func TestEndsSpreadPlayersBelowTheCuts(t *testing.T) {
 	cuts, ends := [3]float64{160, 194, 218}, [2]float64{40, 300}
-	a, b := place(60, cuts, ends, true), place(115, cuts, ends, true)
+	a, b := place(60, cuts, ends, [4]float64{}, true), place(115, cuts, ends, [4]float64{}, true)
 	if !(a.Position > 0 && a.Position < b.Position && b.Position < 1) {
 		t.Fatalf("60 at %v and 115 at %v should both sit inside Beginner, apart", a.Position, b.Position)
 	}
@@ -85,16 +85,16 @@ func TestEndsSpreadPlayersBelowTheCuts(t *testing.T) {
 
 func TestStripsShareOneScaleAcrossRaces(t *testing.T) {
 	m, _ := Load()
-	z := m.Evaluate("Z", ContextOneVsOne, map[string]float64{EAPM: 81})
-	p := m.Evaluate("P", ContextOneVsOne, map[string]float64{EAPM: 83})
+	z := m.Evaluate("Z", "", ContextOneVsOne, map[string]float64{EAPM: 81})
+	p := m.Evaluate("P", "", ContextOneVsOne, map[string]float64{EAPM: 83})
 	if z.Metrics[EAPM].Position >= p.Metrics[EAPM].Position {
 		t.Fatalf("EAPM 81 (Zerg) at %v must sit left of 83 (Protoss) at %v", z.Metrics[EAPM].Position, p.Metrics[EAPM].Position)
 	}
-	low := m.Evaluate("T", ContextOneVsOne, map[string]float64{EAPM: 49})
+	low := m.Evaluate("T", "", ContextOneVsOne, map[string]float64{EAPM: 49})
 	if low.Metrics[EAPM].Position <= 0 {
 		t.Fatalf("EAPM 49 should sit inside Beginner, not on its edge: %v", low.Metrics[EAPM].Position)
 	}
-	none := m.Evaluate("T", ContextOneVsOne, map[string]float64{UsedRecalls: 0})
+	none := m.Evaluate("T", "", ContextOneVsOne, map[string]float64{UsedRecalls: 0})
 	if none.Metrics[UsedRecalls].Position != 0 {
 		t.Fatalf("no recalls at all is the very start of the axis, got %v", none.Metrics[UsedRecalls].Position)
 	}
@@ -109,8 +109,20 @@ func TestRaceSpecificMetricsUseTheirRaceCuts(t *testing.T) {
 	}
 	for _, race := range []string{"T", "P", "Z"} {
 		mid := m.Metrics[ProductionIdle].Cuts[race][0]
-		if p := m.Evaluate(race, ContextOneVsOne, map[string]float64{ProductionIdle: mid}).Metrics[ProductionIdle]; math.Abs(p.Position-1) > 1e-9 {
+		if p := m.Evaluate(race, "", ContextOneVsOne, map[string]float64{ProductionIdle: mid}).Metrics[ProductionIdle]; math.Abs(p.Position-1) > 1e-9 {
 			t.Errorf("%s idle production at its own Beginner cut sits at %v, want 1", race, p.Position)
 		}
+	}
+}
+
+func TestATiersMedianSitsMidBand(t *testing.T) {
+	cuts, ends, medians := [3]float64{100, 200, 300}, [2]float64{0, 400}, [4]float64{80, 150, 260, 330}
+	for _, tc := range []struct{ v, pos float64 }{{80, 0.5}, {40, 0.25}, {90, 0.75}, {260, 2.5}, {330, 3.5}, {400, 4}} {
+		if p := place(tc.v, cuts, ends, medians, true); math.Abs(p.Position-tc.pos) > 1e-9 {
+			t.Errorf("place(%v) at %v, want %v", tc.v, p.Position, tc.pos)
+		}
+	}
+	if p := place(-80, [3]float64{-100, -200, -300}, [2]float64{0, -400}, [4]float64{-80, -150, -260, -330}, false); math.Abs(p.Position-0.5) > 1e-9 {
+		t.Errorf("lower is better: %+v", p)
 	}
 }

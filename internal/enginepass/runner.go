@@ -149,7 +149,7 @@ func (r *Runner) Digest(checksum [32]byte) (*engine.Digest, bool) {
 	if cache == nil {
 		return nil, false
 	}
-	entry, ok, err := cache.Get(r.key(checksum))
+	entry, ok, err := r.cached(cache, checksum)
 	if err != nil || !ok || entry.Failed != "" {
 		return nil, false
 	}
@@ -271,7 +271,7 @@ func (r *Runner) Unavailable(replayID int64) bool {
 	if !running || cache == nil {
 		return false
 	}
-	entry, ok, err := cache.Get(r.key(rec.Checksum))
+	entry, ok, err := r.cached(cache, rec.Checksum)
 	return err == nil && ok && entry.Failed != ""
 }
 
@@ -314,10 +314,13 @@ func (r *Runner) run() {
 		r.setState(StateFailed, "game data hash: "+err.Error())
 		return
 	}
+	readable := func(k digestcache.Key) bool {
+		return engine.Readable(k.EngineVersion) && k.DataHash == dataHash
+	}
 	current := func(k digestcache.Key) bool {
 		return k.EngineVersion == engine.EngineVersion && k.DataHash == dataHash
 	}
-	cache, err := digestcache.Open(r.opts.CachePath, current)
+	cache, err := digestcache.Open(r.opts.CachePath, readable)
 	if err != nil {
 		r.setState(StateFailed, err.Error())
 		r.opts.Logf("Engine pass off: %v", err)
@@ -397,11 +400,14 @@ func (r *Runner) enqueue(records []*library.Replay) {
 		if rec.Flags.Has(library.FlagSuperseded) {
 			continue
 		}
-		if r.applyCached(rec.Checksum) {
-			continue
+		upgrade := rec.EngineData != nil
+		if !upgrade && r.applyCached(rec.Checksum) {
+			if upgrade = !r.cache.Has(r.key(rec.Checksum)); !upgrade {
+				continue
+			}
 		}
 		r.mu.Lock()
-		r.queue.push(&job{checksum: rec.Checksum, id: rec.ID, date: rec.Date, path: rec.Path()})
+		r.queue.push(&job{checksum: rec.Checksum, id: rec.ID, date: rec.Date, path: rec.Path(), upgrade: upgrade})
 		r.mu.Unlock()
 		queued++
 	}
@@ -414,9 +420,21 @@ func (r *Runner) key(checksum [32]byte) digestcache.Key {
 	return digestcache.Key{Checksum: checksum, EngineVersion: engine.EngineVersion, DataHash: r.dataHash}
 }
 
+// cached is a replay's newest readable cache record.
+func (r *Runner) cached(cache *digestcache.Cache, checksum [32]byte) (digestcache.Entry, bool, error) {
+	for v := int32(engine.EngineVersion); v >= engine.OldestReadableEngineVersion; v-- {
+		k := r.key(checksum)
+		k.EngineVersion = v
+		if entry, ok, err := cache.Get(k); err != nil || ok {
+			return entry, ok, err
+		}
+	}
+	return digestcache.Entry{}, false, nil
+}
+
 // applyCached reports whether the cache settled this replay: a digest to apply, or a failed pass not to retry.
 func (r *Runner) applyCached(checksum [32]byte) bool {
-	entry, ok, err := r.cache.Get(r.key(checksum))
+	entry, ok, err := r.cached(r.cache, checksum)
 	if err != nil || !ok {
 		return false
 	}
@@ -496,7 +514,7 @@ func (r *Runner) process(j *job) {
 		delete(r.running, j.checksum)
 		r.mu.Unlock()
 	}()
-	if r.applyCached(j.checksum) {
+	if j.upgrade && r.cache.Has(r.key(j.checksum)) || !j.upgrade && r.applyCached(j.checksum) {
 		return
 	}
 	b, err := iofacade.ReadFile(j.path)
@@ -578,6 +596,7 @@ func Summarize(d *engine.Digest, moneyMap bool) *library.EngineData {
 				ep.HallBusy = float32(w.HallBusy)
 			}
 		}
+		ep.IdleArmyShare = float32(macro.IdleArmyShare(d, p.Slot))
 		data.Players = append(data.Players, ep)
 	}
 	return data

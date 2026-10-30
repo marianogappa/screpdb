@@ -26,7 +26,7 @@ func sampleDigest() *Digest {
 			{Frame: 48, Owner: 0, Minerals: 10, GatheredMinerals: 40, SupplyUsed: 10, SupplyMax: 20, Workers: 5},
 			{Frame: 48, Owner: 3, Minerals: 2, Gas: 0, GatheredMinerals: 40, SupplyUsed: 10, SupplyMax: 18, Workers: 4, Larva: 2},
 		},
-		Army:  []ArmySnapshot{{Frame: 0}, {Frame: 240, Units: []ArmyUnit{{Owner: 3, Type: 37, X: 10, Y: 200}}}},
+		Army:  []ArmySnapshot{{Frame: 0}, {Frame: 240, Units: []ArmyUnit{{Owner: 3, Type: 37, X: 10, Y: 200, ID: 70000, Order: 3, Energy: 200, Commanded: 150}}}},
 		Drift: Drift{EngineError: "boom", ErrorFrame: 19998, MissingSelects: 3, FirstMissing: 400, DesyncFrame: NoFrame, UnlinkedCommands: 1, LinkedCommands: 900},
 	}
 }
@@ -73,5 +73,28 @@ func TestDecodeRejectsCorruptInput(t *testing.T) {
 		b := append([]byte(nil), good...)
 		b[i] ^= 0xff
 		_, _ = Decode(b)
+	}
+}
+
+func TestOlderDigestsStayReadableWithoutUnitOrders(t *testing.T) {
+	old := sampleDigest()
+	old.EngineVersion = OldestReadableEngineVersion
+	b, err := Encode(old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Decode(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := sampleDigest()
+	want.EngineVersion = OldestReadableEngineVersion
+	u := &want.Army[1].Units[0]
+	u.ID, u.Order, u.Energy, u.Commanded = 0, 0, 0, 0
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("older digest differs:\n got %+v\nwant %+v", got, want)
+	}
+	if got.UnitOrdersKnown() || !Readable(got.EngineVersion) || Readable(OldestReadableEngineVersion-1) {
+		t.Fatal("an older digest is readable but has no unit orders")
 	}
 }

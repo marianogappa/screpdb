@@ -15,6 +15,8 @@ const METRICS = [
   { key: 'used_recalls_per_min', format: (v) => Math.round(v) },
   { key: 'army_cadence', format: percent },
   { key: 'production_idle_share', format: percent },
+  { key: 'idle_army_share', format: percent },
+  { key: 'micro_actions_per_min', format: (v) => v.toFixed(1) },
 ];
 
 const ROW_PX = 22;

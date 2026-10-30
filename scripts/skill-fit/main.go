@@ -22,9 +22,10 @@ type sample struct {
 	Match string `json:"match"`
 	Skip  string `json:"skip"`
 	Side  struct {
-		Race string `json:"race"`
-		MMR  int    `json:"mmr"`
-		Pro  string `json:"pro"`
+		Race    string `json:"race"`
+		MMR     int    `json:"mmr"`
+		Pro     string `json:"pro"`
+		OppRace string `json:"opp_race"`
 	} `json:"side"`
 	Values  map[string]float64 `json:"values"`
 	Engine  string             `json:"engine"`
@@ -46,14 +47,30 @@ func (s sample) tier() int {
 
 // Every metric the Skill tab shows is also in the combined score: one that does not count toward the tier
 // has no business on the page.
-var chartMetrics = []string{skill.EAPM, skill.UsedRecalls, skill.ArmyCadence, skill.ProductionIdle}
+var chartMetrics = []string{skill.EAPM, skill.UsedRecalls, skill.ArmyCadence, skill.ProductionIdle, skill.IdleArmy, skill.MicroActions}
 
 var combinedFeatures = chartMetrics
 
 // perRaceMetrics depend on what a race's production makes, so their values only compare within a race:
 // idle production is idle buildings for Terran and Protoss but waiting larva for Zerg, and Protoss, whose
-// gateway units cost the most, starts army units least often.
-var perRaceMetrics = map[string]bool{skill.ArmyCadence: true, skill.ProductionIdle: true}
+// gateway units cost the most, starts army units least often. Micro actions are each race's own abilities:
+// Terran sieges and stims, Protoss merges Archons, Zerg mostly only holds position.
+var perRaceMetrics = map[string]bool{skill.ArmyCadence: true, skill.ProductionIdle: true, skill.MicroActions: true}
+
+// perMatchupMetrics depend on the opponent's race: Protoss holds positions against Terran far more than in
+// the other matchups, so 1v1 games also get cuts of their own matchup.
+var perMatchupMetrics = map[string]bool{skill.IdleArmy: true}
+
+var matchups = []string{"TvT", "TvP", "TvZ", "PvT", "PvP", "PvZ", "ZvT", "ZvP", "ZvZ"}
+
+// A matchup's own cuts need fewer games than a race's, since a matchup holds a ninth of them, but enough
+// progamer games that the Advanced|Pro cut does not rest on a handful.
+const (
+	minMatchupRows = 150
+	minMatchupPros = 20
+)
+
+const minFittedRows = 300
 
 // Each metric's share of the combined score's weight stays within these bounds: a regression left alone
 // hands most of the weight to whichever mechanics metric correlates best, and the score turns into a
@@ -88,6 +105,7 @@ func main() {
 		rho := spearman(all, key)
 		if perRaceMetrics[key] {
 			rho = 0
+			races := 0.0
 			for _, race := range []string{"T", "P", "Z"} {
 				var own []sample
 				for _, s := range all {
@@ -95,22 +113,34 @@ func main() {
 						own = append(own, s)
 					}
 				}
-				rho += spearman(own, key) / 3
+				if len(own) >= minFittedRows {
+					rho += spearman(own, key)
+					races++
+				}
 			}
+			rho /= races
 		}
-		mc := skill.MetricCuts{HigherIsBetter: rho >= 0, PerRace: perRaceMetrics[key], Rho: round(rho, 2), Cuts: map[string][3]float64{}, Ends: map[string][2]float64{}}
+		mc := skill.MetricCuts{HigherIsBetter: rho >= 0, PerRace: perRaceMetrics[key], PerMatchup: perMatchupMetrics[key], Rho: round(rho, 2), Cuts: map[string][3]float64{}, Ends: map[string][2]float64{}, Medians: map[string][4]float64{}}
 		sign := 1.0
 		if rho < 0 {
 			sign = -1
 		}
-		for _, race := range []string{"T", "P", "Z", skill.AllRaces} {
+		scales := []string{"T", "P", "Z", skill.AllRaces}
+		if perMatchupMetrics[key] {
+			scales = append(scales, matchups...)
+		}
+		for _, race := range scales {
 			var scored []scoredTier
+			pros := 0
 			for _, s := range all {
-				if s.Side.Race == race || race == skill.AllRaces {
+				if s.Side.Race == race || race == skill.AllRaces || s.Side.Race+"v"+s.Side.OppRace == race {
 					scored = append(scored, scoredTier{sign * s.Values[key], s.tier()})
+					if s.tier() == skill.TierPro {
+						pros++
+					}
 				}
 			}
-			if len(scored) < 300 {
+			if len(race) == 3 && (len(scored) < minMatchupRows || pros < minMatchupPros) || len(race) != 3 && len(scored) < minFittedRows {
 				continue
 			}
 			c := equalErrorCuts(scored)
@@ -121,6 +151,8 @@ func main() {
 				lo = 0
 			}
 			mc.Ends[race] = [2]float64{round(sign*lo, 3), round(sign*hi, 3)}
+			med := tierMedians(scored)
+			mc.Medians[race] = [4]float64{round(sign*med[0], 3), round(sign*med[1], 3), round(sign*med[2], 3), round(sign*med[3], 3)}
 		}
 		model.Metrics[key] = mc
 	}
@@ -150,6 +182,8 @@ func main() {
 		cr.Cuts = equalErrorCuts(scored)
 		lo, hi := ends(scored)
 		cr.Ends = [2]float64{round(lo, 4), round(hi, 4)}
+		med := tierMedians(scored)
+		cr.Medians = [4]float64{round(med[0], 4), round(med[1], 4), round(med[2], 4), round(med[3], 4)}
 		for i := range cr.Cuts {
 			cr.Cuts[i] = round(cr.Cuts[i], 4)
 		}
@@ -171,7 +205,9 @@ func main() {
 	log.Printf("wrote %s: %d players from %d games", *out, model.Players, model.Games)
 }
 
-var adjustedMetrics = []string{skill.ArmyCadence, skill.ProductionIdle}
+// Micro actions are not adjusted: lobby players micro less than ladder players of their EAPM, and that is
+// the skill gap the metric is there to show, not something the game type forces.
+var adjustedMetrics = []string{skill.ArmyCadence, skill.ProductionIdle, skill.IdleArmy}
 
 // eapmBins group players of the same mechanics level. Money-map and team players are mostly far slower than
 // ladder players, so comparing whole populations, or even whole tiers, would credit the context with what is
@@ -301,6 +337,20 @@ func ends(scored []scoredTier) (float64, float64) {
 	}
 	sort.Float64s(xs)
 	return xs[len(xs)*5/1000], xs[len(xs)*995/1000]
+}
+
+func tierMedians(scored []scoredTier) [4]float64 {
+	var by [4][]float64
+	for _, s := range scored {
+		by[s.tier] = append(by[s.tier], s.score)
+	}
+	var out [4]float64
+	for t, xs := range by {
+		if len(xs) > 0 {
+			out[t] = median(xs)
+		}
+	}
+	return out
 }
 
 type scoredTier struct {

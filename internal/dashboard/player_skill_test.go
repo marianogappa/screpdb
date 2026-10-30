@@ -33,3 +33,21 @@ func TestPlayerSkillNeedsAFewGamesAndTakesTheMedianPosition(t *testing.T) {
 		t.Fatalf("pills %+v, want no_hotkeys in 4 of 5 games", got.Pills)
 	}
 }
+
+func TestAMetricFewGamesMeasureIsLeftOut(t *testing.T) {
+	var rated []ratedPlayer
+	for i := range minSkillGames {
+		r := ratedAt(1.5, nil)
+		if i < minSkillGames-1 {
+			r.result.Metrics[skill.IdleArmy] = skill.Placement{Position: 3.8, Tier: skill.TierPro}
+		}
+		rated = append(rated, r)
+	}
+	got := summarizeSkill(rated)
+	if _, ok := got.Metrics[skill.IdleArmy]; ok {
+		t.Fatalf("idle army measured in %d games should be left out", minSkillGames-1)
+	}
+	if _, ok := got.Metrics[skill.EAPM]; !ok {
+		t.Fatal("a metric every game measures stays")
+	}
+}

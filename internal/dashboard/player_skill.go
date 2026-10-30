@@ -117,8 +117,12 @@ func summarizeSkill(rated []ratedPlayer) *workflowPlayerSkillSummary {
 		}
 	}
 	out.Combined = gamesPlacement(combined)
+	// A metric only some games measure, like spell usage in games with spellcasters, needs as many games as
+	// the tier itself: one or two would decide it on their own.
 	for k, ps := range byMetric {
-		out.Metrics[k] = gamesPlacement(ps)
+		if len(ps) >= minSkillGames {
+			out.Metrics[k] = gamesPlacement(ps)
+		}
 	}
 	for _, h := range skillHabits {
 		held, measured := 0, 0

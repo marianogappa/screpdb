@@ -317,6 +317,9 @@ func run(j job, data *engine.Data) []sample {
 			for k, v := range candidateValues(d, int8(p.Slot), m.Seconds, p.Race == library.RaceZerg) {
 				values[k] = v
 			}
+			for k, v := range armyUseValues(d, int8(p.Slot)) {
+				values[k] = v
+			}
 			for k, v := range windowed[int8(p.Slot)] {
 				values[k] = v
 			}
@@ -436,6 +439,14 @@ func engineValues(m macro.Player) map[string]float64 {
 	return values
 }
 
+func armyUseValues(d *engine.Digest, slot int8) map[string]float64 {
+	values := map[string]float64{}
+	if idle := macro.IdleArmyShare(d, slot); !math.IsNaN(idle) {
+		values[skill.IdleArmy] = idle
+	}
+	return values
+}
+
 // earlySeconds is the window before a game's outcome dominates what each player can do: a player who is
 // losing at 15:00 has less income because they are losing, not because they macro worse.
 const earlySeconds = 480
@@ -504,7 +515,7 @@ func actionStats(b []byte) map[uint8]map[string]float64 {
 	}
 	for id, c := range skill.CommandsOf(r.Commands.Cmds, int32(r.Header.Frames)) {
 		if v, ok := out[id]; ok {
-			v[skill.UsedRecalls], v[skill.CheckRecalls], v[skill.ArmyCadence] = c.UsedRecalls, c.CheckRecalls, c.ArmyCadence
+			v[skill.UsedRecalls], v[skill.CheckRecalls], v[skill.ArmyCadence], v[skill.MicroActions] = c.UsedRecalls, c.CheckRecalls, c.ArmyCadence, c.MicroActions
 		}
 	}
 	return out
@@ -653,6 +664,9 @@ func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, 
 				values[k] = v
 			}
 			for k, v := range candidateValues(d, int8(p.Slot), m.Seconds, p.Race == library.RaceZerg) {
+				values[k] = v
+			}
+			for k, v := range armyUseValues(d, int8(p.Slot)) {
 				values[k] = v
 			}
 			for k, v := range windowed[int8(p.Slot)] {

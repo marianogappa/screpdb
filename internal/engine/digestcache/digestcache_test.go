@@ -157,3 +157,21 @@ func TestNotACacheFile(t *testing.T) {
 		t.Fatal("garbage was not replaced")
 	}
 }
+
+func TestANewerVersionSupersedesTheSameReplaysOlderRecord(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "digests.bin")
+	c := openAt(t, path, allCurrent)
+	for _, k := range []Key{key(1, 7), key(2, 7), key(1, 9)} {
+		if err := c.Put(k, Entry{Digest: []byte("d")}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if c.Has(key(1, 7)) || !c.Has(key(1, 9)) || !c.Has(key(2, 7)) {
+		t.Fatal("the newer record should replace only its own replay's older one")
+	}
+	c.Close()
+	reopened := openAt(t, path, allCurrent)
+	if reopened.Has(key(1, 7)) || reopened.Len() != 2 {
+		t.Fatalf("after reopening: %d records, older kept %v", reopened.Len(), reopened.Has(key(1, 7)))
+	}
+}

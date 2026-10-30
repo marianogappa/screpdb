@@ -94,7 +94,7 @@ func Encode(d *Digest) ([]byte, error) {
 		w.uint(uint64(o.Kind))
 	}
 	writeEconomy(&w, d.Economy)
-	writeArmy(&w, d.Army)
+	writeArmy(&w, d.Army, d.EngineVersion)
 	writeUnloads(&w, d.Unloads)
 	writeTeleports(&w, d.Teleports)
 	w.uint(uint64(len(d.Casts)))
@@ -162,7 +162,7 @@ func writeEconomy(w *writer, samples []EconomySample) {
 	}
 }
 
-func writeArmy(w *writer, snaps []ArmySnapshot) {
+func writeArmy(w *writer, snaps []ArmySnapshot, version int32) {
 	w.uint(uint64(len(snaps)))
 	var prevFrame int32
 	for _, s := range snaps {
@@ -174,6 +174,14 @@ func writeArmy(w *writer, snaps []ArmySnapshot) {
 			w.uint(uint64(u.Type))
 			w.int(int64(u.X))
 			w.int(int64(u.Y))
+			if version >= 8 {
+				w.uint(uint64(u.ID))
+				w.uint(uint64(u.Order))
+				w.int(int64(u.Energy))
+			}
+			if version >= 10 {
+				w.int(int64(u.Commanded))
+			}
 		}
 	}
 }
@@ -342,7 +350,7 @@ func Decode(b []byte) (*Digest, error) {
 		d.Outcomes[i] = Outcome{Frame: int32(r.int()), Owner: int8(r.int()), Kind: OutcomeKind(r.uint())}
 	}
 	d.Economy = readEconomy(&r)
-	d.Army = readArmy(&r)
+	d.Army = readArmy(&r, d.EngineVersion)
 	d.Unloads = readUnloads(&r)
 	d.Teleports = readTeleports(&r)
 	d.Casts = makeN[[]Cast](r.count())
@@ -404,7 +412,7 @@ func readEconomy(r *reader) []EconomySample {
 	return samples
 }
 
-func readArmy(r *reader) []ArmySnapshot {
+func readArmy(r *reader, version int32) []ArmySnapshot {
 	snaps := makeN[[]ArmySnapshot](r.count())
 	var prevFrame int32
 	for i := range snaps {
@@ -413,7 +421,14 @@ func readArmy(r *reader) []ArmySnapshot {
 		prevFrame = s.Frame
 		s.Units = makeN[[]ArmyUnit](r.count())
 		for j := range s.Units {
-			s.Units[j] = ArmyUnit{Owner: int8(r.int()), Type: uint16(r.uint()), X: int32(r.int()), Y: int32(r.int())}
+			u := ArmyUnit{Owner: int8(r.int()), Type: uint16(r.uint()), X: int32(r.int()), Y: int32(r.int())}
+			if version >= 8 {
+				u.ID, u.Order, u.Energy = uint32(r.uint()), uint8(r.uint()), int32(r.int())
+			}
+			if version >= 10 {
+				u.Commanded = int32(r.int())
+			}
+			s.Units[j] = u
 		}
 	}
 	return snaps

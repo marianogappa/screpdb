@@ -7,8 +7,10 @@ import (
 )
 
 const (
-	actionSelect      = 0x09
-	actionShiftSelect = 0x0a
+	actionSelect        = 0x09
+	actionShiftSelect   = 0x0a
+	actionShiftDeselect = 0x0b
+	actionHotkey        = 0x13
 
 	desyncWindowFrames   = 240
 	desyncWindowMisses   = 3
@@ -24,6 +26,7 @@ type selectResult struct {
 func (p *passState) commandResult(e *screpsim.CommandResult) {
 	p.recordCast(e)
 	p.recordHotkey(e)
+	p.recordCommanded(e)
 	if e.ActionID != actionSelect && e.ActionID != actionShiftSelect {
 		return
 	}
@@ -36,6 +39,21 @@ func (p *passState) commandResult(e *screpsim.CommandResult) {
 		p.d.Drift.MissingSelects++
 	}
 	p.selects = append(p.selects, selectResult{frame: e.Frame, missing: missing})
+}
+
+// recordCommanded notes when the player last gave each unit an order of any kind; selecting a unit is not
+// an order.
+func (p *passState) recordCommanded(e *screpsim.CommandResult) {
+	switch e.ActionID {
+	case actionSelect, actionShiftSelect, actionShiftDeselect, actionHotkey:
+		return
+	}
+	if e.Outcome != openbw.Accepted {
+		return
+	}
+	for _, id := range e.Selection {
+		p.commanded[id] = e.Frame
+	}
 }
 
 // desyncOnset is the first select of a lasting run of selects naming units the engine does not have.
@@ -66,8 +84,14 @@ func desyncOnset(selects []selectResult) int32 {
 	return NoFrame
 }
 
-// castOrders are the spells a game event can be about: Recall, a Nuke, Stasis, Psionic Storm, Dark Swarm.
-var castOrders = map[byte]bool{0x89: true, 0x7e: true, 0x93: true, 0x8e: true, 0x77: true}
+// castOrders are every spell a player can order, plus painting a Nuke: game events read Recall, Nukes,
+// Stasis, Psionic Storm and Dark Swarm, and the Skill tab counts spells per spellcaster. Scanner Sweep is
+// left out; it is a building's, and Scans are read from commands.
+var castOrders = map[byte]bool{
+	0x7e: true, 0x73: true, 0x77: true, 0x78: true, 0x79: true, 0x7a: true, 0x89: true, 0x8d: true, 0x8e: true,
+	0x8f: true, 0x90: true, 0x91: true, 0x92: true, 0x93: true, 0x94: true, 0xb4: true, 0xb5: true, 0xb6: true,
+	0xb8: true, 0xb9: true, 0xba: true,
+}
 
 func (p *passState) recordCast(e *screpsim.CommandResult) {
 	order, ok := e.Cmd.(*repcmd.TargetedOrderCmd)

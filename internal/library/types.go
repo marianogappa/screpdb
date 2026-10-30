@@ -275,6 +275,8 @@ type EnginePlayer struct {
 	LarvaPerHatch float32
 	// BankedShare is the share of the game spent floating resources (the first 20 minutes on money maps).
 	BankedShare float32
+	// IdleArmyShare is macro.IdleArmyShare: the army standing idle from 8:00.
+	IdleArmyShare float32
 	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
 	Income  []uint16
 	Workers []uint16
@@ -387,10 +389,12 @@ type Player struct {
 	LeaveSec            uint16
 	LeaveReason         uint16
 	Viewport            float32
-	// UsedRecalls, CheckRecalls and ArmyCadence are skill.Commands, set with PlayerHasSkillCommands.
+	// UsedRecalls, CheckRecalls, ArmyCadence and MicroActions are skill.Commands, set with
+	// PlayerHasSkillCommands.
 	UsedRecalls  float32
 	CheckRecalls float32
 	ArmyCadence  float32
+	MicroActions float32
 	HotkeyStream []byte
 	Fingerprint  *Fingerprint
 	Cadence      *Cadence

@@ -39,6 +39,8 @@ const (
 	ArmyCadence      = "army_cadence"
 	UnspentPerIncome = "unspent_per_income"
 	ProductionIdle   = "production_idle_share"
+	IdleArmy         = "idle_army_share"
+	MicroActions     = "micro_actions_per_min"
 )
 
 // MinGameSeconds and MinAPM bound what the model was fitted on: shorter games and idle players are not
@@ -76,12 +78,18 @@ type MetricCuts struct {
 	HigherIsBetter bool `json:"higher_is_better"`
 	// PerRace places each race on its own cuts: the metric depends on what the race's production makes, so
 	// its values only compare within a race.
-	PerRace bool                  `json:"per_race,omitempty"`
-	Rho     float64               `json:"rho"`
-	Cuts    map[string][3]float64 `json:"cuts"`
+	PerRace bool `json:"per_race,omitempty"`
+	// PerMatchup also places 1v1 games on cuts of their matchup ("PvT"): the metric depends on what the
+	// opponent's race makes a player do, like Protoss holding a position against Terran.
+	PerMatchup bool                  `json:"per_matchup,omitempty"`
+	Rho        float64               `json:"rho"`
+	Cuts       map[string][3]float64 `json:"cuts"`
 	// Ends are, per race, the worst and best values the axis reaches (the 2nd and 98th percentile of the
 	// fitted players), so players far below or above the cuts still spread out instead of piling up.
 	Ends map[string][2]float64 `json:"ends,omitempty"`
+	// Medians are, per race, each tier's median value: the middle of its band on the axis, so a typical
+	// player of a tier sits mid-band and the band's edges are for players past the tier's middle.
+	Medians map[string][4]float64 `json:"medians,omitempty"`
 }
 
 type Combined struct {
@@ -96,6 +104,7 @@ type CombinedForRace struct {
 	Intercept float64    `json:"intercept"`
 	Cuts      [3]float64 `json:"cuts"`
 	Ends      [2]float64 `json:"ends"`
+	Medians   [4]float64 `json:"medians"`
 }
 
 var (
@@ -125,10 +134,11 @@ type Placement struct {
 	Tier     int     `json:"tier"`
 }
 
-func place(value float64, cuts [3]float64, ends [2]float64, higherIsBetter bool) Placement {
-	v, c, e := value, cuts, ends
+func place(value float64, cuts [3]float64, ends [2]float64, medians [4]float64, higherIsBetter bool) Placement {
+	v, c, e, m := value, cuts, ends, medians
 	if !higherIsBetter {
 		v, c, e = -value, [3]float64{-cuts[0], -cuts[1], -cuts[2]}, [2]float64{-ends[0], -ends[1]}
+		m = [4]float64{-medians[0], -medians[1], -medians[2], -medians[3]}
 	}
 	// The outer tiers reach the data's ends; without ends past the cuts, they are as wide as their neighbour.
 	lo, hi := c[0]-(c[1]-c[0]), c[2]+(c[2]-c[1])
@@ -138,26 +148,7 @@ func place(value float64, cuts [3]float64, ends [2]float64, higherIsBetter bool)
 	if e[1] > c[2] {
 		hi = e[1]
 	}
-	edges := [5]float64{lo, c[0], c[1], c[2], hi}
-	pos := 0.0
-	switch {
-	case v <= edges[0]:
-		pos = 0
-	case v >= edges[4]:
-		pos = 4
-	default:
-		for i := 0; i < 4; i++ {
-			if v <= edges[i+1] {
-				span := edges[i+1] - edges[i]
-				if span <= 0 {
-					pos = float64(i + 1)
-				} else {
-					pos = float64(i) + (v-edges[i])/span
-				}
-				break
-			}
-		}
-	}
+	pos := axisPosition(v, axisPoints(lo, c, hi, m, medians != [4]float64{}))
 	tier := 0
 	for _, cut := range c {
 		if v >= cut {
@@ -165,6 +156,38 @@ func place(value float64, cuts [3]float64, ends [2]float64, higherIsBetter bool)
 		}
 	}
 	return Placement{Value: value, Position: pos, Tier: tier}
+}
+
+type axisPoint struct{ value, position float64 }
+
+// axisPoints are the values the axis passes through: its ends, the cuts, and each tier's median mid-band
+// when that median lies inside its band.
+func axisPoints(lo float64, c [3]float64, hi float64, m [4]float64, haveMedians bool) []axisPoint {
+	edges := [5]float64{lo, c[0], c[1], c[2], hi}
+	points := []axisPoint{{lo, 0}}
+	for i := 0; i < 4; i++ {
+		if haveMedians && m[i] > edges[i] && m[i] < edges[i+1] {
+			points = append(points, axisPoint{m[i], float64(i) + 0.5})
+		}
+		points = append(points, axisPoint{edges[i+1], float64(i + 1)})
+	}
+	return points
+}
+
+func axisPosition(v float64, points []axisPoint) float64 {
+	if v <= points[0].value {
+		return 0
+	}
+	for i := 1; i < len(points); i++ {
+		a, b := points[i-1], points[i]
+		if v <= b.value {
+			if b.value <= a.value {
+				return b.position
+			}
+			return a.position + (v-a.value)/(b.value-a.value)*(b.position-a.position)
+		}
+	}
+	return 4
 }
 
 // Result is one player's game.
@@ -177,10 +200,10 @@ type Result struct {
 	Confident bool `json:"confident"`
 }
 
-// Evaluate places a player's measured values; race is "T", "P" or "Z", and context says what kind of game
-// it was. Macro values of team games and money maps are placed as their 1v1 regular-map equivalents;
+// Evaluate places a player's measured values; race is "T", "P" or "Z", opponent is the 1v1 opponent's
+// race ("" in team games), and context says what kind of game it was. Macro values of team games and money maps are placed as their 1v1 regular-map equivalents;
 // Placement.Value stays the measured value.
-func (m *Model) Evaluate(race, context string, values map[string]float64) Result {
+func (m *Model) Evaluate(race, opponent, context string, values map[string]float64) Result {
 	res := Result{Metrics: map[string]Placement{}}
 	adjusted := map[string]float64{}
 	for key, v := range values {
@@ -191,12 +214,17 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 		if _, ok := mc.Cuts[scale]; !ok || mc.PerRace {
 			scale = race
 		}
+		if matchup := race + "v" + opponent; mc.PerMatchup && opponent != "" {
+			if _, ok := mc.Cuts[matchup]; ok {
+				scale = matchup
+			}
+		}
 		cuts, ok := mc.Cuts[scale]
 		v, has := values[key]
 		if !ok || !has {
 			continue
 		}
-		p := place(adjusted[key], cuts, mc.Ends[scale], mc.HigherIsBetter)
+		p := place(adjusted[key], cuts, mc.Ends[scale], mc.Medians[scale], mc.HigherIsBetter)
 		p.Value = v
 		res.Metrics[key] = p
 	}
@@ -213,7 +241,7 @@ func (m *Model) Evaluate(race, context string, values map[string]float64) Result
 		z := (v - cr.Mean[i]) / cr.SD[i]
 		score += cr.Weights[i] * max(-3, min(3, z))
 	}
-	p := place(score, cr.Cuts, cr.Ends, true)
+	p := place(score, cr.Cuts, cr.Ends, cr.Medians, true)
 	res.Combined = &p
 	res.Confident = true
 	for _, c := range cr.Cuts {
