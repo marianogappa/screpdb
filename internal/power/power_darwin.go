@@ -1,16 +1,30 @@
 package power
 
 import (
-	"os/exec"
+	"bytes"
 	"runtime"
-	"strings"
 
 	"golang.org/x/sys/unix"
 )
 
-func onBattery() bool {
-	out, err := exec.Command("/usr/bin/pmset", "-g", "batt").Output()
-	return err == nil && strings.Contains(string(out), "'Battery Power'")
+func starCraftRunning() bool {
+	procs, err := unix.SysctlKinfoProcSlice("kern.proc.all")
+	if err != nil {
+		return false
+	}
+	for i := range procs {
+		if isStarCraftProcess(cString(procs[i].Proc.P_comm[:])) {
+			return true
+		}
+	}
+	return false
+}
+
+func cString(b []byte) string {
+	if i := bytes.IndexByte(b, 0); i >= 0 {
+		b = b[:i]
+	}
+	return string(b)
 }
 
 const (

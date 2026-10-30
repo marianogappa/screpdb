@@ -73,7 +73,7 @@ func runUntilUpgraded(t *testing.T, cachePath string, data *engine.Data, records
 	lib.Add(0, records...)
 	lib.Flush()
 	lib.SetProgress(library.ProgressState{Phase: library.PhaseReady})
-	r := New(Options{Library: lib, CachePath: cachePath, SnapshotPath: cachePath + ".snapshots", Workers: 2, OpenData: func() (*engine.Data, error) { return data, nil }, Logf: t.Logf})
+	r := New(Options{Library: lib, CachePath: cachePath, SnapshotPath: cachePath + ".snapshots", Workers: func() int { return 2 }, OpenData: func() (*engine.Data, error) { return data, nil }, Logf: t.Logf})
 	start := time.Now()
 	r.Start()
 	t.Cleanup(r.Close)

@@ -2,6 +2,6 @@
 
 package power
 
-func onBattery() bool { return false }
+func starCraftRunning() bool { return false }
 
 func LowerThreadPriority() {}

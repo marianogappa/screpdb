@@ -118,7 +118,7 @@
   "engine.updated.other": "{count}게임 업데이트됨 · 새로고침",
   "snapshot.underConstruction": "{unit} (건설 중)",
   "labs.feature.enginePass": "게임 엔진으로 게임 분석하기 (스타크래프트: 리마스터 설치 필요)",
-  "labs.feature.enginePassOnBattery": "배터리 사용 중에도 게임 엔진 분석 계속하기",
+  "labs.feature.enginePassAllCores": "스타크래프트가 꺼져 있을 때 모든 코어 사용하기",
   "game.tabs.skill": "실력",
   "skill.tier.beginner": "초보",
   "skill.tier.intermediate": "중수",

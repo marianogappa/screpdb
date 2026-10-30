@@ -120,7 +120,6 @@ const (
 	engineStateOff      = "off"
 	engineStateStarting = "starting"
 	engineStateRunning  = "running"
-	engineStatePaused   = "paused"
 	engineStateFailed   = "failed"
 )
 

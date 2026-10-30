@@ -29,8 +29,8 @@ const featureFlagDisableCompleteReplays = "disable_complete_replays"
 // positively and defaults to off; with it off, screpdb behaves as if the engine did not exist.
 const featureFlagEnginePass = "engine_pass"
 
-// featureFlagEnginePassOnBattery keeps the engine pass running on battery; by default it pauses there.
-const featureFlagEnginePassOnBattery = "engine_pass_on_battery"
+// featureFlagEnginePassAllCores lets the engine pass use every core while StarCraft: Remastered is closed.
+const featureFlagEnginePassAllCores = "engine_pass_all_cores"
 
 // knownFeatureFlags is the allowlist. Writes to anything outside it are
 // rejected, so a stale client cannot litter the settings row with keys nothing
@@ -39,7 +39,7 @@ const featureFlagEnginePassOnBattery = "engine_pass_on_battery"
 var knownFeatureFlags = map[string]struct{}{
 	featureFlagDisableCompleteReplays: {},
 	featureFlagEnginePass:             {},
-	featureFlagEnginePassOnBattery:    {},
+	featureFlagEnginePassAllCores:     {},
 }
 
 func (d *Dashboard) featureFlags(ctx context.Context) (map[string]bool, error) {
