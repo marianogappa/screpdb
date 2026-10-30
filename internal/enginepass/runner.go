@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	pausedRecheck = 10 * time.Second
-	libraryPoll   = 500 * time.Millisecond
+	limitRecheck = 3 * time.Second
+	libraryPoll  = 500 * time.Millisecond
 )
 
 type Options struct {
@@ -36,12 +36,11 @@ type Options struct {
 	CachePath string
 	// SnapshotPath holds exact snapshots of the games someone opened; empty disables them.
 	SnapshotPath string
-	// Workers is the number of parallel engine passes; 0 leaves at least one core free.
-	Workers int
+	// Workers is how many engine passes may run at once. It is asked every few seconds, so the limit can
+	// change while the runner works; nil means DefaultWorkers.
+	Workers func() int
 	// OpenData loads the game data; nil means engine.OpenGameData, which finds the SC:R install.
 	OpenData func() (*engine.Data, error)
-	// Paused is checked before each engine pass. Cache hits are applied even while paused.
-	Paused func() bool
 	// LowPriority runs workers on low-priority OS threads; off in tests.
 	LowPriority bool
 	Logf        func(format string, args ...any)
@@ -63,7 +62,6 @@ type Status struct {
 	State  State
 	Reason string
 	Queued int
-	Paused bool
 }
 
 type Runner struct {
@@ -79,6 +77,8 @@ type Runner struct {
 	cache     *digestcache.Cache
 	snapCache *digestcache.Cache
 	snapLocks map[[32]byte]*sync.Mutex
+	limit     int
+	active    int
 
 	wake     chan struct{}
 	stop     chan struct{}
@@ -88,17 +88,17 @@ type Runner struct {
 	wg       sync.WaitGroup
 }
 
+// DefaultWorkers leaves at least half the machine to everything else.
 func DefaultWorkers() int { return max(1, runtime.NumCPU()/2-1) }
 
+func AllWorkers() int { return runtime.NumCPU() }
+
 func New(opts Options) *Runner {
-	if opts.Workers <= 0 {
-		opts.Workers = DefaultWorkers()
+	if opts.Workers == nil {
+		opts.Workers = DefaultWorkers
 	}
 	if opts.OpenData == nil {
 		opts.OpenData = engine.OpenGameData
-	}
-	if opts.Paused == nil {
-		opts.Paused = func() bool { return false }
 	}
 	if opts.Logf == nil {
 		opts.Logf = log.Printf
@@ -137,7 +137,6 @@ func (r *Runner) Status() Status {
 	defer r.mu.Unlock()
 	s := r.status
 	s.Queued = r.queue.len()
-	s.Paused = s.State == StateRunning && r.opts.Paused()
 	return s
 }
 
@@ -221,10 +220,9 @@ func (r *Runner) Snapshots(ctx context.Context, checksum [32]byte, path string, 
 	return out, nil
 }
 
-// Focus moves a replay to the front of the queue: the game the user has open upgrades next.
 // Focus runs the replay the user has open now, on a worker of its own, instead of after the passes already
-// running: a long team game on every worker would otherwise keep the open game waiting for minutes. It runs
-// on battery too: pausing on battery is for the background queue, not for the game someone just opened.
+// running: a long team game on every worker would otherwise keep the open game waiting for minutes. It
+// ignores the worker limit, which is for the background queue, not for the game someone just opened.
 func (r *Runner) Focus(replayID int64) {
 	rec, ok := r.lib.Snapshot().ByID(replayID)
 	if !ok {
@@ -334,17 +332,22 @@ func (r *Runner) run() {
 	r.snapLocks = map[[32]byte]*sync.Mutex{}
 	r.status.State = StateRunning
 	r.mu.Unlock()
+	r.updateLimit()
 
 	_, events, cancel := r.lib.Subscribe()
 	defer cancel()
 	r.enqueue(r.lib.Snapshot().Replays)
-	for range r.opts.Workers {
+	for range AllWorkers() {
 		r.wg.Go(r.work)
 	}
+	recheck := time.NewTicker(limitRecheck)
+	defer recheck.Stop()
 	for {
 		select {
 		case <-r.stop:
 			return
+		case <-recheck.C:
+			r.updateLimit()
 		case ev, ok := <-events:
 			if !ok {
 				return
@@ -438,6 +441,19 @@ func (r *Runner) signal() {
 	}
 }
 
+// updateLimit applies a new worker limit. A lower one lets the passes in flight finish and hands out no
+// new jobs until fewer than the limit run.
+func (r *Runner) updateLimit() {
+	limit := min(max(1, r.opts.Workers()), AllWorkers())
+	r.mu.Lock()
+	grew := limit > r.limit
+	r.limit = limit
+	r.mu.Unlock()
+	if grew {
+		r.signal()
+	}
+}
+
 func (r *Runner) work() {
 	if r.opts.LowPriority {
 		power.LowerThreadPriority()
@@ -448,23 +464,29 @@ func (r *Runner) work() {
 			return
 		}
 		r.process(j)
+		r.done()
 	}
 }
 
-// next blocks until a job is due and the runner is not paused, or returns nil once Close is called.
+func (r *Runner) done() {
+	r.mu.Lock()
+	r.active--
+	r.mu.Unlock()
+	r.signal()
+}
+
+// next blocks until a job is due and fewer than the limit run, or returns nil once Close is called.
 func (r *Runner) next() *job {
 	for {
-		if r.opts.Paused() {
-			select {
-			case <-r.stop:
-				return nil
-			case <-time.After(pausedRecheck):
-				continue
-			}
-		}
 		r.mu.Lock()
-		j := r.queue.pop()
-		more := r.queue.len() > 0
+		var j *job
+		if r.active < r.limit {
+			j = r.queue.pop()
+		}
+		if j != nil {
+			r.active++
+		}
+		more := r.queue.len() > 0 && r.active < r.limit
 		r.mu.Unlock()
 		if j != nil {
 			if more {

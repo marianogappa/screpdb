@@ -19,6 +19,8 @@ const (
 type enginePassHolder struct {
 	mu     sync.Mutex
 	runner *enginepass.Runner
+	// starCraftRunning is power.StarCraftRunning outside tests.
+	starCraftRunning func() bool
 }
 
 func (h *enginePassHolder) get() *enginepass.Runner {
@@ -42,7 +44,7 @@ func (d *Dashboard) startEnginePass() {
 		Library:      d.library.lib,
 		CachePath:    filepath.Join(d.library.root, engineDigestCacheFile),
 		SnapshotPath: filepath.Join(d.library.root, engineSnapshotCacheFile),
-		Paused:       d.enginePassPaused,
+		Workers:      d.enginePassWorkers,
 		LowPriority:  true,
 		Features:     d.engineFeatures,
 	})
@@ -74,8 +76,20 @@ func (d *Dashboard) enginePassToggled(on bool) {
 	}
 }
 
-func (d *Dashboard) enginePassPaused() bool {
-	return !d.featureFlagEnabled(d.ctx, featureFlagEnginePassOnBattery) && power.OnBattery()
+// enginePassWorkers keeps the engine pass off the cores StarCraft: Remastered needs while someone plays,
+// and, when the user opts in, takes the whole machine while the game is closed.
+func (d *Dashboard) enginePassWorkers() int {
+	if !d.featureFlagEnabled(d.ctx, featureFlagEnginePassAllCores) {
+		return enginepass.DefaultWorkers()
+	}
+	running := d.enginePass.starCraftRunning
+	if running == nil {
+		running = power.StarCraftRunning
+	}
+	if running() {
+		return enginepass.DefaultWorkers()
+	}
+	return enginepass.AllWorkers()
 }
 
 func (d *Dashboard) focusEnginePass(replayID int64) {
@@ -114,8 +128,6 @@ func enginePassState(r *enginepass.Runner) string {
 		return engineStateFailed
 	case s.State == enginepass.StateStarting:
 		return engineStateStarting
-	case s.Paused:
-		return engineStatePaused
 	default:
 		return engineStateRunning
 	}
