@@ -65,6 +65,8 @@ type passState struct {
 	selects      []selectResult
 	carriedBy    map[openbw.UnitID]openbw.UnitID
 	lastSeen     map[openbw.UnitID]seenAt
+	carriedNext  map[openbw.UnitID]openbw.UnitID
+	seenNext     map[openbw.UnitID]seenAt
 	hotkeyGroups map[hotkeyGroupKey][]openbw.UnitID
 	commanded    map[openbw.UnitID]int32
 }
@@ -85,6 +87,8 @@ func newPassState(g *screpsim.Game) *passState {
 		openResearch: map[researchKey]int{},
 		carriedBy:    map[openbw.UnitID]openbw.UnitID{},
 		lastSeen:     map[openbw.UnitID]seenAt{},
+		carriedNext:  map[openbw.UnitID]openbw.UnitID{},
+		seenNext:     map[openbw.UnitID]seenAt{},
 		hotkeyGroups: map[hotkeyGroupKey][]openbw.UnitID{},
 		commanded:    map[openbw.UnitID]int32{},
 	}
@@ -262,8 +266,9 @@ func (p *passState) tick(frame int32) {
 	snapshot := p.ticks%(ArmyEveryFrames/EconomyEveryFrames) == 0
 	p.ticks++
 	var army []ArmyUnit
-	carried := map[openbw.UnitID]openbw.UnitID{}
-	seen := map[openbw.UnitID]seenAt{}
+	carried, seen := p.carriedNext, p.seenNext
+	clear(carried)
+	clear(seen)
 	for u := range e.Units() {
 		if u.Owner > maxPlayerSlot || u.Dying {
 			continue
@@ -331,7 +336,7 @@ func (p *passState) trackUnloads(frame int32, carried map[openbw.UnitID]openbw.U
 		slices.Sort(byTransport[id].Cargo)
 		p.d.Unloads = append(p.d.Unloads, *byTransport[id])
 	}
-	p.carriedBy = carried
+	p.carriedBy, p.carriedNext = carried, p.carriedBy
 }
 
 const teleportPixels = 16 * 32
@@ -373,7 +378,7 @@ func (p *passState) trackTeleports(frame int32, seen map[openbw.UnitID]seenAt) {
 		slices.Sort(t.Units)
 		p.d.Teleports = append(p.d.Teleports, *t)
 	}
-	p.lastSeen = seen
+	p.lastSeen, p.seenNext = seen, p.lastSeen
 }
 
 func isTransport(t openbw.UnitType) bool {
