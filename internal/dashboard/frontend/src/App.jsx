@@ -5,7 +5,7 @@ import { slugKey } from './lib/i18n';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
-import EngineCoverage from './components/EngineCoverage';
+import EngineProgressNote from './components/EngineProgressNote';
 import SkillTab, { PlayerSkillRow, PlayerSkillTab, PlayersSkillTab, SkillTierChip, TIER_KEYS, tierLabel } from './components/SkillTab';
 import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
@@ -3474,11 +3474,24 @@ function App() {
   useEffect(() => {
     if (lastEngineCoverageStepRef.current === engineCoverageStep) return;
     lastEngineCoverageStepRef.current = engineCoverageStep;
+    if (mainPlayersSkill) loadMainPlayersSkill();
+    if (activeView === 'players' && mainPlayers.length) {
+      api.listPlayers({
+        limit: MAIN_PLAYERS_PAGE_SIZE,
+        offset: (Math.max(1, Number(mainPlayersPage) || 1) - 1) * MAIN_PLAYERS_PAGE_SIZE,
+        sortBy: mainPlayersSortBy,
+        sortDir: mainPlayersSortDir,
+        filters: mainPlayersFilters,
+      }).then((data) => {
+        const skillByKey = new Map((data?.items || []).map((p) => [p.player_key, p.skill]));
+        setMainPlayers((prev) => prev.map((p) => (skillByKey.has(p.player_key) ? { ...p, skill: skillByKey.get(p.player_key) } : p)));
+      }).catch(() => {});
+    }
     if (activeView !== 'player' || !selectedPlayerKey || isFeaturedPlayerKey(selectedPlayerKey)) return;
     const key = selectedPlayerKey;
     api.getPlayer(key).then((data) => {
       if (!data?.engine) return;
-      setMainPlayer((prev) => (prev && prev.player_key === data.player_key ? { ...prev, engine: data.engine } : prev));
+      setMainPlayer((prev) => (prev && prev.player_key === data.player_key ? { ...prev, engine: data.engine, skill: data.skill } : prev));
     }).catch(() => {});
   }, [engineCoverageStep]);
   gamingSessionRef.current = gamingSession;
@@ -3497,6 +3510,21 @@ function App() {
     return isLibraryLoading(libraryStatus);
   })();
   const libraryLoadingCopy = libraryLoading ? stillLoadingCopyWith(t) : '';
+  const mainPlayersShowSkill = engineEnabled && mainPlayers.some((p) => p.skill);
+  const engineProgressNote = (
+    <EngineProgressNote
+      coverage={engineCoverage}
+      allCores={Boolean(featureFlags?.engine_pass_all_cores)}
+      saving={featureFlagsSaving}
+      onEnableAllCores={() => handleFeatureFlagToggle('engine_pass_all_cores', true)}
+    />
+  );
+  const libraryWasLoadingRef = useRef(libraryLoading);
+  useEffect(() => {
+    const finished = libraryWasLoadingRef.current && !libraryLoading;
+    libraryWasLoadingRef.current = libraryLoading;
+    if (finished && mainPlayersSkill) loadMainPlayersSkill();
+  }, [libraryLoading]);
 
   const handleSaveGlobalReplayFilter = async (nextConfig) => {
     try {
@@ -5400,7 +5428,6 @@ function App() {
 
         {activeView === 'players' && (
           <div className="workflow-panel">
-            <EngineCoverage coverage={engineCoverage} className="engine-coverage--panel" />
             <div className="workflow-players-tab-stack">
               <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('players.sectionsAria')}>
                 <button
@@ -5496,7 +5523,7 @@ function App() {
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('games')}>{t('players.table.games')} {mainPlayersSortIndicator('games')}</th>
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('apm')}>{t('players.table.avgApm')} {mainPlayersSortIndicator('apm')}</th>
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('last_played')}>{t('common.lastPlayed')} {mainPlayersSortIndicator('last_played')}</th>
-                          {engineEnabled ? <th>{t('game.tabs.skill')}</th> : null}
+                          {mainPlayersShowSkill ? <th>{t('game.tabs.skill')}</th> : null}
                         </tr>
                       </thead>
                       <tbody>
@@ -5518,7 +5545,7 @@ function App() {
                             </td>
                             <td>{Number(player.average_apm || 0).toFixed(1)}</td>
                             <td>{formatDaysAgoCompact(player.last_played_days_ago)}</td>
-                            {engineEnabled ? <td><SkillTierChip placement={player.skill} /></td> : null}
+                            {mainPlayersShowSkill ? <td><SkillTierChip placement={player.skill} /></td> : null}
                           </tr>
                         ))}
                       </tbody>
@@ -5553,6 +5580,7 @@ function App() {
                 loading={mainPlayersSkillLoading}
                 error={mainPlayersSkillError}
                 emptyNotice={libraryLoadingCopy}
+                progress={engineProgressNote}
                 showFeatured={showFeaturedPros}
                 featuredToggle={renderFeaturedToggle}
                 onOpenPlayer={openMainPlayer}
@@ -6778,7 +6806,7 @@ function App() {
                   {mainPlayerTab === 'skill' && !isFeaturedPlayer ? (
                     mainPlayer?.skill
                       ? <PlayerSkillTab summary={mainPlayer.skill} name={mainPlayer?.player_name || selectedPlayerKey} />
-                      : (mainPlayerLoading ? null : <div className="workflow-card"><div className="chart-empty">{t('skill.player.none')}</div></div>)
+                      : (mainPlayerLoading ? null : <div className="workflow-card skill-tab">{engineProgressNote}<div className="chart-empty">{t('skill.player.none')}</div></div>)
                   ) : null}
                   {mainPlayerTab === 'summary' && (() => {
                     const bnet = mainPlayer?.bnet_profile;

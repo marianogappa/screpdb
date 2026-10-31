@@ -7453,16 +7453,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .engine-refresh-chip:hover {
   border-color: rgba(148, 163, 184, 0.7);
 }
-.engine-coverage {
-  display: block;
-  font-size: 0.75rem;
-  color: rgba(148, 163, 184, 0.85);
-  font-variant-numeric: tabular-nums;
-}
-.engine-coverage--panel {
-  margin: 0 0 8px;
-  text-align: right;
-}
 
 .macro-table th[scope='row'] {
   text-align: left;
@@ -7561,7 +7551,10 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-row-label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: rgba(255,255,255,0.68); }
 .skill-help .workflow-help-bubble { max-width: 320px; white-space: normal; font-weight: 400; }
 .skill-strip { position: relative; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,0.015); }
-.skill-row-label--hero { font-size: 0.95rem; font-weight: 600; color: rgba(255,255,255,0.95); }
+.skill-row-label--hero { font-size: 1.05rem; font-weight: 700; color: #fff; }
+.skill-rows > .skill-row-label--sub { padding-left: 12px; border-left: 2px solid rgba(255,255,255,0.14); font-weight: 500; }
+.skill-weight { margin-left: auto; padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); font-size: 0.72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.skill-submetrics-head { grid-column: 1 / -1; font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-top: 4px; }
 .skill-strip--hero { background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); margin-bottom: 10px; }
 .skill-strip--hero .skill-player-label { font-size: 13px; font-weight: 600; }
 .skill-band { position: absolute; top: 0; bottom: 0; border-left: 1px solid rgba(255,255,255,0.07); text-align: center; }
@@ -7871,3 +7864,10 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-players-legend-toggle {
   margin-left: auto;
 }
+
+.engine-progress-note { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; font-size: 0.8rem; color: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 8px; background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.22); }
+.engine-speedup { position: relative; display: inline-flex; }
+.engine-speedup-link { color: #93c5fd; text-decoration: underline dotted; cursor: help; }
+.engine-speedup-bubble { position: absolute; left: 0; top: 100%; z-index: 30; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 280px; margin-top: 6px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(9,10,16,0.97); color: rgba(255,255,255,0.92); font-size: 0.76rem; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: opacity 0.12s ease; }
+.engine-speedup-bubble::before { content: ''; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
+.engine-speedup:hover .engine-speedup-bubble, .engine-speedup:focus-within .engine-speedup-bubble { opacity: 1; pointer-events: auto; }

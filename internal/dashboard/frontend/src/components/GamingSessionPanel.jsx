@@ -251,6 +251,7 @@ function PlayerTable({ players, renderName, renderBadge, showRecord, showSkill, 
   const [sort, setSort] = useState({ key: null, dir: null });
   const onSort = (key) => setSort((current) => nextSortState(current, key));
   const rows = sortSessionPlayers(players || [], sort);
+  const withSkill = showSkill && rows.some((p) => p.skill);
   if (!players || players.length === 0) {
     return <div className="workflow-subtle-note">{t('session.nobody')}</div>;
   }
@@ -268,7 +269,7 @@ function PlayerTable({ players, renderName, renderBadge, showRecord, showSkill, 
           {showRecord ? header(t('session.col.losses'), t('session.col.lossesTitle'), 'losses', 'col-count') : null}
           <th className="col-races">{t('session.col.races')}</th>
           {header(t('session.col.apm'), t('session.col.apm'), 'apm', 'col-apm')}
-          {showSkill ? header(t('game.tabs.skill'), t('game.tabs.skill'), 'skill', 'col-skill') : null}
+          {withSkill ? header(t('game.tabs.skill'), t('game.tabs.skill'), 'skill', 'col-skill') : null}
           <th className="col-ladder">{t('session.col.ladder')}</th>
           <th className="col-toons">{t('session.col.alsoPlaysAs')}</th>
         </tr>
@@ -283,7 +284,7 @@ function PlayerTable({ players, renderName, renderBadge, showRecord, showSkill, 
             {showRecord ? <td className="col-count">{player.losses || 0}</td> : null}
             <td className="col-races"><RaceIcons races={player.races} /></td>
             <td className="col-apm">{player.apm == null ? <NoValue /> : player.apm}</td>
-            {showSkill ? <td className="col-skill"><SkillTierChip placement={player.skill} /></td> : null}
+            {withSkill ? <td className="col-skill"><SkillTierChip placement={player.skill} /></td> : null}
             <td className="col-ladder"><LadderCell profile={player.profile} /></td>
             <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} onPlayerClick={onPlayerClick} /></td>
           </tr>
