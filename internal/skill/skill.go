@@ -193,7 +193,7 @@ func axisPosition(v float64, points []axisPoint) float64 {
 // Result is one player's game.
 type Result struct {
 	Metrics map[string]Placement `json:"metrics"`
-	// Combined is the Headline of the metrics; nil when a combined feature is missing.
+	// Combined is the Headline of the metrics; nil when they carry less than minMeasuredShare of the weight.
 	Combined *Placement `json:"combined,omitempty"`
 	// Confident is true when the combined score is ConfidentMargin or more from every cut: on held-out games
 	// that tier was right 70% of the time, against 55% for any score.
@@ -232,6 +232,17 @@ func (m *Model) Evaluate(race, opponent, context string, values map[string]float
 	if !ok {
 		return res
 	}
+	shares := m.Shares(race)
+	measured := 0.0
+	for key, share := range shares {
+		if _, ok := res.Metrics[key]; ok {
+			measured += share
+		}
+	}
+	if measured < minMeasuredShare {
+		return res
+	}
+	res.Combined = m.Headline(shares, res.Metrics)
 	score := cr.Intercept
 	for i, f := range m.Combined.Features {
 		v, has := adjusted[f]
@@ -241,7 +252,6 @@ func (m *Model) Evaluate(race, opponent, context string, values map[string]float
 		z := (v - cr.Mean[i]) / cr.SD[i]
 		score += cr.Weights[i] * max(-3, min(3, z))
 	}
-	res.Combined = m.Headline(m.Shares(race), res.Metrics)
 	res.Confident = true
 	for _, c := range cr.Cuts {
 		if abs(score-c) < m.ConfidentMargin {
@@ -250,6 +260,10 @@ func (m *Model) Evaluate(race, opponent, context string, values map[string]float
 	}
 	return res
 }
+
+// minMeasuredShare is how much of the estimate's weight a game must measure to get a Skill tier. Idle army
+// needs a real army for a minute after 8:00, which many games never field; the other metrics are enough.
+const minMeasuredShare = 0.85
 
 // Shares is how much each combined metric weighs in the fitted estimate for race, summing to 1.
 func (m *Model) Shares(race string) map[string]float64 {

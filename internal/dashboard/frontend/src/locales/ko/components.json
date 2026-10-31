@@ -140,7 +140,7 @@
   "skill.metric.production_idle_share.title": "놀고 있는 생산",
   "skill.metric.production_idle_share.hint": "병력 생산 건물이 놀고 있던 시간의 비율입니다. 저그는 해처리마다 최대 3마리인 라바 중 쓰이지 않고 남아 있던 비율입니다.",
   "skill.metric.idle_army_share.title": "놀고 있는 병력",
-  "skill.metric.idle_army_share.hint": "8분 이후 병력 가치 중, 랠리 지점이든 어디든 명령 없이 20초 넘게 한자리에 서 있던 비율입니다. 시즈 모드 탱크와 럴커는 제외합니다.",
+  "skill.metric.idle_army_share.hint": "8분 이후 병력 가치 중, 랠리 지점이든 어디든 명령 없이 20초 넘게 한자리에 서 있던 비율입니다. 시즈 모드 탱크, 럴커, 캐리어는 제외합니다.",
   "skill.metric.micro_actions_per_min.title": "유닛 컨트롤",
   "skill.metric.micro_actions_per_min.hint": "2분 이후 1분마다 쓴 유닛 기술 수입니다. 홀드, 내리기, 시즈 모드, 스팀팩, 클로킹, 아콘 합체, 마법 사용을 셉니다. 1초 안에 같은 기술을 다시 누르면 한 번으로 셉니다.",
   "skill.status.tooShort": "8분보다 짧은 게임은 평가하지 않습니다.",

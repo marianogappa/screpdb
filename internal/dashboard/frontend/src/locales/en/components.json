@@ -140,7 +140,7 @@
   "skill.metric.production_idle_share.title": "Idle production",
   "skill.metric.production_idle_share.hint": "Share of time army buildings stood idle. Zerg: larva left waiting, out of the 3 each hatchery holds.",
   "skill.metric.idle_army_share.title": "Idle army",
-  "skill.metric.idle_army_share.hint": "Share of the army's value, from 8:00, standing on one spot with no orders for 20 seconds or more, wherever a rally point left it. Sieged tanks and Lurkers are left out.",
+  "skill.metric.idle_army_share.hint": "Share of the army's value, from 8:00, standing on one spot with no orders for 20 seconds or more, wherever a rally point left it. Sieged tanks, Lurkers and Carriers are left out.",
   "skill.metric.micro_actions_per_min.title": "Micro actions",
   "skill.metric.micro_actions_per_min.hint": "Unit abilities used per minute from 2:00: Hold Position, unloading, sieging, Stim Packs, cloaking, merging Archons and casting spells. Pressing the same ability again within a second counts once.",
   "skill.status.tooShort": "Games shorter than 8 minutes are not rated.",

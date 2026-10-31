@@ -308,7 +308,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-10-31  OK. Players and Session lists gain a Skill column while the engine is on, the Skill chart keeps one line with a trend note from the last three months, the all cores switch moves under the replay folder, the replay filter gains a Use Map Settings game type, the Skill tier is the weighted average of its metrics, and Skill views say when the engine pass is still running (offering all cores on hover) and refresh as it advances; reads replays and settings already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+2026-10-31  OK. Players and Session lists gain a Skill column while the engine is on, the Skill chart keeps one line with a trend note from the last three months, the all cores switch moves under the replay folder, the replay filter gains a Use Map Settings game type, the Skill tier is the weighted average of its metrics, idle army tolerates hovering air, leaves out Carriers and needs a minute of real army (model refit on ladder and lobby games), and Skill views say when the engine pass is still running (offering all cores on hover) and refresh as it advances; reads replays and settings already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>

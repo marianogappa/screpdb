@@ -12,10 +12,14 @@ import (
 const (
 	armyFromSecond = 480
 	armyMinValue   = 1000
-	// A unit is idle once it has stood on the same cell with no order across two snapshots (20 s): long
-	// enough that a unit pausing between commands does not count.
+	// A unit is idle once it has stood within one tile of the same spot with no order across two snapshots
+	// (20 s): long enough that a unit pausing between commands does not count. The tile of slack is for air
+	// units, which drift as they hover and never stand on the exact same pixel twice.
 	idleSnapshots = 2
-	minArmySeen   = 3
+	stillPixels   = 32
+	// A minute of snapshots with a real army, so a handful of units seen a few times cannot read as an army
+	// that never stands around.
+	minArmySeen = 6
 )
 
 func unitTypes(ts ...bwgame.UnitTypes) map[uint16]bool {
@@ -30,8 +34,9 @@ var (
 	notArmy = unitTypes(bwgame.UnitTypesZergLarva, bwgame.UnitTypesZergEgg, bwgame.UnitTypesZergOverlord,
 		bwgame.UnitTypesProtossInterceptor, bwgame.UnitTypesProtossScarab, bwgame.UnitTypesTerranVultureSpiderMine,
 		bwgame.UnitTypesTerranNuclearMissile, bwgame.UnitTypesTerranSCV, bwgame.UnitTypesZergDrone, bwgame.UnitTypesProtossProbe)
-	// Sieged tanks and Lurkers hold a position by design.
-	holdsPosition = unitTypes(bwgame.UnitTypesTerranSiegeTankSiegeMode, bwgame.UnitTypesZergLurker)
+	// Sieged tanks and Lurkers hold a position by design, and Carriers are in a fight order whenever their
+	// interceptors find something in range, so a fleet parked at home still reads busy.
+	holdsPosition = unitTypes(bwgame.UnitTypesTerranSiegeTankSiegeMode, bwgame.UnitTypesZergLurker, bwgame.UnitTypesProtossCarrier)
 	idleOrders    = map[uint8]bool{
 		uint8(bwgame.OrdersStop): true, uint8(bwgame.OrdersGuard): true, uint8(bwgame.OrdersPlayerGuard): true,
 		uint8(bwgame.OrdersNothing): true, uint8(bwgame.OrdersMedicIdle): true, uint8(bwgame.OrdersCarrierStop): true,
@@ -68,10 +73,12 @@ func IdleArmyShare(d *engine.Digest, slot int8) float64 {
 			}
 			n := 0
 			if idleOrders[u.Order] {
-				if prev, ok := still[u.ID]; ok && prev.x == u.X && prev.y == u.Y {
-					n = prev.snapshots + 1
+				spot := stillUnit{x: u.X, y: u.Y}
+				if prev, ok := still[u.ID]; ok && abs32(prev.x-u.X) <= stillPixels && abs32(prev.y-u.Y) <= stillPixels {
+					spot = stillUnit{x: prev.x, y: prev.y, snapshots: prev.snapshots + 1}
 				}
-				next[u.ID] = stillUnit{u.X, u.Y, n}
+				next[u.ID] = spot
+				n = spot.snapshots
 			}
 			if holdsPosition[u.Type] {
 				continue
@@ -92,4 +99,11 @@ func IdleArmyShare(d *engine.Digest, slot int8) float64 {
 		return math.NaN()
 	}
 	return idle / snapshots
+}
+
+func abs32(v int32) int32 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
