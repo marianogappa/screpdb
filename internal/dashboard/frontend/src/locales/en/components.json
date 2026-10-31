@@ -160,7 +160,7 @@
   "skill.explain.higherBetter": "higher is better",
   "skill.explain.lowerBetter": "lower is better",
   "skill.explain.weights.title": "How much each metric counts",
-  "skill.explain.weights.body": "The estimate is a weighted average. Each metric counts for 10% to 30%, so no single one decides the tier.",
+  "skill.explain.weights.body": "The tier is a weighted average of where the player sits on each metric below. Each metric counts for 10% to 30%, so no single one decides the tier.",
   "skill.explain.oneGame.title": "One game is a rough guess",
   "skill.explain.oneGame.body": "It gets the exact tier right about 6 times in 10. An average over many games is steadier.",
   "skill.player.basis": "Based on {count} games",

@@ -160,7 +160,7 @@
   "skill.explain.higherBetter": "높을수록 좋음",
   "skill.explain.lowerBetter": "낮을수록 좋음",
   "skill.explain.weights.title": "각 지표가 차지하는 비중",
-  "skill.explain.weights.body": "실력 추정은 가중 평균입니다. 각 지표는 10%에서 30%만 반영되어 한 지표가 등급을 정하지 않습니다.",
+  "skill.explain.weights.body": "등급은 아래 각 지표에서의 위치를 가중 평균한 값입니다. 각 지표는 10%에서 30%만 반영되어 한 지표가 등급을 정하지 않습니다.",
   "skill.explain.oneGame.title": "한 게임은 대략적인 추정입니다",
   "skill.explain.oneGame.body": "10번 중 6번 정도 정확한 등급을 맞힙니다. 여러 게임의 평균이 더 안정적입니다.",
   "skill.player.basis": "{count}게임 기준",

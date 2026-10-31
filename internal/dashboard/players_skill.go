@@ -69,7 +69,7 @@ func (d *Dashboard) playersSkill() workflowPlayersSkill {
 	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.Skill != nil }) {
 		out.Featured = append(out.Featured, workflowFeaturedSkill{
 			PlayerKey: pro.Key(), PlayerName: pro.Label, Race: pro.MainRace, CountryCode: pro.Country, PhotoURL: proPhotoURL(pro),
-			Games: pro.Skill.Games, Combined: pro.Skill.Combined, Metrics: pro.Skill.Metrics,
+			Games: pro.Skill.Games, Combined: proHeadline(model, pro), Metrics: pro.Skill.Metrics,
 		})
 	}
 	return out
@@ -98,6 +98,22 @@ func (d *Dashboard) skillByPlayer(ctx context.Context) map[string]skill.Placemen
 	return out
 }
 
+// proHeadline recomputes a pro's tier from their metrics, so a pro pack baked before the headline followed
+// the strips still agrees with them.
+func proHeadline(model *skill.Model, pro *propack.Pro) skill.Placement {
+	if h := model.Headline(model.Shares(proSkillRace(pro.MainRace)), pro.Skill.Metrics); h != nil {
+		return *h
+	}
+	return pro.Skill.Combined
+}
+
+func proSkillRace(mainRace string) string {
+	if mainRace == "" {
+		return ""
+	}
+	return mainRace[:1]
+}
+
 // librarySkillPlayers is every player's Skill average, for the players with enough rated games.
 func librarySkillPlayers(model *skill.Model, replays []*library.Replay) []workflowLibrarySkill {
 	byPlayer := map[string][]ratedPlayer{}
@@ -118,7 +134,7 @@ func librarySkillPlayers(model *skill.Model, replays []*library.Replay) []workfl
 	sort.Strings(keys)
 	out := []workflowLibrarySkill{}
 	for _, k := range keys {
-		if s := summarizeSkill(byPlayer[k]); s != nil {
+		if s := summarizeSkill(model, byPlayer[k]); s != nil {
 			out = append(out, workflowLibrarySkill{PlayerKey: k, PlayerName: names[k], Games: s.Games, Combined: s.Combined, Metrics: s.Metrics})
 		}
 	}
