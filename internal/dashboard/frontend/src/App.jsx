@@ -5448,6 +5448,7 @@ function App() {
                 >
                   {t('game.tabs.skill')}
                 </button>
+                {mainPlayersTab === 'skill' ? engineProgressNote : null}
               </div>
             </div>
 
@@ -5580,7 +5581,6 @@ function App() {
                 loading={mainPlayersSkillLoading}
                 error={mainPlayersSkillError}
                 emptyNotice={libraryLoadingCopy}
-                progress={engineProgressNote}
                 showFeatured={showFeaturedPros}
                 featuredToggle={renderFeaturedToggle}
                 onOpenPlayer={openMainPlayer}
@@ -6806,7 +6806,7 @@ function App() {
                   {mainPlayerTab === 'skill' && !isFeaturedPlayer ? (
                     mainPlayer?.skill
                       ? <PlayerSkillTab summary={mainPlayer.skill} name={mainPlayer?.player_name || selectedPlayerKey} />
-                      : (mainPlayerLoading ? null : <div className="workflow-card skill-tab">{engineProgressNote}<div className="chart-empty">{t('skill.player.none')}</div></div>)
+                      : (mainPlayerLoading ? null : <div className="workflow-card skill-tab"><div className="chart-empty">{t('skill.player.none')}</div>{engineProgressNote}</div>)
                   ) : null}
                   {mainPlayerTab === 'summary' && (() => {
                     const bnet = mainPlayer?.bnet_profile;

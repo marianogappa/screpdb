@@ -1,15 +1,15 @@
 import React from 'react';
 import { useT } from '../lib/i18nContext';
 
-// EngineProgressNote tells a view built on engine data that the engine pass is still going, and offers the
-// all cores switch on hover rather than in the user's face.
+// EngineProgressNote is the game report's running-engine pill for views built on many games: it says the
+// engine pass is still going, and offers the all cores switch on hover rather than in the user's face.
 export default function EngineProgressNote({ coverage, allCores, saving, onEnableAllCores }) {
   const t = useT();
   const games = Number(coverage?.games) || 0;
   const total = Number(coverage?.total) || 0;
   if (!coverage || coverage.state === 'off' || coverage.state === 'failed' || total === 0 || games >= total) return null;
   return (
-    <div className="engine-progress-note" role="status">
+    <span className="engine-notice engine-notice--running" role="status">
       <span>{t('engine.progress.skill', { games, total })}</span>
       {!allCores && onEnableAllCores ? (
         <span className="engine-speedup">
@@ -20,6 +20,6 @@ export default function EngineProgressNote({ coverage, allCores, saving, onEnabl
           </span>
         </span>
       ) : null}
-    </div>
+    </span>
   );
 }

@@ -57,29 +57,21 @@ export function SkillTierChip({ placement }) {
   );
 }
 
-// metricShare is a metric's weight in the Skill estimate, averaged over the races.
-const metricShare = (model, key) => {
-  const shares = Object.values(model?.metrics?.find((m) => m.key === key)?.share || {});
-  return shares.length ? shares.reduce((a, b) => a + b, 0) / shares.length : null;
-};
-
-// MetricLabel is a submetric's row label: indented under the Skill estimate, with its weight in it.
-function MetricLabel({ metric, model }) {
+// MetricLabel is a submetric's row label, indented under the Skill estimate.
+function MetricLabel({ metric }) {
   const t = useT();
-  const share = metricShare(model, metric.key);
   return (
     <div className="skill-row-label skill-row-label--sub">
       <span>{t(`skill.metric.${metric.key}.title`)}</span>
-      {share != null ? <span className="skill-weight">{Math.round(share * 100)}%</span> : null}
       <Help text={t(`skill.metric.${metric.key}.hint`)} />
     </div>
   );
 }
 
 // SubmetricsHead introduces the metric rows as the parts the Skill estimate is made of.
-function SubmetricsHead({ count }) {
+function SubmetricsHead() {
   const t = useT();
-  return <div className="skill-submetrics-head">{t('skill.submetrics.title', { count })}</div>;
+  return <div className="skill-submetrics-head">{t('skill.submetrics.title')}</div>;
 }
 
 function Help({ text }) {
@@ -185,13 +177,13 @@ export default function SkillTab({ game, players, playerColor }) {
             />
           </>
         ) : null}
-        {combined.length ? <SubmetricsHead count={METRICS.filter((m) => entriesFor(m.key).length).length} /> : null}
+        {combined.length ? <SubmetricsHead /> : null}
         {METRICS.filter((m) => entriesFor(m.key).length).map((m, index) => {
           const entries = entriesFor(m.key);
           if (!entries.length) return null;
           return (
             <React.Fragment key={m.key}>
-              <MetricLabel metric={m} model={game?.skill_model} />
+              <MetricLabel metric={m} />
               <Strip
                 entries={entries}
                 range={range}
@@ -410,10 +402,10 @@ export function PlayerSkillTab({ summary, name, color }) {
       ) : null}
       {timeline.length >= MIN_TREND_GAMES ? <SkillTrend timeline={timeline} /> : null}
       <div className="skill-rows skill-player-breakdown">
-        <SubmetricsHead count={METRICS.filter((m) => summary.metrics?.[m.key]).length} />
+        <SubmetricsHead />
         {METRICS.filter((m) => summary.metrics?.[m.key]).map((m, index) => (
           <React.Fragment key={m.key}>
-            <MetricLabel metric={m} model={summary.model} />
+            <MetricLabel metric={m} />
             <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline tierLabels={index === 0} describe={(p) => String(m.format(p.value))} />
           </React.Fragment>
         ))}
@@ -463,7 +455,7 @@ const packLabels = (entries, width, hero) => {
 
 // PopulationStrip is one Skill metric across the library: the four tiers, the library's players, a dotted line
 // at the median of their averages and a star per built-in progamer.
-function PopulationStrip({ id, median, players, stars, describe, hero, tierLabels, focus, onFocus, onOpenPlayer }) {
+function PopulationStrip({ median, players, stars, describe, hero, tierLabels, focus, onFocus, onOpenPlayer }) {
   const t = useT();
   const [ref, width] = useWidth(900);
   const [lo, hi] = FULL_RANGE;
@@ -472,7 +464,7 @@ function PopulationStrip({ id, median, players, stars, describe, hero, tierLabel
   const entries = [
     ...players.map((p) => ({ ...p, pro: false, share: share(p.placement.position) })),
     ...stars.map((p) => ({ ...p, pro: true, share: share(p.placement.position) })),
-  ].filter((e) => !focus || e.key === focus);
+  ].filter((e) => hero || !focus || e.key === focus);
   const placed = packLabels(entries, width, hero);
   const rows = placed.reduce((n, e) => Math.max(n, e.row + 1), 1);
   const top = tierLabels ? BAND_LABEL_PX + 4 : 4;
@@ -505,12 +497,10 @@ function PopulationStrip({ id, median, players, stars, describe, hero, tierLabel
             className={`skill-marker skill-marker--population${pro ? ' skill-marker--star' : ' skill-marker--library'}${right ? ' skill-marker--right' : ''}${focused ? ' skill-marker--focused' : ''}`}
             style={{ left: `${x * 100}%`, top: `${top + row * POPULATION_ROW_PX}px` }}
             title={value ? `${name}: ${value}` : name}
-            data-strip={id}
-            data-key={key}
-            onMouseEnter={(e) => onFocus?.(key, id, e.currentTarget)}
-            onMouseLeave={() => onFocus?.(null)}
-            onFocus={(e) => onFocus?.(key, id, e.currentTarget)}
-            onBlur={() => onFocus?.(null)}
+            onMouseEnter={hero ? () => onFocus?.(key) : undefined}
+            onMouseLeave={hero ? () => onFocus?.(null) : undefined}
+            onFocus={hero ? () => onFocus?.(key) : undefined}
+            onBlur={hero ? () => onFocus?.(null) : undefined}
             onClick={() => onOpenPlayer?.(key)}
           >
             {pro ? <span className="skill-star" aria-hidden="true">★</span> : <span className="skill-marker-dot skill-library-dot" />}
@@ -525,62 +515,11 @@ function PopulationStrip({ id, median, players, stars, describe, hero, tierLabel
   );
 }
 
-const scrollerOf = (el) => {
-  for (let node = el?.parentElement; node; node = node.parentElement) {
-    const { overflowY } = getComputedStyle(node);
-    if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) return node;
-  }
-  return document.scrollingElement || document.documentElement;
-};
-
-// useFocusedPlayer shows one player alone on every strip while their marker is hovered, so all the metrics
-// fit on screen. Hiding the others shrinks the rows above the marker, so the page scrolls (or, at the top,
-// pads) by the same amount: the marker stays under the pointer instead of sliding away and ending the hover.
-function useFocusedPlayer() {
-  const [focus, setFocusState] = React.useState(null);
-  const [spacer, setSpacer] = React.useState(0);
-  const rowsRef = React.useRef(null);
-  const anchor = React.useRef(null);
-  const restore = React.useRef(null);
-  const setFocus = React.useCallback((key, strip, el) => {
-    if (!key) {
-      restore.current = anchor.current;
-      anchor.current = null;
-      setFocusState(null);
-      setSpacer(0);
-      return;
-    }
-    if (anchor.current?.key === key) return;
-    const scroller = scrollerOf(el);
-    anchor.current = { key, strip, top: el?.getBoundingClientRect().top, scroller, scrollTop: scroller.scrollTop };
-    setFocusState(key);
-  }, []);
-  React.useLayoutEffect(() => {
-    if (!focus && restore.current) {
-      const { scroller, scrollTop } = restore.current;
-      restore.current = null;
-      scroller.scrollTop = scrollTop;
-      return;
-    }
-    const a = anchor.current;
-    if (!focus || !a || a.measured || a.top == null) return;
-    a.measured = true;
-    const el = rowsRef.current?.querySelector(`[data-strip="${a.strip}"][data-key="${CSS.escape(a.key)}"]`);
-    if (!el) return;
-    const drop = a.top - el.getBoundingClientRect().top;
-    if (drop <= 0) return;
-    const scrolled = Math.min(drop, a.scroller.scrollTop);
-    a.scroller.scrollTop -= scrolled;
-    setSpacer(drop - scrolled);
-  }, [focus]);
-  return [focus, setFocus, rowsRef, spacer];
-}
-
 // PlayersSkillTab is the Players page Skill tab: where each of the library's players sits on the Skill tiers,
 // with the median of their averages, beside the built-in progamers.
-export function PlayersSkillTab({ data, loading, error, emptyNotice, progress, showFeatured, featuredToggle, onOpenPlayer }) {
+export function PlayersSkillTab({ data, loading, error, emptyNotice, showFeatured, featuredToggle, onOpenPlayer }) {
   const t = useT();
-  const [focus, setFocus, rowsRef, spacer] = useFocusedPlayer();
+  const [focus, setFocus] = React.useState(null);
   if (loading && !data) return <div className="workflow-card skill-tab"><div className="chart-empty">{t('players.loading')}</div></div>;
   if (error) return <div className="workflow-card skill-tab"><div className="chart-empty">{error}</div></div>;
   const featured = data?.featured_players || [];
@@ -596,7 +535,6 @@ export function PlayersSkillTab({ data, loading, error, emptyNotice, progress, s
   if (!data?.combined && !pros.length) {
     return (
       <div className="workflow-card skill-tab">
-        {progress}
         <div className="chart-empty">{emptyNotice || t('skill.player.none')}</div>
         {featured.length ? <div className="skill-players-legend"><span className="skill-players-legend-toggle">{featuredToggle(featured.length)}</span></div> : null}
       </div>
@@ -604,20 +542,18 @@ export function PlayersSkillTab({ data, loading, error, emptyNotice, progress, s
   }
   return (
     <div className="workflow-card skill-tab skill-players-tab">
-      {progress}
       <SkillExplainerLink model={data?.model} className="skill-explainer-link--corner" />
-      <div ref={rowsRef} className="skill-rows" style={spacer ? { paddingTop: `${spacer}px` } : undefined}>
+      <div className="skill-rows">
         <div className="skill-row-label skill-row-label--hero">
           <span>{t('skill.metric.combined.title')}</span>
           <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
         </div>
-        <PopulationStrip id="combined" median={data?.combined} players={playersFor('combined')} stars={starsFor('combined')} hero tierLabels focus={focus} onFocus={setFocus} onOpenPlayer={onOpenPlayer} />
-        <SubmetricsHead count={metrics.length} />
+        <PopulationStrip median={data?.combined} players={playersFor('combined')} stars={starsFor('combined')} hero tierLabels focus={focus} onFocus={setFocus} onOpenPlayer={onOpenPlayer} />
+        <SubmetricsHead />
         {metrics.map((m, index) => (
           <React.Fragment key={m.key}>
-            <MetricLabel metric={m} model={data?.model} />
+            <MetricLabel metric={m} />
             <PopulationStrip
-              id={m.key}
               median={data?.metrics?.[m.key]}
               players={playersFor(m.key)}
               focus={focus}
