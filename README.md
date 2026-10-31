@@ -274,6 +274,17 @@ minisign -Vm SHA256SUMS -P 'RWS9gPPOydPD/tR8JBOelXKhif526NoAKY18dau7QHR4dqg84QMh
 
 </details>
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+- **Committers and reviewers:** [marianogappa](https://github.com/marianogappa)
+- **Approvers:** [marianogappa](https://github.com/marianogappa)
+
+Windows binaries are built from this repository by the [Release workflow](.github/workflows/release.yml) on GitHub-hosted runners and signed only after a manual approval of each release.
+
+**Privacy:** screpdb processes your replays locally and sends no replay data or personal information to the author. Its only network calls are the ones listed under [Security / I/O model](#security--io-model): checking GitHub Releases for updates, and, when StarCraft: Remastered is running, its local Battle.net bridge and Blizzard's replay storage.
+
 ## Security / I/O model
 
 screpdb minimizes its attack surface by routing all I/O through facades and keeping dependencies small (see [#135](https://github.com/marianogappa/screpdb/issues/135)). On **macOS and Linux** this is a best-effort, in-process guard; on **Windows** a Low-integrity worker adds a real OS write boundary.
@@ -296,6 +307,13 @@ On **macOS and Linux** this is a best-effort, in-process guard, not an OS sandbo
 The LLM that authors each change records a dated, one-line verdict on whether it could weaken the I/O rules above (see `AGENTS.md`); `TestIOSafetyAuditPresent` fails CI if the log is empty, and the enforcement test above stays the authoritative guard.
 
 <!-- IO-AUDIT:START -->
+```
+2026-10-31  OK. Release workflow can Authenticode-sign the Windows binaries through SignPath Foundation before SHA256SUMS is generated (skipped until the SignPath secrets exist), and the README gains the code signing policy; CI and docs only, no binary code changes, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+```
+
+<details>
+<summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
+
 ```
 2026-10-30  OK. Skill tab idle army and micro actions: engine army snapshots keep each unit's ID and order (EngineVersion 10; older digests stay readable and upgrade in the background), the Skill tab adds the share of the army standing idle, and micro actions (Hold Position, unloads, siege, Stim, cloak, Archon merges and spells per minute) are counted from replay commands; reads replays and engine digests already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```

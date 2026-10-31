@@ -51,6 +51,59 @@ jobs:
       - name: Build cross-platform release binaries
         run: make cross-binaries
 
+      # Authenticode-sign the Windows binaries through SignPath Foundation. Runs
+      # before SHA256SUMS because signing rewrites the .exe bytes, and the
+      # checksums (and so self-update's verification) must match what ships.
+      # Skips until the SignPath secrets exist; once configured, a failed or
+      # rejected signing request fails the release rather than shipping unsigned.
+      - name: Check SignPath configuration
+        id: signpath
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          if [ -z "${SIGNPATH_API_TOKEN:-}" ]; then
+            echo "::warning::SIGNPATH_API_TOKEN secret not set; Windows binaries ship unsigned. See RELEASING.md."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload unsigned Windows binaries for signing
+        id: upload-unsigned
+        if: steps.signpath.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-unsigned
+          path: |
+            dist/screpdb-windows-amd64.exe
+            dist/screpdb-gui-windows-amd64.exe
+          if-no-files-found: error
+
+      # Every request waits for a manual approval in SignPath, hence the long
+      # timeout; the release stays held back as a prerelease meanwhile.
+      - name: Sign Windows binaries with SignPath
+        if: steps.signpath.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 18000
+          output-artifact-directory: dist-signed
+
+      - name: Replace Windows binaries with signed ones
+        if: steps.signpath.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          for f in screpdb-windows-amd64.exe screpdb-gui-windows-amd64.exe; do
+            test -f "dist-signed/$f"
+            mv -f "dist-signed/$f" "dist/$f"
+          done
+          rm -rf dist-signed
+
       - name: Generate SHA256SUMS
         working-directory: dist
         run: sha256sum * > SHA256SUMS
