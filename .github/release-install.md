@@ -11,4 +11,6 @@ curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.s
 
 Prefer Scoop, Homebrew, or the CLI? See the [installation guide](https://github.com/marianogappa/screpdb#installation).
 
+[Code signing policy](https://github.com/marianogappa/screpdb#code-signing-policy)
+
 ---

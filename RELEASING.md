@@ -48,6 +48,22 @@ Store the minisign **secret key** as a repository secret named
 `SHA256SUMS.minisig`. The matching public key is embedded in the binary and
 printed in the README.
 
+### Windows code signing (`SIGNPATH_API_TOKEN`)
+
+The Windows `.exe` files are Authenticode-signed through
+[SignPath Foundation](https://signpath.org) before `SHA256SUMS` is generated.
+After SignPath approves the project, add:
+
+- repository secret `SIGNPATH_API_TOKEN`: API token of a SignPath user with submitter permission;
+- repository variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_SIGNING_POLICY_SLUG`.
+
+The SignPath artifact configuration must expect a ZIP holding
+`screpdb-windows-amd64.exe` and `screpdb-gui-windows-amd64.exe` at its root.
+Each release then waits for a manual approval in SignPath (up to five hours).
+If the secret is absent the release still succeeds with unsigned Windows
+binaries; once it is set, a failed or rejected signing request fails the
+release and leaves it held back as a prerelease.
+
 ### Scoop-bump GitHub App (`SCOOP_APP_ID`, `SCOOP_APP_PRIVATE_KEY`)
 
 The release workflow bumps [`bucket/screpdb.json`](bucket/screpdb.json) by opening
