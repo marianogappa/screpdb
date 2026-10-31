@@ -3139,11 +3139,16 @@ function App() {
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
-    if (mainPlayerTab !== 'hotkeys') return;
     if (!mainPlayerHotkeySig && !mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError) {
       loadMainPlayerHotkeySignature(selectedPlayerKey);
     }
-  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerHotkeySig, mainPlayerHotkeySigLoading, mainPlayerHotkeySigError]);
+  }, [activeView, selectedPlayerKey, mainPlayerHotkeySig, mainPlayerHotkeySigLoading, mainPlayerHotkeySigError]);
+
+  // The Hotkeys tab only exists for a player with hotkey cards; landing on it without any goes to Summary.
+  const mainPlayerHasHotkeys = (mainPlayerHotkeySig?.cards || []).length > 0;
+  useEffect(() => {
+    if (mainPlayerTab === 'hotkeys' && mainPlayerHotkeySig && !mainPlayerHasHotkeys) setMainPlayerTab('summary');
+  }, [mainPlayerTab, mainPlayerHotkeySig, mainPlayerHasHotkeys]);
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
@@ -3524,6 +3529,7 @@ function App() {
     const finished = libraryWasLoadingRef.current && !libraryLoading;
     libraryWasLoadingRef.current = libraryLoading;
     if (finished && mainPlayersSkill) loadMainPlayersSkill();
+    if (finished && activeView === 'player' && selectedPlayerKey) loadMainPlayerHotkeySignature(selectedPlayerKey);
   }, [libraryLoading]);
 
   const handleSaveGlobalReplayFilter = async (nextConfig) => {
@@ -6786,11 +6792,13 @@ function App() {
                         {t('game.tabs.skill')}
                       </button>
                     ) : null}
-                    <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
-                      className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
-                      onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
-                      {t('tabs.hotkeys')}
-                    </button>
+                    {mainPlayerHasHotkeys || mainPlayerTab === 'hotkeys' ? (
+                      <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
+                        className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
+                        {t('tabs.hotkeys')}
+                      </button>
+                    ) : null}
                     {!isFeaturedPlayer ? (
                       <button type="button" role="tab" aria-selected={mainPlayerTab === 'chat-summary'}
                         className={`workflow-production-tab ${mainPlayerTab === 'chat-summary' ? 'workflow-production-tab-active' : ''}`}

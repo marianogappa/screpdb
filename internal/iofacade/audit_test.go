@@ -123,3 +123,25 @@ func TestIOSafetyAuditArchiveBounded(t *testing.T) {
 			len(archived), auditArchiveMax)
 	}
 }
+
+// TestIOSafetyAuditSingleArchive keeps one collapsed archive: rotating an entry in by hand once nested a
+// second "Older ... entries" <details> inside the first, which the per-entry counts did not notice.
+func TestIOSafetyAuditSingleArchive(t *testing.T) {
+	root := moduleRoot(t)
+	data, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatalf("read README.md: %v", err)
+	}
+	text := string(data)
+	i := strings.Index(text, "<!-- IO-AUDIT:START -->")
+	j := strings.Index(text, "<!-- IO-AUDIT:END -->")
+	if i < 0 || j < 0 || j < i {
+		t.Fatal("README.md is missing the I/O Safety Audit markers")
+	}
+	block := text[i:j]
+	if opens, closes := strings.Count(block, "<details>"), strings.Count(block, "</details>"); opens > 1 || opens != closes {
+		t.Fatalf("README.md I/O Safety Audit has %d <details> and %d </details>, want one archive at most, closed; "+
+			"move entries into the existing \"Older I/O safety audit entries\" section rather than adding another. Got:\n%s",
+			opens, closes, strings.TrimSpace(block))
+	}
+}
