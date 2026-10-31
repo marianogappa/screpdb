@@ -308,24 +308,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
+2026-10-31  OK. The engine pass reuses its per-tick unit maps instead of allocating new ones every game second; digests are unchanged. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+```
+
+<details>
+<summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
+
+```
 2026-10-31  OK. Release workflow can Authenticode-sign the Windows binaries through SignPath Foundation before SHA256SUMS is generated (skipped until the SignPath secrets exist), and the README gains the code signing policy; CI and docs only, no binary code changes, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-```
-
-<details>
-<summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
-
-```
 2026-10-30  OK. Skill tab idle army and micro actions: engine army snapshots keep each unit's ID and order (EngineVersion 10; older digests stay readable and upgrade in the background), the Skill tab adds the share of the army standing idle, and micro actions (Hold Position, unloads, siege, Stim, cloak, Archon merges and spells per minute) are counted from replay commands; reads replays and engine digests already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-```
-
-<details>
-<summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
-
-```
 2026-10-30  OK. The engine pass can use every core while StarCraft: Remastered is closed (opt in Labs setting) and the battery pause is removed; the running check lists process names through sysctl kern.proc.all on macOS and a Toolhelp process snapshot on Windows (no file, network or process handle access, works at Low integrity), and the Linux /sys/class/power_supply read is gone. No new os/net file or network calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-29  OK. Skill tuning: Zerg idle production reads waiting larva, army rhythm and idle production compare each race with itself, hotkey checks and unspent resources leave the Skill tab, team and money games shift macro values by players of the same EAPM, players are placed at their median game, the model is refitted, and built-in progamers are rebuilt from recent ladder replays over their main race; reads engine digests already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-28  OK. Changing the replay folder re-reads CSettings.json (the existing sanctioned read-only ancestor lookup) so the user is identified again and the gaming session reappears after switching back to the StarCraft replays folder. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-2026-10-28  OK. The Alliances tab reads the alliance timeline ingest stored (stacking flag included) instead of replaying rebuilt commands, so stacking bands with overlapping alliances show on the chart; README screenshots regenerated with non-progamer names aliased and non-progamer regulars in the screenshot corpus (scripts only). No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 </details>
