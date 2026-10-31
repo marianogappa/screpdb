@@ -61,8 +61,7 @@ func (d *Dashboard) playersSkill() workflowPlayersSkill {
 	}
 	out.Model = skillModelSummary(model)
 	if d.library != nil {
-		view := d.library.lib.View()
-		players := view.Memo("players-skill", func() any { return librarySkillPlayers(model, view.Replays()) }).([]workflowLibrarySkill)
+		players := d.librarySkillPlayersMemo(model)
 		out.Players = len(players)
 		out.Library = players
 		out.Combined, out.Metrics = skillMedians(players)
@@ -70,10 +69,49 @@ func (d *Dashboard) playersSkill() workflowPlayersSkill {
 	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.Skill != nil }) {
 		out.Featured = append(out.Featured, workflowFeaturedSkill{
 			PlayerKey: pro.Key(), PlayerName: pro.Label, Race: pro.MainRace, CountryCode: pro.Country, PhotoURL: proPhotoURL(pro),
-			Games: pro.Skill.Games, Combined: pro.Skill.Combined, Metrics: pro.Skill.Metrics,
+			Games: pro.Skill.Games, Combined: proHeadline(model, pro), Metrics: pro.Skill.Metrics,
 		})
 	}
 	return out
+}
+
+func (d *Dashboard) librarySkillPlayersMemo(model *skill.Model) []workflowLibrarySkill {
+	view := d.library.lib.View()
+	return view.Memo("players-skill", func() any { return librarySkillPlayers(model, view.Replays()) }).([]workflowLibrarySkill)
+}
+
+// skillByPlayer is each library player's Skill average for the list columns; nil while the engine is off,
+// since Skill is an engine feature.
+func (d *Dashboard) skillByPlayer(ctx context.Context) map[string]skill.Placement {
+	if d.library == nil || !d.featureFlagEnabled(ctx, featureFlagEnginePass) {
+		return nil
+	}
+	model, err := skill.Load()
+	if err != nil {
+		crashreport.Handle(err, nil, false)
+		return nil
+	}
+	out := map[string]skill.Placement{}
+	for _, p := range d.librarySkillPlayersMemo(model) {
+		out[p.PlayerKey] = p.Combined
+	}
+	return out
+}
+
+// proHeadline recomputes a pro's tier from their metrics, so a pro pack baked before the headline followed
+// the strips still agrees with them.
+func proHeadline(model *skill.Model, pro *propack.Pro) skill.Placement {
+	if h := model.Headline(model.Shares(proSkillRace(pro.MainRace)), pro.Skill.Metrics); h != nil {
+		return *h
+	}
+	return pro.Skill.Combined
+}
+
+func proSkillRace(mainRace string) string {
+	if mainRace == "" {
+		return ""
+	}
+	return mainRace[:1]
 }
 
 // librarySkillPlayers is every player's Skill average, for the players with enough rated games.
@@ -96,7 +134,7 @@ func librarySkillPlayers(model *skill.Model, replays []*library.Replay) []workfl
 	sort.Strings(keys)
 	out := []workflowLibrarySkill{}
 	for _, k := range keys {
-		if s := summarizeSkill(byPlayer[k]); s != nil {
+		if s := summarizeSkill(model, byPlayer[k]); s != nil {
 			out = append(out, workflowLibrarySkill{PlayerKey: k, PlayerName: names[k], Games: s.Games, Combined: s.Combined, Metrics: s.Metrics})
 		}
 	}

@@ -5,8 +5,8 @@ import { slugKey } from './lib/i18n';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
-import EngineCoverage from './components/EngineCoverage';
-import SkillTab, { PlayerSkillRow, PlayerSkillTab, PlayersSkillTab, TIER_KEYS, tierLabel } from './components/SkillTab';
+import EngineProgressNote from './components/EngineProgressNote';
+import SkillTab, { PlayerSkillRow, PlayerSkillTab, PlayersSkillTab, SkillTierChip, TIER_KEYS, tierLabel } from './components/SkillTab';
 import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
@@ -3139,11 +3139,16 @@ function App() {
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
-    if (mainPlayerTab !== 'hotkeys') return;
     if (!mainPlayerHotkeySig && !mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError) {
       loadMainPlayerHotkeySignature(selectedPlayerKey);
     }
-  }, [activeView, selectedPlayerKey, mainPlayerTab, mainPlayerHotkeySig, mainPlayerHotkeySigLoading, mainPlayerHotkeySigError]);
+  }, [activeView, selectedPlayerKey, mainPlayerHotkeySig, mainPlayerHotkeySigLoading, mainPlayerHotkeySigError]);
+
+  // The Hotkeys tab only exists for a player with hotkey cards; landing on it without any goes to Summary.
+  const mainPlayerHasHotkeys = (mainPlayerHotkeySig?.cards || []).length > 0;
+  useEffect(() => {
+    if (mainPlayerTab === 'hotkeys' && mainPlayerHotkeySig && !mainPlayerHasHotkeys) setMainPlayerTab('summary');
+  }, [mainPlayerTab, mainPlayerHotkeySig, mainPlayerHasHotkeys]);
 
   useEffect(() => {
     if (activeView !== 'player' || !selectedPlayerKey) return;
@@ -3474,11 +3479,24 @@ function App() {
   useEffect(() => {
     if (lastEngineCoverageStepRef.current === engineCoverageStep) return;
     lastEngineCoverageStepRef.current = engineCoverageStep;
+    if (mainPlayersSkill) loadMainPlayersSkill();
+    if (activeView === 'players' && mainPlayers.length) {
+      api.listPlayers({
+        limit: MAIN_PLAYERS_PAGE_SIZE,
+        offset: (Math.max(1, Number(mainPlayersPage) || 1) - 1) * MAIN_PLAYERS_PAGE_SIZE,
+        sortBy: mainPlayersSortBy,
+        sortDir: mainPlayersSortDir,
+        filters: mainPlayersFilters,
+      }).then((data) => {
+        const skillByKey = new Map((data?.items || []).map((p) => [p.player_key, p.skill]));
+        setMainPlayers((prev) => prev.map((p) => (skillByKey.has(p.player_key) ? { ...p, skill: skillByKey.get(p.player_key) } : p)));
+      }).catch(() => {});
+    }
     if (activeView !== 'player' || !selectedPlayerKey || isFeaturedPlayerKey(selectedPlayerKey)) return;
     const key = selectedPlayerKey;
     api.getPlayer(key).then((data) => {
       if (!data?.engine) return;
-      setMainPlayer((prev) => (prev && prev.player_key === data.player_key ? { ...prev, engine: data.engine } : prev));
+      setMainPlayer((prev) => (prev && prev.player_key === data.player_key ? { ...prev, engine: data.engine, skill: data.skill } : prev));
     }).catch(() => {});
   }, [engineCoverageStep]);
   gamingSessionRef.current = gamingSession;
@@ -3497,6 +3515,22 @@ function App() {
     return isLibraryLoading(libraryStatus);
   })();
   const libraryLoadingCopy = libraryLoading ? stillLoadingCopyWith(t) : '';
+  const mainPlayersShowSkill = engineEnabled && mainPlayers.some((p) => p.skill);
+  const engineProgressNote = (
+    <EngineProgressNote
+      coverage={engineCoverage}
+      allCores={Boolean(featureFlags?.engine_pass_all_cores)}
+      saving={featureFlagsSaving}
+      onEnableAllCores={() => handleFeatureFlagToggle('engine_pass_all_cores', true)}
+    />
+  );
+  const libraryWasLoadingRef = useRef(libraryLoading);
+  useEffect(() => {
+    const finished = libraryWasLoadingRef.current && !libraryLoading;
+    libraryWasLoadingRef.current = libraryLoading;
+    if (finished && mainPlayersSkill) loadMainPlayersSkill();
+    if (finished && activeView === 'player' && selectedPlayerKey) loadMainPlayerHotkeySignature(selectedPlayerKey);
+  }, [libraryLoading]);
 
   const handleSaveGlobalReplayFilter = async (nextConfig) => {
     try {
@@ -5378,6 +5412,7 @@ function App() {
             loading={gamingSessionLoading}
             error={gamingSessionError}
             onPlayerClick={openMainPlayer}
+            showSkill={engineEnabled}
             renderBadge={(player) => (
               player.primary_badge ? <IdentityBadge badge={player.primary_badge} variant="players-list" /> : null
             )}
@@ -5399,7 +5434,6 @@ function App() {
 
         {activeView === 'players' && (
           <div className="workflow-panel">
-            <EngineCoverage coverage={engineCoverage} className="engine-coverage--panel" />
             <div className="workflow-players-tab-stack">
               <div className="workflow-production-tabs workflow-game-main-tabs" role="tablist" aria-label={t('players.sectionsAria')}>
                 <button
@@ -5420,6 +5454,7 @@ function App() {
                 >
                   {t('game.tabs.skill')}
                 </button>
+                {mainPlayersTab === 'skill' ? engineProgressNote : null}
               </div>
             </div>
 
@@ -5495,6 +5530,7 @@ function App() {
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('games')}>{t('players.table.games')} {mainPlayersSortIndicator('games')}</th>
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('apm')}>{t('players.table.avgApm')} {mainPlayersSortIndicator('apm')}</th>
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('last_played')}>{t('common.lastPlayed')} {mainPlayersSortIndicator('last_played')}</th>
+                          {mainPlayersShowSkill ? <th>{t('game.tabs.skill')}</th> : null}
                         </tr>
                       </thead>
                       <tbody>
@@ -5516,6 +5552,7 @@ function App() {
                             </td>
                             <td>{Number(player.average_apm || 0).toFixed(1)}</td>
                             <td>{formatDaysAgoCompact(player.last_played_days_ago)}</td>
+                            {mainPlayersShowSkill ? <td><SkillTierChip placement={player.skill} /></td> : null}
                           </tr>
                         ))}
                       </tbody>
@@ -6755,11 +6792,13 @@ function App() {
                         {t('game.tabs.skill')}
                       </button>
                     ) : null}
-                    <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
-                      className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
-                      onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
-                      {t('tabs.hotkeys')}
-                    </button>
+                    {mainPlayerHasHotkeys || mainPlayerTab === 'hotkeys' ? (
+                      <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
+                        className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => { setMainPlayerTab('hotkeys'); setMainPlayerSubtab(''); }}>
+                        {t('tabs.hotkeys')}
+                      </button>
+                    ) : null}
                     {!isFeaturedPlayer ? (
                       <button type="button" role="tab" aria-selected={mainPlayerTab === 'chat-summary'}
                         className={`workflow-production-tab ${mainPlayerTab === 'chat-summary' ? 'workflow-production-tab-active' : ''}`}
@@ -6775,7 +6814,7 @@ function App() {
                   {mainPlayerTab === 'skill' && !isFeaturedPlayer ? (
                     mainPlayer?.skill
                       ? <PlayerSkillTab summary={mainPlayer.skill} name={mainPlayer?.player_name || selectedPlayerKey} />
-                      : (mainPlayerLoading ? null : <div className="workflow-card"><div className="chart-empty">{t('skill.player.none')}</div></div>)
+                      : (mainPlayerLoading ? null : <div className="workflow-card skill-tab"><div className="chart-empty">{t('skill.player.none')}</div>{engineProgressNote}</div>)
                   ) : null}
                   {mainPlayerTab === 'summary' && (() => {
                     const bnet = mainPlayer?.bnet_profile;

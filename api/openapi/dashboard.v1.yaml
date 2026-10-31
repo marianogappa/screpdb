@@ -645,7 +645,7 @@ components:
           type: array
           items:
             type: string
-            enum: [top_vs_bottom, melee, one_on_one, free_for_all]
+            enum: [top_vs_bottom, melee, one_on_one, free_for_all, use_map_settings]
         exclude_short_games:
           type: boolean
         exclude_computers:

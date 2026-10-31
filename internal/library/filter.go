@@ -14,6 +14,7 @@ const (
 	GameTypeMelee       = "melee"
 	GameTypeOneOnOne    = "one_on_one"
 	GameTypeFreeForAll  = "free_for_all"
+	GameTypeUMS         = "use_map_settings"
 
 	MapKindFilterRegular = "regular"
 	MapKindFilterMoney   = "money"
@@ -33,7 +34,7 @@ type FilterConfig struct {
 // short games and games with computer players.
 func DefaultFilterConfig() FilterConfig {
 	return FilterConfig{
-		GameTypes:         []string{GameTypeTopVsBottom, GameTypeMelee, GameTypeOneOnOne, GameTypeFreeForAll},
+		GameTypes:         []string{GameTypeTopVsBottom, GameTypeMelee, GameTypeOneOnOne, GameTypeFreeForAll, GameTypeUMS},
 		ExcludeShortGames: true,
 		ExcludeComputers:  true,
 		MapKinds:          []string{MapKindFilterRegular, MapKindFilterMoney},
@@ -45,7 +46,7 @@ func (c FilterConfig) Normalize() (FilterConfig, error) {
 	c.GameTypes = normalizeValues(c.GameTypes)
 	for _, v := range c.GameTypes {
 		switch v {
-		case GameTypeTopVsBottom, GameTypeMelee, GameTypeOneOnOne, GameTypeFreeForAll:
+		case GameTypeTopVsBottom, GameTypeMelee, GameTypeOneOnOne, GameTypeFreeForAll, GameTypeUMS:
 		default:
 			return c, fmt.Errorf("invalid global replay filter game type: %s", v)
 		}
@@ -114,6 +115,9 @@ func matchesGameTypes(values []string, r *Replay) bool {
 		case GameTypeFreeForAll:
 			constrained = true
 			matched = matched || gameTypeIs(r, "free for all")
+		case GameTypeUMS:
+			constrained = true
+			matched = matched || gameTypeIs(r, "use map settings")
 		}
 	}
 	return !constrained || matched

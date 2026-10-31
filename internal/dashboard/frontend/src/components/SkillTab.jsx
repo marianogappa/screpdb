@@ -46,6 +46,34 @@ export const tierLabel = (t, skill) => {
   return combined ? `${t(`skill.tier.${TIER_KEYS[combined.tier]}`)}${tierThird(combined)}` : '';
 };
 
+// SkillTierChip is a player's Skill tier for list columns; empty until they have enough rated games.
+export function SkillTierChip({ placement }) {
+  const t = useT();
+  if (!placement) return null;
+  return (
+    <span className={`wpt-skill-tier wpt-skill-tier--static wpt-skill-tier--${TIER_KEYS[placement.tier]}`}>
+      {tierLabel(t, { combined: placement })}
+    </span>
+  );
+}
+
+// MetricLabel is a submetric's row label, indented under the Skill estimate.
+function MetricLabel({ metric }) {
+  const t = useT();
+  return (
+    <div className="skill-row-label skill-row-label--sub">
+      <span>{t(`skill.metric.${metric.key}.title`)}</span>
+      <Help text={t(`skill.metric.${metric.key}.hint`)} />
+    </div>
+  );
+}
+
+// SubmetricsHead introduces the metric rows as the parts the Skill estimate is made of.
+function SubmetricsHead() {
+  const t = useT();
+  return <div className="skill-submetrics-head">{t('skill.submetrics.title')}</div>;
+}
+
 function Help({ text }) {
   return (
     <span className="workflow-help-wrap skill-help">
@@ -149,15 +177,13 @@ export default function SkillTab({ game, players, playerColor }) {
             />
           </>
         ) : null}
+        {combined.length ? <SubmetricsHead /> : null}
         {METRICS.filter((m) => entriesFor(m.key).length).map((m, index) => {
           const entries = entriesFor(m.key);
           if (!entries.length) return null;
           return (
             <React.Fragment key={m.key}>
-              <div className="skill-row-label">
-                <span>{t(`skill.metric.${m.key}.title`)}</span>
-                <Help text={t(`skill.metric.${m.key}.hint`)} />
-              </div>
+              <MetricLabel metric={m} />
               <Strip
                 entries={entries}
                 range={range}
@@ -201,12 +227,14 @@ export function PlayerSkillRow({ summary, onOpen, onHover }) {
   );
 }
 
-// The chart and its trend need this many games: fewer is a handful of dots, not a direction.
+// The chart and the trend note need this many games: fewer is a handful of dots, not a direction.
 const MIN_TREND_GAMES = 10;
 const DAY_MS = 86400000;
-// A trend needs two months of games, and is only called a change when the line moves a third of a tier
-// across them: less is within what one tier's thirds already show.
-const TREND_MIN_DAYS = 60;
+// The note reads only the last three months, so it says where a player is heading now rather than since
+// their first game. Those games must span a month, and it only calls a change when the fitted line moves
+// a third of a tier: less is within what one tier's thirds already show.
+const TREND_WINDOW_DAYS = 91;
+const TREND_MIN_DAYS = 30;
 const TREND_MIN_CHANGE = 1 / 3;
 
 function useWidth(fallback) {
@@ -234,12 +262,15 @@ const trendOf = (points) => {
   points.forEach((p, i) => { sxy += (xs[i] - mx) * (p.position - my); sxx += (xs[i] - mx) ** 2; });
   const slope = sxx > 0 ? sxy / sxx : 0;
   const days = n ? (points[n - 1].ms - points[0].ms) / DAY_MS : 0;
-  return { at: (ms) => my + slope * (ms / DAY_MS - mx), days, change: slope * days };
+  return { days, change: slope * days };
 };
 
-export const skillTrendDirection = (timeline) => {
-  if (!timeline || timeline.length < MIN_TREND_GAMES) return '';
-  const { days, change } = trendOf(timeline.map((p) => ({ ms: Date.parse(p.date), position: p.position })));
+export const skillTrendDirection = (timeline, now = Date.now()) => {
+  const recent = (timeline || [])
+    .map((p) => ({ ms: Date.parse(p.date), position: p.position }))
+    .filter((p) => now - p.ms <= TREND_WINDOW_DAYS * DAY_MS);
+  if (recent.length < MIN_TREND_GAMES) return '';
+  const { days, change } = trendOf(recent);
   if (days < TREND_MIN_DAYS) return '';
   if (change >= TREND_MIN_CHANGE) return 'up';
   if (change <= -TREND_MIN_CHANGE) return 'down';
@@ -284,8 +315,7 @@ function smoothPath(points, first, span, x, y) {
   return d;
 }
 
-// SkillTrend plots every rated game by date on the tier axis, with a running average and a straight trend
-// line.
+// SkillTrend plots every rated game by date on the tier axis, with a running average.
 function SkillTrend({ timeline }) {
   const t = useT();
   const [ref, W] = useWidth(720);
@@ -297,7 +327,6 @@ function SkillTrend({ timeline }) {
   const [lo, hi] = tierRange(points.map((p) => p.position));
   const y = (pos) => T + (1 - (Math.max(lo, Math.min(hi, pos)) - lo) / (hi - lo)) * (H - T - B);
   const avgPath = smoothPath(points, first, span, x, y);
-  const trend = trendOf(points);
   const lang = typeof document !== 'undefined' ? document.documentElement.lang || undefined : undefined;
   const tickLabel = (d, i) => d.toLocaleDateString(lang, i === 0 || d.getMonth() === 0 ? { month: 'short', year: 'numeric' } : { month: 'short' });
   const dateLabel = (ms) => new Date(ms).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -306,10 +335,6 @@ function SkillTrend({ timeline }) {
     <div className="skill-trend-card">
       <div className="skill-trend-head">
         <h3>{t('skill.chart.title')}</h3>
-        <div className="skill-trend-legend">
-          <span><i className="skill-trend-key skill-trend-key--avg" />{t('skill.chart.average')}</span>
-          {trend.days >= TREND_MIN_DAYS ? <span><i className="skill-trend-key skill-trend-key--trend" />{t('skill.chart.trend')}</span> : null}
-        </div>
       </div>
       <div ref={ref} className="skill-trend-plot">
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('skill.chart.title')}>
@@ -334,9 +359,6 @@ function SkillTrend({ timeline }) {
             </circle>
           ))}
           <path d={avgPath} className="skill-trend-avg" />
-          {trend.days >= TREND_MIN_DAYS ? (
-            <line x1={x(first)} x2={x(last)} y1={y(trend.at(first))} y2={y(trend.at(last))} className="skill-trend-fit" />
-          ) : null}
         </svg>
       </div>
     </div>
@@ -380,12 +402,10 @@ export function PlayerSkillTab({ summary, name, color }) {
       ) : null}
       {timeline.length >= MIN_TREND_GAMES ? <SkillTrend timeline={timeline} /> : null}
       <div className="skill-rows skill-player-breakdown">
+        <SubmetricsHead />
         {METRICS.filter((m) => summary.metrics?.[m.key]).map((m, index) => (
           <React.Fragment key={m.key}>
-            <div className="skill-row-label">
-              <span>{t(`skill.metric.${m.key}.title`)}</span>
-              <Help text={t(`skill.metric.${m.key}.hint`)} />
-            </div>
+            <MetricLabel metric={m} />
             <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline tierLabels={index === 0} describe={(p) => String(m.format(p.value))} />
           </React.Fragment>
         ))}
@@ -444,7 +464,7 @@ function PopulationStrip({ median, players, stars, describe, hero, tierLabels, f
   const entries = [
     ...players.map((p) => ({ ...p, pro: false, share: share(p.placement.position) })),
     ...stars.map((p) => ({ ...p, pro: true, share: share(p.placement.position) })),
-  ];
+  ].filter((e) => hero || !focus || e.key === focus);
   const placed = packLabels(entries, width, hero);
   const rows = placed.reduce((n, e) => Math.max(n, e.row + 1), 1);
   const top = tierLabels ? BAND_LABEL_PX + 4 : 4;
@@ -477,10 +497,10 @@ function PopulationStrip({ median, players, stars, describe, hero, tierLabels, f
             className={`skill-marker skill-marker--population${pro ? ' skill-marker--star' : ' skill-marker--library'}${right ? ' skill-marker--right' : ''}${focused ? ' skill-marker--focused' : ''}`}
             style={{ left: `${x * 100}%`, top: `${top + row * POPULATION_ROW_PX}px` }}
             title={value ? `${name}: ${value}` : name}
-            onMouseEnter={() => onFocus?.(key)}
-            onMouseLeave={() => onFocus?.(null)}
-            onFocus={() => onFocus?.(key)}
-            onBlur={() => onFocus?.(null)}
+            onMouseEnter={hero ? () => onFocus?.(key) : undefined}
+            onMouseLeave={hero ? () => onFocus?.(null) : undefined}
+            onFocus={hero ? () => onFocus?.(key) : undefined}
+            onBlur={hero ? () => onFocus?.(null) : undefined}
             onClick={() => onOpenPlayer?.(key)}
           >
             {pro ? <span className="skill-star" aria-hidden="true">★</span> : <span className="skill-marker-dot skill-library-dot" />}
@@ -513,7 +533,12 @@ export function PlayersSkillTab({ data, loading, error, emptyNotice, showFeature
     .filter((d) => d.placement);
   const metrics = METRICS.filter((m) => data?.metrics?.[m.key] || starsFor(m.key).length);
   if (!data?.combined && !pros.length) {
-    return <div className="workflow-card skill-tab"><div className="chart-empty">{emptyNotice || t('skill.player.none')}</div></div>;
+    return (
+      <div className="workflow-card skill-tab">
+        <div className="chart-empty">{emptyNotice || t('skill.player.none')}</div>
+        {featured.length ? <div className="skill-players-legend"><span className="skill-players-legend-toggle">{featuredToggle(featured.length)}</span></div> : null}
+      </div>
+    );
   }
   return (
     <div className="workflow-card skill-tab skill-players-tab">
@@ -524,12 +549,10 @@ export function PlayersSkillTab({ data, loading, error, emptyNotice, showFeature
           <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
         </div>
         <PopulationStrip median={data?.combined} players={playersFor('combined')} stars={starsFor('combined')} hero tierLabels focus={focus} onFocus={setFocus} onOpenPlayer={onOpenPlayer} />
+        <SubmetricsHead />
         {metrics.map((m, index) => (
           <React.Fragment key={m.key}>
-            <div className="skill-row-label">
-              <span>{t(`skill.metric.${m.key}.title`)}</span>
-              <Help text={t(`skill.metric.${m.key}.hint`)} />
-            </div>
+            <MetricLabel metric={m} />
             <PopulationStrip
               median={data?.metrics?.[m.key]}
               players={playersFor(m.key)}

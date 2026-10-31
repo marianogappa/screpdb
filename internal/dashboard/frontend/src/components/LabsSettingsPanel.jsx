@@ -8,7 +8,6 @@ import { useT } from '../lib/i18nContext';
 // The Settings modal hides the tab while this list is empty.
 export const LABS_FEATURES = [
   { key: 'engine_pass', labelKey: 'labs.feature.enginePass' },
-  { key: 'engine_pass_all_cores', labelKey: 'labs.feature.enginePassAllCores', requires: 'engine_pass' },
 ];
 
 function LabsSettingsPanel({ flags, saving, message, messageIsError, onToggle }) {
@@ -28,7 +27,7 @@ function LabsSettingsPanel({ flags, saving, message, messageIsError, onToggle })
             <input
               type="checkbox"
               checked={Boolean(flags?.[feature.key])}
-              disabled={saving || (feature.requires && !flags?.[feature.requires])}
+              disabled={saving}
               onChange={(e) => onToggle(feature.key, e.target.checked)}
             />
             <span>{t(feature.labelKey)}</span>

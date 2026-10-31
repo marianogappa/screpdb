@@ -193,7 +193,7 @@ func axisPosition(v float64, points []axisPoint) float64 {
 // Result is one player's game.
 type Result struct {
 	Metrics map[string]Placement `json:"metrics"`
-	// Combined is the regression score placed on the tier axis; nil when a combined feature is missing.
+	// Combined is the Headline of the metrics; nil when they carry less than minMeasuredShare of the weight.
 	Combined *Placement `json:"combined,omitempty"`
 	// Confident is true when the combined score is ConfidentMargin or more from every cut: on held-out games
 	// that tier was right 70% of the time, against 55% for any score.
@@ -232,6 +232,17 @@ func (m *Model) Evaluate(race, opponent, context string, values map[string]float
 	if !ok {
 		return res
 	}
+	shares := m.Shares(race)
+	measured := 0.0
+	for key, share := range shares {
+		if _, ok := res.Metrics[key]; ok {
+			measured += share
+		}
+	}
+	if measured < minMeasuredShare {
+		return res
+	}
+	res.Combined = m.Headline(shares, res.Metrics)
 	score := cr.Intercept
 	for i, f := range m.Combined.Features {
 		v, has := adjusted[f]
@@ -241,8 +252,6 @@ func (m *Model) Evaluate(race, opponent, context string, values map[string]float
 		z := (v - cr.Mean[i]) / cr.SD[i]
 		score += cr.Weights[i] * max(-3, min(3, z))
 	}
-	p := place(score, cr.Cuts, cr.Ends, cr.Medians, true)
-	res.Combined = &p
 	res.Confident = true
 	for _, c := range cr.Cuts {
 		if abs(score-c) < m.ConfidentMargin {
@@ -250,6 +259,48 @@ func (m *Model) Evaluate(race, opponent, context string, values map[string]float
 		}
 	}
 	return res
+}
+
+// minMeasuredShare is how much of the estimate's weight a game must measure to get a Skill tier. Idle army
+// needs a real army for a minute after 8:00, which many games never field; the other metrics are enough.
+const minMeasuredShare = 0.85
+
+// Shares is how much each combined metric weighs in the fitted estimate for race, summing to 1.
+func (m *Model) Shares(race string) map[string]float64 {
+	cr, ok := m.Combined.Races[race]
+	if !ok {
+		return nil
+	}
+	total := 0.0
+	for _, w := range cr.Weights {
+		total += abs(w)
+	}
+	out := map[string]float64{}
+	for i, f := range m.Combined.Features {
+		if total > 0 && i < len(cr.Weights) {
+			out[f] = abs(cr.Weights[i]) / total
+		}
+	}
+	return out
+}
+
+// Headline is the tier the strips add up to: the average of the metrics' positions, each weighted by its
+// share of the estimate. The fitted score ranks players almost exactly as well, but it can call a player
+// Beginner whose strips mostly read Intermediate, and a headline that disagrees with the strips under it
+// reads as a bug.
+func (m *Model) Headline(shares map[string]float64, metrics map[string]Placement) *Placement {
+	pos, weight := 0.0, 0.0
+	for key, share := range shares {
+		if p, ok := metrics[key]; ok {
+			pos += share * p.Position
+			weight += share
+		}
+	}
+	if weight == 0 {
+		return nil
+	}
+	pos /= weight
+	return &Placement{Value: pos, Position: pos, Tier: min(TierPro, int(pos))}
 }
 
 func abs(x float64) float64 {

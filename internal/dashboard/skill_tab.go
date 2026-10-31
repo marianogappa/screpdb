@@ -62,6 +62,7 @@ type ratedGame struct {
 }
 
 type ratedPlayer struct {
+	race   string
 	values map[string]float64
 	result skill.Result
 }
@@ -111,7 +112,7 @@ func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 			addFinite(values, skill.ProductionIdle, e.ProductionIdleShare)
 			addFinite(values, skill.IdleArmy, e.IdleArmyShare)
 		}
-		g.players[ordinal] = ratedPlayer{values: values, result: model.Evaluate(race, opponentRace(rec, humans, ordinal), skillContext(rec, len(humans)), values)}
+		g.players[ordinal] = ratedPlayer{race: race, values: values, result: model.Evaluate(race, opponentRace(rec, humans, ordinal), skillContext(rec, len(humans)), values)}
 	}
 	return g
 }

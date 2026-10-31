@@ -94,7 +94,7 @@ func (d *Dashboard) playerSkillAs(playerKey, race string) *workflowPlayerSkillSu
 			timeline = append(timeline, workflowSkillPoint{ReplayID: ref.Replay.ID, Date: ref.Replay.Date.UTC().Format(time.RFC3339), Position: r.result.Combined.Position})
 		}
 	}
-	out := summarizeSkill(rated)
+	out := summarizeSkill(model, rated)
 	if out == nil {
 		return nil
 	}
@@ -103,20 +103,21 @@ func (d *Dashboard) playerSkillAs(playerKey, race string) *workflowPlayerSkillSu
 	return out
 }
 
-func summarizeSkill(rated []ratedPlayer) *workflowPlayerSkillSummary {
+func summarizeSkill(model *skill.Model, rated []ratedPlayer) *workflowPlayerSkillSummary {
 	if len(rated) < minSkillGames {
 		return nil
 	}
 	out := &workflowPlayerSkillSummary{Games: len(rated), Metrics: map[string]skill.Placement{}, Pills: []workflowSkillPill{}}
-	var combined []skill.Placement
 	byMetric := map[string][]skill.Placement{}
+	shares := map[string]float64{}
 	for _, r := range rated {
-		combined = append(combined, *r.result.Combined)
 		for k, p := range r.result.Metrics {
 			byMetric[k] = append(byMetric[k], p)
 		}
+		for k, share := range model.Shares(r.race) {
+			shares[k] += share / float64(len(rated))
+		}
 	}
-	out.Combined = gamesPlacement(combined)
 	// A metric only some games measure, like spell usage in games with spellcasters, needs as many games as
 	// the tier itself: one or two would decide it on their own.
 	for k, ps := range byMetric {
@@ -124,6 +125,11 @@ func summarizeSkill(rated []ratedPlayer) *workflowPlayerSkillSummary {
 			out.Metrics[k] = gamesPlacement(ps)
 		}
 	}
+	headline := model.Headline(shares, out.Metrics)
+	if headline == nil {
+		return nil
+	}
+	out.Combined = *headline
 	for _, h := range skillHabits {
 		held, measured := 0, 0
 		for _, r := range rated {
