@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.35.0](https://github.com/marianogappa/screpdb/compare/v1.34.0...v1.35.0) (2026-10-31)
+
+
+### Features
+
+* **dashboard:** Skill columns on player lists, one-line Skill chart and a Use Map Settings game type ([#478](https://github.com/marianogappa/screpdb/issues/478)) ([101a21a](https://github.com/marianogappa/screpdb/commit/101a21a1071360f24ee6888de90a327e11a9acc0))
+* **engine:** use all cores while StarCraft is closed, and drop the battery pause ([#475](https://github.com/marianogappa/screpdb/issues/475)) ([b79f197](https://github.com/marianogappa/screpdb/commit/b79f19703d31703023ab7ac38baf6e413cd7696e))
+* **events:** base ownership, focused event maps and a snapping Game Events layout ([#470](https://github.com/marianogappa/screpdb/issues/470)) ([d71e907](https://github.com/marianogappa/screpdb/commit/d71e907740db64c03c9147de03d7a9a2b2ac88b4))
+* **skill:** micro actions replace spell usage on the Skill tab ([#476](https://github.com/marianogappa/screpdb/issues/476)) ([8ed2702](https://github.com/marianogappa/screpdb/commit/8ed2702e76ebead6d141ce2b5f034bc8ee2a2478))
+* **skill:** one Players Skill tab replaces the Skill proxies, with unit-typed hotkeys and steady leave markers ([#472](https://github.com/marianogappa/screpdb/issues/472)) ([287bdc1](https://github.com/marianogappa/screpdb/commit/287bdc1c620669e3a66c30b65859bdfa0eb329ab))
+
+
+### Bug Fixes
+
+* **alliances:** mark team stacking bands from the stored timeline, and modernise the README screenshots ([#473](https://github.com/marianogappa/screpdb/issues/473)) ([e4ae6dc](https://github.com/marianogappa/screpdb/commit/e4ae6dc41161b7caea38f38c5758e18b4577622e))
+* **fingerprint:** refresh per-player fingerprint outcomes when the corpus changes ([#469](https://github.com/marianogappa/screpdb/issues/469)) ([7f7eb41](https://github.com/marianogappa/screpdb/commit/7f7eb41b0a4eb7f6c3b97dee66c034ad2740a7c4))
+* **outcomes:** name winners from the engine and settle undecided games from Battle.net ([#467](https://github.com/marianogappa/screpdb/issues/467)) ([94e4a5f](https://github.com/marianogappa/screpdb/commit/94e4a5f2346258c8eb591d94b5422ae41d68e0e1))
+* **release:** keep the previous release as latest until the new one has its binaries ([#459](https://github.com/marianogappa/screpdb/issues/459)) ([71d54e1](https://github.com/marianogappa/screpdb/commit/71d54e16eb315a5fb0d82932efd16c800f8e2288))
+* **session:** re-identify the user when the replay folder changes ([#474](https://github.com/marianogappa/screpdb/issues/474)) ([380f9fc](https://github.com/marianogappa/screpdb/commit/380f9fcc91e7bc7e55ce4b7da2d6ed62ffdd9953))
+
+
+### Performance Improvements
+
+* **engine:** reuse per-tick unit maps in the engine pass ([#477](https://github.com/marianogappa/screpdb/issues/477)) ([c43b9d5](https://github.com/marianogappa/screpdb/commit/c43b9d52b9c8fd28f7c1a45b854ce07203f30eed))
+
 ## [1.34.0](https://github.com/marianogappa/screpdb/compare/v1.33.0...v1.34.0) (2026-10-25)
 
 
