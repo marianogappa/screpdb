@@ -81,6 +81,7 @@
   "globalFilter.gameType.melee": "Melee",
   "globalFilter.gameType.oneOnOne": "One on One",
   "globalFilter.gameType.freeForAll": "Free For All",
+  "globalFilter.gameType.useMapSettings": "Use Map Settings",
   "globalFilter.mapKind.regular": "Regular",
   "globalFilter.mapKind.money": "Money",
   "globalFilter.title": "Settings",
@@ -176,8 +177,6 @@
   "skill.pill.banks_resources.hint": "In {games} of {of} games: usually sat on a full minute of income or more.",
   "skill.chart.title": "Skill over time",
   "skill.player.none": "Skill shows once a player has 5 games with engine data.",
-  "skill.chart.average": "Average",
-  "skill.chart.trend": "Trend",
   "skill.trend.up": "Improving",
   "skill.trend.down": "Declining",
   "skill.trend.flat": "Steady"

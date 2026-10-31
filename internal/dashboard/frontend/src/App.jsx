@@ -6,7 +6,7 @@ import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineCoverage from './components/EngineCoverage';
-import SkillTab, { PlayerSkillRow, PlayerSkillTab, PlayersSkillTab, TIER_KEYS, tierLabel } from './components/SkillTab';
+import SkillTab, { PlayerSkillRow, PlayerSkillTab, PlayersSkillTab, SkillTierChip, TIER_KEYS, tierLabel } from './components/SkillTab';
 import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
@@ -5378,6 +5378,7 @@ function App() {
             loading={gamingSessionLoading}
             error={gamingSessionError}
             onPlayerClick={openMainPlayer}
+            showSkill={engineEnabled}
             renderBadge={(player) => (
               player.primary_badge ? <IdentityBadge badge={player.primary_badge} variant="players-list" /> : null
             )}
@@ -5495,6 +5496,7 @@ function App() {
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('games')}>{t('players.table.games')} {mainPlayersSortIndicator('games')}</th>
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('apm')}>{t('players.table.avgApm')} {mainPlayersSortIndicator('apm')}</th>
                           <th className="workflow-sortable" onClick={() => setMainPlayersSort('last_played')}>{t('common.lastPlayed')} {mainPlayersSortIndicator('last_played')}</th>
+                          {engineEnabled ? <th>{t('game.tabs.skill')}</th> : null}
                         </tr>
                       </thead>
                       <tbody>
@@ -5516,6 +5518,7 @@ function App() {
                             </td>
                             <td>{Number(player.average_apm || 0).toFixed(1)}</td>
                             <td>{formatDaysAgoCompact(player.last_played_days_ago)}</td>
+                            {engineEnabled ? <td><SkillTierChip placement={player.skill} /></td> : null}
                           </tr>
                         ))}
                       </tbody>

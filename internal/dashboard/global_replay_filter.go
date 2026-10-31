@@ -14,6 +14,7 @@ const (
 	globalReplayFilterGameTypeMelee       = "melee"
 	globalReplayFilterGameTypeOneOnOne    = "one_on_one"
 	globalReplayFilterGameTypeFreeForAll  = "free_for_all"
+	globalReplayFilterGameTypeUMS         = "use_map_settings"
 	globalReplayFilterMapKindRegular      = "regular"
 	globalReplayFilterMapKindMoney        = "money"
 	globalReplayFilterShortGameSeconds    = 120
@@ -36,6 +37,7 @@ func defaultGlobalReplayFilterConfig() globalReplayFilterConfig {
 			globalReplayFilterGameTypeMelee,
 			globalReplayFilterGameTypeOneOnOne,
 			globalReplayFilterGameTypeFreeForAll,
+			globalReplayFilterGameTypeUMS,
 		},
 		ExcludeShortGames: true,
 		ExcludeComputers:  true,
@@ -51,7 +53,8 @@ func normalizeGlobalReplayFilterConfig(config globalReplayFilterConfig) (globalR
 		case globalReplayFilterGameTypeTopVsBottom,
 			globalReplayFilterGameTypeMelee,
 			globalReplayFilterGameTypeOneOnOne,
-			globalReplayFilterGameTypeFreeForAll:
+			globalReplayFilterGameTypeFreeForAll,
+			globalReplayFilterGameTypeUMS:
 		default:
 			return config, fmt.Errorf("invalid global replay filter game type: %s", value)
 		}

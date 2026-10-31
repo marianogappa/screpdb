@@ -1,6 +1,10 @@
 package dashboard
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/marianogappa/screpdb/internal/skill"
+)
 
 const workflowSummaryVersion = "v2"
 
@@ -823,15 +827,16 @@ type workflowPlayersListSort struct {
 }
 
 type workflowPlayersListItem struct {
-	PlayerKey         string         `json:"player_key"`
-	PlayerName        string         `json:"player_name"`
-	Race              string         `json:"race"`
-	GamesPlayed       int64          `json:"games_played"`
-	AverageAPM        float64        `json:"average_apm"`
-	LastPlayed        string         `json:"last_played"`
-	LastPlayedDaysAgo int64          `json:"last_played_days_ago"`
-	CountryCode       string         `json:"country_code,omitempty"`
-	PrimaryBadge      *IdentityBadge `json:"primary_badge,omitempty"`
+	PlayerKey         string           `json:"player_key"`
+	PlayerName        string           `json:"player_name"`
+	Race              string           `json:"race"`
+	GamesPlayed       int64            `json:"games_played"`
+	AverageAPM        float64          `json:"average_apm"`
+	LastPlayed        string           `json:"last_played"`
+	LastPlayedDaysAgo int64            `json:"last_played_days_ago"`
+	CountryCode       string           `json:"country_code,omitempty"`
+	PrimaryBadge      *IdentityBadge   `json:"primary_badge,omitempty"`
+	Skill             *skill.Placement `json:"skill,omitempty"`
 }
 
 type workflowPlayersListFilterOption struct {

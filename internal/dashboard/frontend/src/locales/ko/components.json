@@ -81,6 +81,7 @@
   "globalFilter.gameType.melee": "밀리",
   "globalFilter.gameType.oneOnOne": "일대일",
   "globalFilter.gameType.freeForAll": "자유 대전",
+  "globalFilter.gameType.useMapSettings": "유즈맵 설정",
   "globalFilter.mapKind.regular": "일반",
   "globalFilter.mapKind.money": "머니맵",
   "globalFilter.title": "설정",
@@ -176,8 +177,6 @@
   "skill.pill.banks_resources.hint": "{of}게임 중 {games}게임: 평소 수입 1분어치 이상의 자원을 쌓아 두었습니다.",
   "skill.chart.title": "시간에 따른 실력",
   "skill.player.none": "엔진 데이터가 있는 게임이 5개 이상이면 실력이 표시됩니다.",
-  "skill.chart.average": "평균",
-  "skill.chart.trend": "추세",
   "skill.trend.up": "상승 중",
   "skill.trend.down": "하락 중",
   "skill.trend.flat": "유지 중"

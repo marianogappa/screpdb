@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/marianogappa/screpdb/internal/models"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/marianogappa/screpdb/internal/models"
+	"github.com/marianogappa/screpdb/internal/skill"
 )
 
 // A gaming session is a run of games played in one sitting. Three constants
@@ -51,6 +53,7 @@ type gamingSessionPlayer struct {
 	// player is never labelled differently on two surfaces.
 	PrimaryBadge *IdentityBadge     `json:"primary_badge,omitempty"`
 	Profile      *bnetProfileDetail `json:"profile,omitempty"`
+	Skill        *skill.Placement   `json:"skill,omitempty"`
 }
 
 type gamingSessionStats struct {
@@ -464,8 +467,12 @@ func (d *Dashboard) withBnetProfiles(ctx context.Context, players []gamingSessio
 		keys = append(keys, player.PlayerKey)
 	}
 	details := d.bnetProfileDetailsByPlayerKeys(ctx, keys)
+	skillByPlayer := d.skillByPlayer(ctx)
 	for i := range players {
 		players[i].PrimaryBadge = d.primaryIdentityBadge(players[i].PlayerKey)
+		if s, ok := skillByPlayer[players[i].PlayerKey]; ok {
+			players[i].Skill = &s
+		}
 		detail, ok := details[players[i].PlayerKey]
 		if !ok {
 			continue

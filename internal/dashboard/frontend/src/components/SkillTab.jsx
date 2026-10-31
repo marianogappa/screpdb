@@ -46,6 +46,17 @@ export const tierLabel = (t, skill) => {
   return combined ? `${t(`skill.tier.${TIER_KEYS[combined.tier]}`)}${tierThird(combined)}` : '';
 };
 
+// SkillTierChip is a player's Skill tier for list columns; empty until they have enough rated games.
+export function SkillTierChip({ placement }) {
+  const t = useT();
+  if (!placement) return null;
+  return (
+    <span className={`wpt-skill-tier wpt-skill-tier--static wpt-skill-tier--${TIER_KEYS[placement.tier]}`}>
+      {tierLabel(t, { combined: placement })}
+    </span>
+  );
+}
+
 function Help({ text }) {
   return (
     <span className="workflow-help-wrap skill-help">
@@ -201,12 +212,14 @@ export function PlayerSkillRow({ summary, onOpen, onHover }) {
   );
 }
 
-// The chart and its trend need this many games: fewer is a handful of dots, not a direction.
+// The chart and the trend note need this many games: fewer is a handful of dots, not a direction.
 const MIN_TREND_GAMES = 10;
 const DAY_MS = 86400000;
-// A trend needs two months of games, and is only called a change when the line moves a third of a tier
-// across them: less is within what one tier's thirds already show.
-const TREND_MIN_DAYS = 60;
+// The note reads only the last three months, so it says where a player is heading now rather than since
+// their first game. Those games must span a month, and it only calls a change when the fitted line moves
+// a third of a tier: less is within what one tier's thirds already show.
+const TREND_WINDOW_DAYS = 91;
+const TREND_MIN_DAYS = 30;
 const TREND_MIN_CHANGE = 1 / 3;
 
 function useWidth(fallback) {
@@ -234,12 +247,15 @@ const trendOf = (points) => {
   points.forEach((p, i) => { sxy += (xs[i] - mx) * (p.position - my); sxx += (xs[i] - mx) ** 2; });
   const slope = sxx > 0 ? sxy / sxx : 0;
   const days = n ? (points[n - 1].ms - points[0].ms) / DAY_MS : 0;
-  return { at: (ms) => my + slope * (ms / DAY_MS - mx), days, change: slope * days };
+  return { days, change: slope * days };
 };
 
-export const skillTrendDirection = (timeline) => {
-  if (!timeline || timeline.length < MIN_TREND_GAMES) return '';
-  const { days, change } = trendOf(timeline.map((p) => ({ ms: Date.parse(p.date), position: p.position })));
+export const skillTrendDirection = (timeline, now = Date.now()) => {
+  const recent = (timeline || [])
+    .map((p) => ({ ms: Date.parse(p.date), position: p.position }))
+    .filter((p) => now - p.ms <= TREND_WINDOW_DAYS * DAY_MS);
+  if (recent.length < MIN_TREND_GAMES) return '';
+  const { days, change } = trendOf(recent);
   if (days < TREND_MIN_DAYS) return '';
   if (change >= TREND_MIN_CHANGE) return 'up';
   if (change <= -TREND_MIN_CHANGE) return 'down';
@@ -284,8 +300,7 @@ function smoothPath(points, first, span, x, y) {
   return d;
 }
 
-// SkillTrend plots every rated game by date on the tier axis, with a running average and a straight trend
-// line.
+// SkillTrend plots every rated game by date on the tier axis, with a running average.
 function SkillTrend({ timeline }) {
   const t = useT();
   const [ref, W] = useWidth(720);
@@ -297,7 +312,6 @@ function SkillTrend({ timeline }) {
   const [lo, hi] = tierRange(points.map((p) => p.position));
   const y = (pos) => T + (1 - (Math.max(lo, Math.min(hi, pos)) - lo) / (hi - lo)) * (H - T - B);
   const avgPath = smoothPath(points, first, span, x, y);
-  const trend = trendOf(points);
   const lang = typeof document !== 'undefined' ? document.documentElement.lang || undefined : undefined;
   const tickLabel = (d, i) => d.toLocaleDateString(lang, i === 0 || d.getMonth() === 0 ? { month: 'short', year: 'numeric' } : { month: 'short' });
   const dateLabel = (ms) => new Date(ms).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -306,10 +320,6 @@ function SkillTrend({ timeline }) {
     <div className="skill-trend-card">
       <div className="skill-trend-head">
         <h3>{t('skill.chart.title')}</h3>
-        <div className="skill-trend-legend">
-          <span><i className="skill-trend-key skill-trend-key--avg" />{t('skill.chart.average')}</span>
-          {trend.days >= TREND_MIN_DAYS ? <span><i className="skill-trend-key skill-trend-key--trend" />{t('skill.chart.trend')}</span> : null}
-        </div>
       </div>
       <div ref={ref} className="skill-trend-plot">
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('skill.chart.title')}>
@@ -334,9 +344,6 @@ function SkillTrend({ timeline }) {
             </circle>
           ))}
           <path d={avgPath} className="skill-trend-avg" />
-          {trend.days >= TREND_MIN_DAYS ? (
-            <line x1={x(first)} x2={x(last)} y1={y(trend.at(first))} y2={y(trend.at(last))} className="skill-trend-fit" />
-          ) : null}
         </svg>
       </div>
     </div>

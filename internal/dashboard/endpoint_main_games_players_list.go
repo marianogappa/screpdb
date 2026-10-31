@@ -33,6 +33,7 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 		playerKeys = append(playerKeys, row.PlayerKey)
 	}
 	countryCodes, _ := d.countryCodesByPlayerKeys(playerKeys)
+	skillByPlayer := d.skillByPlayer(d.ctx)
 
 	items := []workflowPlayersListItem{}
 	for _, row := range listRows {
@@ -52,6 +53,9 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 		}
 		item.CountryCode = countryCodes[item.PlayerKey]
 		item.PrimaryBadge = d.primaryIdentityBadge(item.PlayerKey)
+		if s, ok := skillByPlayer[item.PlayerKey]; ok {
+			item.Skill = &s
+		}
 		items = append(items, item)
 	}
 

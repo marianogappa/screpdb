@@ -31,6 +31,7 @@ func TestFilterConfigMatches(t *testing.T) {
 	observerComputer := twoHumans(librarytest.WithPlayer("AI", librarytest.Computer(), librarytest.Observer()))
 	topVsBottom := twoHumans(librarytest.WithGameType(" Top vs Bottom "))
 	ffa := twoHumans(librarytest.WithGameType("Free For All"))
+	umsMelee := twoHumans(librarytest.WithGameType("Use map settings"))
 	sameTeam := librarytest.Replay(
 		librarytest.WithPlayer("A", librarytest.Team(1)),
 		librarytest.WithPlayer("B", librarytest.Team(1)),
@@ -80,6 +81,12 @@ func TestFilterConfigMatches(t *testing.T) {
 			cfg:     library.FilterConfig{GameTypes: []string{library.GameTypeTopVsBottom, library.GameTypeFreeForAll}},
 			wantIn:  []*library.Replay{topVsBottom, ffa},
 			wantOut: []*library.Replay{melee, sameTeam},
+		},
+		{
+			name:    "use map settings matches games on maps that run melee rules",
+			cfg:     library.FilterConfig{GameTypes: []string{library.GameTypeUMS}},
+			wantIn:  []*library.Replay{umsMelee},
+			wantOut: []*library.Replay{melee, ffa, ums},
 		},
 		{
 			name:    "one on one counts non-observer players on two teams",

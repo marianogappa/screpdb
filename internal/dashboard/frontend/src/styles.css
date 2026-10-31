@@ -6386,6 +6386,10 @@ span[data-tip],
   width: 62px;
 }
 
+.session-player-table .col-skill {
+  width: 116px;
+}
+
 .session-player-table .col-ladder {
   width: 132px;
 }
@@ -7541,6 +7545,8 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
   color: rgba(255,255,255,0.9); font-size: 0.8rem; padding: 2px 9px; cursor: pointer; white-space: nowrap;
 }
 .wpt-skill-tier:hover { filter: brightness(1.25); }
+.wpt-skill-tier--static { cursor: inherit; }
+.wpt-skill-tier--static:hover { filter: none; }
 .wpt-skill-tier--beginner { background: rgba(148,163,184,0.12); border-color: rgba(148,163,184,0.3); color: #cbd5e1; }
 .wpt-skill-tier--intermediate { background: rgba(96,165,250,0.12); border-color: rgba(96,165,250,0.32); color: #bfdbfe; }
 .wpt-skill-tier--advanced { background: rgba(167,139,250,0.13); border-color: rgba(167,139,250,0.34); color: #ddd6fe; }
@@ -7661,10 +7667,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-trend-card { border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px 16px 10px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column; gap: 10px; }
 .skill-trend-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; }
 .skill-trend-head h3 { margin: 0; font-size: 0.92rem; font-weight: 600; color: rgba(255,255,255,0.9); }
-.skill-trend-legend { display: flex; gap: 14px; font-size: 0.74rem; color: rgba(255,255,255,0.55); }
-.skill-trend-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.skill-trend-key { display: inline-block; width: 16px; height: 0; border-top: 2px solid #60a5fa; }
-.skill-trend-key--trend { border-top: 1.5px dashed rgba(253,230,138,0.9); }
 .skill-trend-plot { width: 100%; overflow: hidden; }
 .skill-trend-plot svg { display: block; }
 .skill-trend-band--beginner { fill: rgba(148,163,184,0.04); }
@@ -7676,7 +7678,6 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-trend-cut { stroke: rgba(255,255,255,0.14); stroke-width: 1; stroke-dasharray: 2 3; }
 .skill-trend-dot { fill: rgba(203,213,225,0.45); }
 .skill-trend-avg { fill: none; stroke: #60a5fa; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
-.skill-trend-fit { stroke: rgba(253,230,138,0.9); stroke-width: 1.5; stroke-dasharray: 5 4; }
 
 /* Engine event map: who holds which base, and a dim around what the event is about. */
 .engine-snapshot {

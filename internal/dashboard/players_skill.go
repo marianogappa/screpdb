@@ -61,8 +61,7 @@ func (d *Dashboard) playersSkill() workflowPlayersSkill {
 	}
 	out.Model = skillModelSummary(model)
 	if d.library != nil {
-		view := d.library.lib.View()
-		players := view.Memo("players-skill", func() any { return librarySkillPlayers(model, view.Replays()) }).([]workflowLibrarySkill)
+		players := d.librarySkillPlayersMemo(model)
 		out.Players = len(players)
 		out.Library = players
 		out.Combined, out.Metrics = skillMedians(players)
@@ -72,6 +71,29 @@ func (d *Dashboard) playersSkill() workflowPlayersSkill {
 			PlayerKey: pro.Key(), PlayerName: pro.Label, Race: pro.MainRace, CountryCode: pro.Country, PhotoURL: proPhotoURL(pro),
 			Games: pro.Skill.Games, Combined: pro.Skill.Combined, Metrics: pro.Skill.Metrics,
 		})
+	}
+	return out
+}
+
+func (d *Dashboard) librarySkillPlayersMemo(model *skill.Model) []workflowLibrarySkill {
+	view := d.library.lib.View()
+	return view.Memo("players-skill", func() any { return librarySkillPlayers(model, view.Replays()) }).([]workflowLibrarySkill)
+}
+
+// skillByPlayer is each library player's Skill average for the list columns; nil while the engine is off,
+// since Skill is an engine feature.
+func (d *Dashboard) skillByPlayer(ctx context.Context) map[string]skill.Placement {
+	if d.library == nil || !d.featureFlagEnabled(ctx, featureFlagEnginePass) {
+		return nil
+	}
+	model, err := skill.Load()
+	if err != nil {
+		crashreport.Handle(err, nil, false)
+		return nil
+	}
+	out := map[string]skill.Placement{}
+	for _, p := range d.librarySkillPlayersMemo(model) {
+		out[p.PlayerKey] = p.Combined
 	}
 	return out
 }

@@ -3,6 +3,7 @@ import { getWorkerIconForRace } from '../lib/gameAssets';
 import { slugKey } from '../lib/i18n';
 import { t, useT } from '../lib/i18nContext';
 import NoValue from './NoValue';
+import { SkillTierChip } from './SkillTab';
 
 const formatDuration = (seconds) => {
   const total = Math.max(0, Math.round(Number(seconds) || 0));
@@ -197,6 +198,7 @@ const sessionSortValue = {
   wins: (p) => Number(p.wins) || 0,
   losses: (p) => Number(p.losses) || 0,
   apm: (p) => Number(p.apm) || 0,
+  skill: (p) => (p.skill ? p.skill.position : -1),
 };
 
 // Counts open descending and names ascending, because that is the first thing
@@ -244,7 +246,7 @@ function SortableHeader({ label, title, sortKey, sort, onSort, className }) {
   );
 }
 
-function PlayerTable({ players, renderName, renderBadge, showRecord, onPlayerClick }) {
+function PlayerTable({ players, renderName, renderBadge, showRecord, showSkill, onPlayerClick }) {
   const t = useT();
   const [sort, setSort] = useState({ key: null, dir: null });
   const onSort = (key) => setSort((current) => nextSortState(current, key));
@@ -266,6 +268,7 @@ function PlayerTable({ players, renderName, renderBadge, showRecord, onPlayerCli
           {showRecord ? header(t('session.col.losses'), t('session.col.lossesTitle'), 'losses', 'col-count') : null}
           <th className="col-races">{t('session.col.races')}</th>
           {header(t('session.col.apm'), t('session.col.apm'), 'apm', 'col-apm')}
+          {showSkill ? header(t('game.tabs.skill'), t('game.tabs.skill'), 'skill', 'col-skill') : null}
           <th className="col-ladder">{t('session.col.ladder')}</th>
           <th className="col-toons">{t('session.col.alsoPlaysAs')}</th>
         </tr>
@@ -280,6 +283,7 @@ function PlayerTable({ players, renderName, renderBadge, showRecord, onPlayerCli
             {showRecord ? <td className="col-count">{player.losses || 0}</td> : null}
             <td className="col-races"><RaceIcons races={player.races} /></td>
             <td className="col-apm">{player.apm == null ? <NoValue /> : player.apm}</td>
+            {showSkill ? <td className="col-skill"><SkillTierChip placement={player.skill} /></td> : null}
             <td className="col-ladder"><LadderCell profile={player.profile} /></td>
             <td className="col-toons"><OtherToons profile={player.profile} currentName={player.player_name} onPlayerClick={onPlayerClick} /></td>
           </tr>
@@ -326,7 +330,7 @@ function RegularsPulse({ regulars, onPlayerClick }) {
   );
 }
 
-function GamingSessionPanel({ session, loading, error, renderName, renderBadge, onPlayerClick, children }) {
+function GamingSessionPanel({ session, loading, error, renderName, renderBadge, onPlayerClick, showSkill, children }) {
   const t = useT();
   const [tab, setTab] = useState('games');
 
@@ -408,11 +412,11 @@ function GamingSessionPanel({ session, loading, error, renderName, renderBadge, 
 
       {tab === 'games' ? children : (
         <div className="session-players">
-          <PlayerTable players={opponents} renderName={renderName} renderBadge={renderBadge} showRecord onPlayerClick={onPlayerClick} />
+          <PlayerTable players={opponents} showSkill={showSkill} renderName={renderName} renderBadge={renderBadge} showRecord onPlayerClick={onPlayerClick} />
           {allies.length > 0 ? (
             <div className="session-allies">
               <div className="session-breakdown-title">{t('session.playedAlongside')}</div>
-              <PlayerTable players={allies} renderName={renderName} renderBadge={renderBadge} showRecord={false} onPlayerClick={onPlayerClick} />
+              <PlayerTable players={allies} showSkill={showSkill} renderName={renderName} renderBadge={renderBadge} showRecord={false} onPlayerClick={onPlayerClick} />
             </div>
           ) : null}
         </div>

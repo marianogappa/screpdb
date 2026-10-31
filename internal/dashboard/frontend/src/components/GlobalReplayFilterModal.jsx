@@ -7,6 +7,7 @@ const GAME_TYPE_OPTIONS = [
   { value: 'melee', labelKey: 'globalFilter.gameType.melee' },
   { value: 'one_on_one', labelKey: 'globalFilter.gameType.oneOnOne' },
   { value: 'free_for_all', labelKey: 'globalFilter.gameType.freeForAll' },
+  { value: 'use_map_settings', labelKey: 'globalFilter.gameType.useMapSettings' },
 ];
 
 const MAP_KIND_OPTIONS = [
@@ -254,6 +255,17 @@ function GlobalReplayFilterModal({
                 />
                 <span>{t('library.completeGamesOptOut')}</span>
               </label>
+              {featureFlags?.engine_pass ? (
+                <label className="global-filter-toggle">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(featureFlags?.engine_pass_all_cores)}
+                    disabled={featureFlagsSaving}
+                    onChange={(e) => onFeatureFlagToggle('engine_pass_all_cores', e.target.checked)}
+                  />
+                  <span>{t('labs.feature.enginePassAllCores')}</span>
+                </label>
+              ) : null}
               {featureFlagsMessage ? (
                 <span className={featureFlagsMessageIsError ? 'error-message' : 'ingest-helper-text'}>
                   {featureFlagsMessage}
