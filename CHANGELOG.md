@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.36.2](https://github.com/marianogappa/screpdb/compare/v1.36.1...v1.36.2) (2026-11-08)
+
+
+### Bug Fixes
+
+* **dashboard:** newer version replaces an older running instance instead of reopening it ([#493](https://github.com/marianogappa/screpdb/issues/493)) ([a5002a9](https://github.com/marianogappa/screpdb/commit/a5002a9e3bcaecdac622fc70d250535e15463b42))
+
 ## [1.36.1](https://github.com/marianogappa/screpdb/compare/v1.36.0...v1.36.1) (2026-11-08)
 
 
