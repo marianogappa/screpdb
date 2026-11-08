@@ -84,12 +84,16 @@ func (d *Dashboard) resolveBnetOutcomes(ctx context.Context) {
 		return
 	}
 	index := indexBnetGames(games)
+	byMD5 := gamesByOwnReplayMD5(games, persist.NewEnrichQueue(d.library.root))
 	lib := d.library.lib
 	for _, r := range lib.Snapshot().Replays {
 		if !r.WinnerUndecided() && r.BnetResults() == nil {
 			continue
 		}
-		g, ok := bnetGameFor(r, index)
+		g, ok := d.bnetGameByMD5(r, byMD5)
+		if !ok {
+			g, ok = bnetGameFor(r, index)
+		}
 		if !ok {
 			continue
 		}
@@ -97,6 +101,58 @@ func (d *Dashboard) resolveBnetOutcomes(ctx context.Context) {
 			lib.SetBnetResults(r.Checksum, results, "game "+g.GameID+": results from the players' own profiles")
 		}
 	}
+}
+
+// gamesByOwnReplayMD5 indexes games by the MD5 of the user's own replay file, which Battle.net lists on
+// the user's own profile and the completion worker records for every game it chased. Unlike matching by
+// players and times, this names the game a file recorded exactly.
+func gamesByOwnReplayMD5(games []persist.BnetGame, queue *persist.EnrichQueue) map[string]persist.BnetGame {
+	byID := make(map[string]persist.BnetGame, len(games))
+	byMD5 := map[string]persist.BnetGame{}
+	for _, g := range games {
+		byID[g.GameID] = g
+		if g.MD5 != "" {
+			byMD5[g.MD5] = g
+		}
+	}
+	if queue == nil {
+		return byMD5
+	}
+	entries, err := queue.All()
+	if err != nil {
+		return byMD5
+	}
+	for _, e := range entries {
+		if g, ok := byID[e.GameID]; ok && e.MD5 != "" {
+			if _, known := byMD5[e.MD5]; !known {
+				byMD5[e.MD5] = g
+			}
+		}
+	}
+	return byMD5
+}
+
+// bnetGameByMD5 finds the game a replay recorded from its file's MD5. A complete copy is a co-player's
+// file, so it is looked up through the user's own copy it pairs with.
+func (d *Dashboard) bnetGameByMD5(r *library.Replay, byMD5 map[string]persist.BnetGame) (persist.BnetGame, bool) {
+	if len(byMD5) == 0 {
+		return persist.BnetGame{}, false
+	}
+	path := r.Path()
+	var key any = r.Checksum
+	if own, ok := library.CompleteBasePath(path); ok {
+		path, key = own, own
+	}
+	sum, ok := d.replayMD5s.Load(key)
+	if !ok {
+		hash, _, err := fileMD5AndSize(path)
+		if err != nil {
+			return persist.BnetGame{}, false
+		}
+		sum, _ = d.replayMD5s.LoadOrStore(key, hash)
+	}
+	g, ok := byMD5[sum.(string)]
+	return g, ok
 }
 
 func indexBnetGames(games []persist.BnetGame) map[string][]persist.BnetGame {

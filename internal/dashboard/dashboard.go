@@ -60,6 +60,9 @@ type Dashboard struct {
 
 	// bnetOutcomesKick asks for undecided games to be checked against the Battle.net archive again.
 	bnetOutcomesKick chan struct{}
+	// replayMD5s caches the MD5 of the user's own replay files, by checksum or, for a complete copy's
+	// own file, by path; the MD5 ties a file to its Battle.net game.
+	replayMD5s sync.Map
 
 	// regularsRefresh dedupes the session view's Battle.net freshness sweep.
 	regularsRefresh regularsRefreshState

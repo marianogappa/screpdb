@@ -361,7 +361,7 @@ func TestBnetGameArchiveCompactionKeepsLastWrite(t *testing.T) {
 	}
 }
 
-func TestBnetGameArchiveClearsExpiredReplayRefs(t *testing.T) {
+func TestBnetGameArchiveClearsExpiredReplayURLsButKeepsMD5s(t *testing.T) {
 	root := t.TempDir()
 	archive := NewBnetGameArchive(root)
 	old := time.Now().Add(-60 * 24 * time.Hour)
@@ -372,7 +372,7 @@ func TestBnetGameArchiveClearsExpiredReplayRefs(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := archive.ClearReplayRefsOlderThan(40 * 24 * time.Hour); err != nil {
+	if err := archive.ClearReplayURLsOlderThan(40 * 24 * time.Hour); err != nil {
 		t.Fatal(err)
 	}
 	reloaded := NewBnetGameArchive(root)
@@ -382,8 +382,8 @@ func TestBnetGameArchiveClearsExpiredReplayRefs(t *testing.T) {
 	for _, g := range reloaded.GamesForAccount(1) {
 		switch g.GameID {
 		case "old":
-			if g.MD5 != "" || g.URL != "" {
-				t.Fatalf("expired refs must be cleared: %+v", g)
+			if g.MD5 != "aaa" || g.URL != "" {
+				t.Fatalf("an expired URL must be cleared and its MD5 kept: %+v", g)
 			}
 		case "fresh":
 			if g.MD5 != "bbb" || g.URL == "" {
