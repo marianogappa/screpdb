@@ -263,16 +263,21 @@ func (d *Dashboard) refreshFeaturedProBnet(pro *propack.Pro, profiles []persist.
 	return true
 }
 
-// bnetProfileGamesListed is how many games the page lists: a profile answer
+// bnetRecentGamesWindow is how far back the page lists games: a profile answer
 // holds each toon's last 25, so a toon that went quiet months ago would
 // otherwise trail the account's current games with its old ones.
-const bnetProfileGamesListed = 25
+const bnetRecentGamesWindow = 30 * 24 * time.Hour
 
-// latestListedGames keeps the newest games of the profile's latest answer,
-// from the account's archived games sorted newest first.
-func latestListedGames(p persist.BnetProfile, archived []persist.BnetGame) []persist.BnetGame {
+// latestListedGames keeps the games of the profile's latest answer played in
+// the last bnetRecentGamesWindow, from the account's archived games sorted
+// newest first.
+func latestListedGames(p persist.BnetProfile, archived []persist.BnetGame, now time.Time) []persist.BnetGame {
+	from := now.Add(-bnetRecentGamesWindow)
+	if p.ListedFrom.After(from) {
+		from = p.ListedFrom
+	}
 	n := 0
-	for n < len(archived) && n < bnetProfileGamesListed && !archived[n].CreateTime.Before(p.ListedFrom) {
+	for n < len(archived) && !archived[n].CreateTime.Before(from) {
 		n++
 	}
 	return archived[:n]
@@ -280,11 +285,11 @@ func latestListedGames(p persist.BnetProfile, archived []persist.BnetGame) []per
 
 // mergeFeaturedBnetDetail builds one Battle.net section out of all of a pro's
 // accounts. The account that played most recently leads: its ratings, totals
-// and recent games are the page's, and the games are the newest of its latest
-// answer, so an older account's games or ones that answer has rolled off never
-// pad the list with months-old play. Every account's toons still show as
+// and recent games are the page's, and the games are its latest answer's from
+// the last 30 days, so an older account's games, a quiet toon's or ones that
+// answer has rolled off never pad the list with months-old play. Every account's toons still show as
 // aliases, most recently played first.
-func mergeFeaturedBnetDetail(profiles []persist.BnetProfile, gamesByAccount map[int64][]persist.BnetGame) *bnetProfileDetail {
+func mergeFeaturedBnetDetail(profiles []persist.BnetProfile, gamesByAccount map[int64][]persist.BnetGame, now time.Time) *bnetProfileDetail {
 	byAccount := map[int64]persist.BnetProfile{}
 	for _, p := range profiles {
 		if !p.Found || p.AuroraID == 0 {
@@ -329,7 +334,7 @@ func mergeFeaturedBnetDetail(profiles []persist.BnetProfile, gamesByAccount map[
 	}
 	archived := append([]persist.BnetGame(nil), gamesByAccount[ids[0]]...)
 	sort.SliceStable(archived, func(i, j int) bool { return archived[i].CreateTime.After(archived[j].CreateTime) })
-	games := latestListedGames(lead, archived)
+	games := latestListedGames(lead, archived, now)
 	detail := bnetProfileDetailFromRecord(lead, games)
 	if len(archived) > 0 {
 		detail.LastPlayedAt = archived[0].CreateTime.UTC().Format(time.RFC3339)

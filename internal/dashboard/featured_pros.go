@@ -302,7 +302,7 @@ func (d *Dashboard) buildFeaturedPlayerOverview(playerKey string) (workflowPlaye
 		}
 		gamesByAccount[p.AuroraID] = games
 	}
-	result.BnetProfile = mergeFeaturedBnetDetail(profiles, gamesByAccount)
+	result.BnetProfile = mergeFeaturedBnetDetail(profiles, gamesByAccount, time.Now())
 	if result.BnetProfile != nil {
 		result.BnetGames = int64(pro.GamesSampled)
 		if result.CountryCode == "" {

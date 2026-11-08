@@ -93,12 +93,12 @@ func TestMergeFeaturedBnetDetailShowsTheLeadAccountsLatestList(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		games[2] = append(games[2], bnetGameAt(fmt.Sprintf("old%d", i), base.Add(-time.Duration(70+i)*24*time.Hour), "newmain"))
 	}
-	detail := mergeFeaturedBnetDetail(profiles, games)
+	detail := mergeFeaturedBnetDetail(profiles, games, base.Add(3*time.Hour))
 	if detail == nil || detail.BattleTag != "New#2" {
 		t.Fatalf("lead account: %+v", detail)
 	}
-	if len(detail.RecentGames) != bnetProfileGamesListed {
-		t.Fatalf("recent games %d, want the %d a profile answer lists", len(detail.RecentGames), bnetProfileGamesListed)
+	if len(detail.RecentGames) != 2 {
+		t.Fatalf("recent games %d, want the lead account's two from the last 30 days", len(detail.RecentGames))
 	}
 	if detail.RecentGames[0].GameID != "b1" || detail.RecentGames[1].GameID != "b0" {
 		t.Fatalf("recent games start %s,%s, want the lead account's newest first", detail.RecentGames[0].GameID, detail.RecentGames[1].GameID)
@@ -118,7 +118,7 @@ func TestMergeFeaturedBnetDetailShowsTheLeadAccountsLatestList(t *testing.T) {
 }
 
 func TestMergeFeaturedBnetDetailWithoutAnAccount(t *testing.T) {
-	if detail := mergeFeaturedBnetDetail([]persist.BnetProfile{{Toon: "x", Gateway: 30}}, nil); detail != nil {
+	if detail := mergeFeaturedBnetDetail([]persist.BnetProfile{{Toon: "x", Gateway: 30}}, nil, time.Now()); detail != nil {
 		t.Fatalf("a miss should not make a section: %+v", detail)
 	}
 }
@@ -223,7 +223,7 @@ func TestRefreshFeaturedProBnetAsksAnAlternateWhenAToonIsGone(t *testing.T) {
 	if len(asked) != 2 || !strings.Contains(asked[1], "/Current/") {
 		t.Fatalf("asked %v, want the renamed toon then its account's current one", asked)
 	}
-	detail := mergeFeaturedBnetDetail(d.featuredProBnetProfiles(ctx, pro), nil)
+	detail := mergeFeaturedBnetDetail(d.featuredProBnetProfiles(ctx, pro), nil, time.Now())
 	if detail == nil || detail.Toon != "Current" {
 		t.Fatalf("section %+v, want the account found through its current toon", detail)
 	}
@@ -238,7 +238,7 @@ func TestMergeFeaturedBnetDetailKeepsOnlyTheLatestAnswersGames(t *testing.T) {
 		bnetGameAt("nov-a", base.Add(-time.Hour), "hero"),
 		bnetGameAt("nov-b", base, "hero"),
 	}}
-	detail := mergeFeaturedBnetDetail(profiles, games)
+	detail := mergeFeaturedBnetDetail(profiles, games, base.Add(72*time.Hour))
 	var ids []string
 	for _, g := range detail.RecentGames {
 		ids = append(ids, g.GameID)
@@ -248,7 +248,7 @@ func TestMergeFeaturedBnetDetailKeepsOnlyTheLatestAnswersGames(t *testing.T) {
 	}
 
 	profiles[0].ListedFrom = profiles[0].FetchedAt
-	detail = mergeFeaturedBnetDetail(profiles, games)
+	detail = mergeFeaturedBnetDetail(profiles, games, base.Add(72*time.Hour))
 	if len(detail.RecentGames) != 0 || detail.LastPlayedAt != base.Format(time.RFC3339) {
 		t.Fatalf("an answer listing nothing: %d games, last played %q", len(detail.RecentGames), detail.LastPlayedAt)
 	}
