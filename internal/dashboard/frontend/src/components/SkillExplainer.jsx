@@ -16,15 +16,15 @@ export function SkillExplainerContent({ model }) {
       <p className="skill-explainer-lede">{t('skill.explain.intro')}</p>
       <div className="skill-explainer-points">
         <section>
-          <h3>{t('skill.explain.corpus.title')}</h3>
+          <h3><span className="skill-explainer-check" aria-hidden="true">✓</span>{t('skill.explain.corpus.title')}</h3>
           <p>{t('skill.explain.corpus.body', { games: (model?.games || 0).toLocaleString() })}</p>
         </section>
         <section>
-          <h3>{t('skill.explain.race.title')}</h3>
+          <h3><span className="skill-explainer-check" aria-hidden="true">✓</span>{t('skill.explain.race.title')}</h3>
           <p>{t('skill.explain.race.body')}</p>
         </section>
         <section>
-          <h3>{t('skill.explain.picked.title')}</h3>
+          <h3><span className="skill-explainer-check" aria-hidden="true">✓</span>{t('skill.explain.picked.title')}</h3>
           <p>{t('skill.explain.picked.body')}</p>
         </section>
       </div>
@@ -36,9 +36,7 @@ export function SkillExplainerContent({ model }) {
             <div className="skill-explainer-metric-head">
               <span className="skill-explainer-swatch" style={{ background: COLORS[i % COLORS.length] }} />
               <b>{t(`skill.metric.${m.key}.title`)}</b>
-              <span className="skill-explainer-direction">{t(m.higher_is_better ? 'skill.explain.higherBetter' : 'skill.explain.lowerBetter')}</span>
             </div>
-            <p>{t(`skill.metric.${m.key}.hint`)}</p>
             <div className="skill-explainer-follow">
               <span>{t('skill.explain.follows')}</span>
               <div className="skill-explainer-follow-track"><div style={{ width: `${Math.abs(m.rho) * 100}%` }} /></div>
@@ -47,7 +45,6 @@ export function SkillExplainerContent({ model }) {
           </div>
         ))}
       </div>
-      <p className="skill-explainer-note">{t('skill.explain.follows.note')}</p>
 
       <h3>{t('skill.explain.weights.title')}</h3>
       <p>{t('skill.explain.weights.body')}</p>
@@ -69,9 +66,7 @@ export function SkillExplainerContent({ model }) {
           </div>
         ))}
       </div>
-
-      <h3>{t('skill.explain.oneGame.title')}</h3>
-      <p>{t('skill.explain.oneGame.body')}</p>
+      <p className="skill-explainer-caveat skill-explainer-footer">{t('skill.explain.caveat')}</p>
     </div>
   );
 }

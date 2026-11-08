@@ -1,0 +1,86 @@
+{
+  "note": "Skill readings the owner flagged in their own games. A fixed case must never come back; an open case is reported until it holds. Positions: 0-1 Beginner, 1-2 Intermediate, 2-3 Advanced, 3-4 Pro.",
+  "cases": [
+    {
+      "file": "20261101/222829,(8)Big Game Hunters.rep",
+      "player": "GarneyBumble",
+      "metric": "idle_army_share",
+      "max_position": 2,
+      "why": "Corsairs flown around all game read Pro idle army"
+    },
+    {
+      "file": "20261101/211629,(8)Big Game Hunters-complete.rep",
+      "player": "-=FallenAngel=-",
+      "metric": "idle_army_share",
+      "max_position": 2,
+      "why": "a tiny army read Pro idle army"
+    },
+    {
+      "file": "20261101/222829,(8)Big Game Hunters.rep",
+      "player": "kospetrov",
+      "metric": "idle_army_share",
+      "max_position": 2,
+      "why": "a standing army auto-fighting read Advanced or Pro idle army"
+    },
+    {
+      "file": "20261101/220327,(8)Big Game Hunters-complete.rep",
+      "player": "Tedw1",
+      "metric": "idle_army_share",
+      "max_position": 2,
+      "open": true,
+      "why": "Scouts moved nonstop beside parked Carriers read Pro idle army"
+    },
+    {
+      "file": "20261101/233602,(8)Big Game Hunters.rep",
+      "player": "ELIOTB7",
+      "metric": "production_idle_share",
+      "max_position": 1.34,
+      "open": true,
+      "why": "a 57 APM player on a starving economy read high Intermediate idle production"
+    },
+    {
+      "file": "20261101/224453,(8)Big Game Hunters-complete.rep",
+      "player": "-=FallenAngel=-",
+      "metric": "production_idle_share",
+      "max_position": 1.34,
+      "open": true,
+      "why": "eliminated at 8:00, read high Intermediate idle production"
+    },
+    {
+      "file": "20261101/222829,(8)Big Game Hunters.rep",
+      "player": "chobo86",
+      "metric": "army_cadence",
+      "max_position": 2,
+      "open": true,
+      "why": "no army until 6:00, then constant production on a money map read high Advanced army rhythm"
+    },
+    {
+      "file": "20261101/211629,(8)Big Game Hunters-complete.rep",
+      "player": "-=FallenAngel=-",
+      "metric": "production_idle_share",
+      "max_position": 2,
+      "why": "eliminated at 4:47, two minutes of a Zealot rush read Pro idle production"
+    },
+    {
+      "file": "20261101/211629,(8)Big Game Hunters-complete.rep",
+      "player": "pantylines",
+      "metric": "production_idle_share",
+      "max_position": 2,
+      "why": "eliminated at 4:09, two minutes of a Zealot rush read Pro idle production"
+    },
+    {
+      "file": "20261101/210117,(8)Big Game Hunters.rep",
+      "player": "antinuk",
+      "metric": "idle_army_share",
+      "max_position": 2,
+      "why": "out at 9:39, 1.5 minutes of army with parked Sieged Tanks left out read Pro idle army"
+    }
+  ],
+  "session": {
+    "dir": "20261101",
+    "max_strip_position": 3,
+    "max_headline_position": 2,
+    "open": true,
+    "why": "a beginners' session: no strip may read Pro and no headline above Intermediate"
+  }
+}

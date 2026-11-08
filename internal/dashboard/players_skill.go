@@ -64,12 +64,12 @@ func (d *Dashboard) playersSkill() workflowPlayersSkill {
 		players := d.librarySkillPlayersMemo(model)
 		out.Players = len(players)
 		out.Library = players
-		out.Combined, out.Metrics = skillMedians(players)
+		out.Combined, out.Metrics = skillMedians(model, players)
 	}
 	for _, pro := range d.featuredOverlayPros(func(p *propack.Pro) bool { return p.Skill != nil }) {
 		out.Featured = append(out.Featured, workflowFeaturedSkill{
 			PlayerKey: pro.Key(), PlayerName: pro.Label, Race: pro.MainRace, CountryCode: pro.Country, PhotoURL: proPhotoURL(pro),
-			Games: pro.Skill.Games, Combined: proHeadline(model, pro), Metrics: pro.Skill.Metrics,
+			Games: pro.Skill.Games, Combined: proHeadline(model, pro), Metrics: proStrips(model, pro),
 		})
 	}
 	return out
@@ -101,10 +101,20 @@ func (d *Dashboard) skillByPlayer(ctx context.Context) map[string]skill.Placemen
 // proHeadline recomputes a pro's tier from their metrics, so a pro pack baked before the headline followed
 // the strips still agrees with them.
 func proHeadline(model *skill.Model, pro *propack.Pro) skill.Placement {
-	if h := model.Headline(model.Shares(proSkillRace(pro.MainRace)), pro.Skill.Metrics); h != nil {
+	if h := model.Headline(model.Shares(proSkillRace(pro.MainRace)), proStrips(model, pro)); h != nil {
 		return *h
 	}
 	return pro.Skill.Combined
+}
+
+// proStrips puts a pro pack's metrics on today's strips, so a pack baked with other scales still prints in
+// scale beside the library's players.
+func proStrips(model *skill.Model, pro *propack.Pro) map[string]skill.Placement {
+	out := make(map[string]skill.Placement, len(pro.Skill.Metrics))
+	for k, p := range pro.Skill.Metrics {
+		out[k] = model.OnStrip(k, p)
+	}
+	return out
 }
 
 func proSkillRace(mainRace string) string {
@@ -141,7 +151,7 @@ func librarySkillPlayers(model *skill.Model, replays []*library.Replay) []workfl
 	return out
 }
 
-func skillMedians(summaries []workflowLibrarySkill) (*workflowSkillMedian, map[string]workflowSkillMedian) {
+func skillMedians(model *skill.Model, summaries []workflowLibrarySkill) (*workflowSkillMedian, map[string]workflowSkillMedian) {
 	metrics := map[string]workflowSkillMedian{}
 	if len(summaries) == 0 {
 		return nil, metrics
@@ -154,20 +164,26 @@ func skillMedians(summaries []workflowLibrarySkill) (*workflowSkillMedian, map[s
 			byMetric[k] = append(byMetric[k], p)
 		}
 	}
-	c := medianPlacement(combined)
+	c := medianPlacement(model, "", combined)
 	for k, ps := range byMetric {
-		metrics[k] = medianPlacement(ps)
+		metrics[k] = medianPlacement(model, k, ps)
 	}
 	return &c, metrics
 }
 
-func medianPlacement(ps []skill.Placement) workflowSkillMedian {
+// medianPlacement is the median position, put back on key's strip so its printed value agrees with it ("" for
+// the headline, which has no strip).
+func medianPlacement(model *skill.Model, key string, ps []skill.Placement) workflowSkillMedian {
 	positions := make([]float64, len(ps))
 	values := make([]float64, len(ps))
 	for i, p := range ps {
 		positions[i], values[i] = p.Position, p.Value
 	}
-	return workflowSkillMedian{Position: medianFloat(positions), Value: medianFloat(values), Players: len(ps)}
+	m := skill.Placement{Value: medianFloat(values), Position: medianFloat(positions)}
+	if key != "" {
+		m = model.OnStrip(key, m)
+	}
+	return workflowSkillMedian{Position: m.Position, Value: m.Value, Players: len(ps)}
 }
 
 func medianFloat(xs []float64) float64 {

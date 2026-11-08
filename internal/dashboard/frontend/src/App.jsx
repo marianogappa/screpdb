@@ -5717,6 +5717,7 @@ function App() {
                 showFeatured={showFeaturedPros}
                 featuredToggle={renderFeaturedToggle}
                 onOpenPlayer={openMainPlayer}
+               
               />
             ) : null}
           </div>

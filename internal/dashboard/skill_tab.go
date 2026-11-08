@@ -106,11 +106,22 @@ func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 		if race == "" {
 			continue
 		}
+		// The model was fitted on players who played 8:00 or more; in a team game a player eliminated at 4:00
+		// keeps a few busy Gateways for two minutes and would read Pro.
+		if e, ok := engine[p.Slot]; ok && int(e.Seconds) < skill.MinGameSeconds {
+			continue
+		}
 		values := skillValues(p)
 		if e, ok := engine[p.Slot]; ok {
 			addFinite(values, skill.UnspentPerIncome, e.UnspentPerIncome)
 			addFinite(values, skill.ProductionIdle, e.ProductionIdleShare)
 			addFinite(values, skill.IdleArmy, e.IdleArmyShare)
+			if micro, ok := values[skill.MicroActions]; ok {
+				values[skill.MicroActions] = skill.ScaledMicro(micro, float64(e.ArmyValue))
+			}
+			if cadence, ok := values[skill.ArmyCadence]; ok {
+				values[skill.ArmyCadence] = skill.StartedCadence(cadence, float64(e.ArmyStartCadence))
+			}
 		}
 		g.players[ordinal] = ratedPlayer{race: race, values: values, result: model.Evaluate(race, opponentRace(rec, humans, ordinal), skillContext(rec, len(humans)), values)}
 	}

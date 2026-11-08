@@ -51,7 +51,7 @@ func TestCommandsSplitRecallsAndCountArmyWindows(t *testing.T) {
 	}
 }
 
-func TestMicroActionsCountAbilitiesOncePerSecond(t *testing.T) {
+func TestMicroActionsCountWindowsWithAnAbility(t *testing.T) {
 	at := func(s int) int { return fromFrame + s*sec }
 	storm := &repcmd.TargetedOrderCmd{Base: base(at(10), repcmd.TypeIDTargetedOrder), Order: repcmd.OrderByID(0x8e)}
 	dropAt := &repcmd.TargetedOrderCmd{Base: base(at(20), repcmd.TypeIDTargetedOrder), Order: repcmd.OrderByID(repcmd.OrderIDMoveUnload)}
@@ -61,13 +61,51 @@ func TestMicroActionsCountAbilitiesOncePerSecond(t *testing.T) {
 		&repcmd.GeneralCmd{Base: base(at(1)+6, repcmd.TypeIDHoldPosition)},
 		&repcmd.GeneralCmd{Base: base(at(2), repcmd.TypeIDSiege)}, &repcmd.GeneralCmd{Base: base(at(2)+3, repcmd.TypeIDUnsiege)},
 		&repcmd.GeneralCmd{Base: base(at(3), repcmd.TypeIDBurrow)},
+		&repcmd.GeneralCmd{Base: base(at(4), repcmd.TypeIDUnloadAll)},
 		storm, dropAt, order(at(30)),
 	}
 	end := int32(at(120))
 	minutes := float64(end-fromFrame) * millisPerFrame / 60000
-	// Stim once (the opening's and the spam are dropped), Hold Position, one siege toggle, Psionic Storm and an
-	// unload; burrowing and moving are not micro actions.
-	if got := CommandsOf(cmds, end)[1].MicroActions; math.Abs(got-5/minutes) > 1e-9 {
-		t.Fatalf("micro actions %v per minute, want %v", got, 5/minutes)
+	// Stim and Hold Position in the first 15 seconds are one window, the transport drop is a second one (the
+	// opening's Stim is dropped); sieging, spells, emptying a Bunker, burrowing and moving are not micro actions.
+	if got := CommandsOf(cmds, end)[1].MicroActions; math.Abs(got-2/minutes) > 1e-9 {
+		t.Fatalf("micro actions %v per minute, want %v", got, 2/minutes)
+	}
+}
+
+func TestABurstOfHoldPositionIsOneOrTwoWindows(t *testing.T) {
+	at := func(s int) int { return fromFrame + s*sec }
+	var cmds []repcmd.Cmd
+	for i := range 20 {
+		cmds = append(cmds, &repcmd.GeneralCmd{Base: base(at(100+i), repcmd.TypeIDHoldPosition)})
+	}
+	end := int32(at(13 * 60))
+	minutes := float64(end-fromFrame) * millisPerFrame / 60000
+	if got := CommandsOf(cmds, end)[1].MicroActions; math.Abs(got-2/minutes) > 1e-9 {
+		t.Fatalf("20 presses a second apart: %v per minute, want the 2 windows they span", got)
+	}
+}
+
+func TestScaledMicroWeighsActionsByArmy(t *testing.T) {
+	if got := ScaledMicro(2, microArmyValue/4); got != 0.5 {
+		t.Fatalf("a quarter of a real army: %v, want 0.5", got)
+	}
+	if got := ScaledMicro(2, 2*microArmyValue); got != 2 {
+		t.Fatalf("a big army: %v, want 2", got)
+	}
+	if got := ScaledMicro(2, math.NaN()); got != 2 {
+		t.Fatalf("no army measured: %v, want 2", got)
+	}
+}
+
+func TestStartedCadenceHoldsClicksToStartedUnits(t *testing.T) {
+	if got := StartedCadence(0.5, 0.2); got != 0.25 {
+		t.Fatalf("clicking twice as often as units start: %v, want 0.25", got)
+	}
+	if got := StartedCadence(0.4, 0.38); got != 0.4 {
+		t.Fatalf("units start about as often as clicked: %v, want 0.4", got)
+	}
+	if got := StartedCadence(0.4, math.NaN()); got != 0.4 {
+		t.Fatalf("no engine pass: %v, want 0.4", got)
 	}
 }

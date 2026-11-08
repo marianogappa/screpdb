@@ -1,7 +1,9 @@
 package skill
 
 import (
+	"fmt"
 	"math"
+	"sort"
 	"testing"
 )
 
@@ -109,8 +111,8 @@ func TestRaceSpecificMetricsUseTheirRaceCuts(t *testing.T) {
 	}
 	for _, race := range []string{"T", "P", "Z"} {
 		mid := m.Metrics[ProductionIdle].Cuts[race][0]
-		if p := m.Evaluate(race, "", ContextOneVsOne, map[string]float64{ProductionIdle: mid}).Metrics[ProductionIdle]; math.Abs(p.Position-1) > 1e-9 {
-			t.Errorf("%s idle production at its own Beginner cut sits at %v, want 1", race, p.Position)
+		if p := m.Evaluate(race, "", ContextOneVsOne, map[string]float64{ProductionIdle: mid}).Metrics[ProductionIdle]; math.Abs(p.Position-1) > 0.05 {
+			t.Errorf("%s idle production at its own Beginner cut sits at %v, want 1 give or take a printed percent", race, p.Position)
 		}
 	}
 }
@@ -124,5 +126,99 @@ func TestATiersMedianSitsMidBand(t *testing.T) {
 	}
 	if p := place(-80, [3]float64{-100, -200, -300}, [2]float64{0, -400}, [4]float64{-80, -150, -260, -330}, false); math.Abs(p.Position-0.5) > 1e-9 {
 		t.Errorf("lower is better: %+v", p)
+	}
+}
+
+// TestStripsPrintInScale is the strip contract: whatever race, matchup or kind of game a player's value came
+// from, on one metric's strip a better printed value sits further right, and equal printed values sit together.
+func TestStripsPrintInScale(t *testing.T) {
+	m, _ := Load()
+	type dot struct {
+		who string
+		p   Placement
+	}
+	opponents := map[string][]string{"T": {"", "T", "P", "Z"}, "P": {"", "T", "P", "Z"}, "Z": {"", "T", "P", "Z"}}
+	contexts := []string{ContextOneVsOne, ContextTeamRegular, ContextMoney}
+	for key, mc := range m.Metrics {
+		ends := mc.Ends[AllRaces]
+		lo, hi := min(ends[0], ends[1]), max(ends[0], ends[1])
+		var dots []dot
+		for race, opps := range opponents {
+			for _, opp := range opps {
+				for _, ctx := range contexts {
+					if ctx != ContextOneVsOne && opp != "" {
+						continue
+					}
+					for i := 0; i <= 200; i++ {
+						v := lo + (hi-lo)*1.2*float64(i)/200 - (hi-lo)*0.1
+						if p, ok := m.Evaluate(race, opp, ctx, map[string]float64{key: max(0, v)}).Metrics[key]; ok {
+							dots = append(dots, dot{fmt.Sprintf("%s v%s %q value %v", race, opp, ctx, v), p})
+						}
+					}
+				}
+			}
+		}
+		if len(dots) == 0 {
+			t.Fatalf("%s placed nobody", key)
+		}
+		sign := 1.0
+		if !mc.HigherIsBetter {
+			sign = -1
+		}
+		sort.Slice(dots, func(i, j int) bool { return sign*dots[i].p.Value < sign*dots[j].p.Value })
+		for i, d := range dots {
+			if d.p.Tier != min(TierPro, int(d.p.Position)) {
+				t.Fatalf("%s: %s tier %d disagrees with position %v", key, d.who, d.p.Tier, d.p.Position)
+			}
+			if i == 0 {
+				continue
+			}
+			prev := dots[i-1]
+			switch {
+			case prev.p.Value == d.p.Value && prev.p.Position != d.p.Position:
+				t.Fatalf("%s: %s and %s both print %v but sit at %v and %v", key, prev.who, d.who, d.p.Value, prev.p.Position, d.p.Position)
+			case prev.p.Position > d.p.Position:
+				t.Fatalf("%s: %s prints %v, better than %s's %v, yet sits left (%v < %v)", key, d.who, d.p.Value, prev.who, prev.p.Value, d.p.Position, prev.p.Position)
+			}
+			if step := Step[key]; step > 0 && math.Abs(d.p.Value/step-math.Round(d.p.Value/step)) > 1e-6 {
+				t.Fatalf("%s: %s prints %v, not a multiple of %v", key, d.who, d.p.Value, step)
+			}
+		}
+	}
+}
+
+func TestEveryStripMetricHasAPrintedStep(t *testing.T) {
+	m, _ := Load()
+	for key := range m.Metrics {
+		if Step[key] == 0 {
+			t.Errorf("%s has no Step: the tab would print it rounded while placing it unrounded", key)
+		}
+	}
+}
+
+func TestOnStripIsStable(t *testing.T) {
+	m, _ := Load()
+	for key := range m.Metrics {
+		for _, race := range []string{"T", "P", "Z"} {
+			for _, v := range []float64{0, 0.05, 0.3, 0.47, 0.8, 2, 40, 150, 300} {
+				p, ok := m.Evaluate(race, "", ContextMoney, map[string]float64{key: v}).Metrics[key]
+				if !ok {
+					continue
+				}
+				if again := m.OnStrip(key, p); math.Abs(again.Value-p.Value) > 1e-9 || math.Abs(again.Position-p.Position) > 1e-9 {
+					t.Errorf("%s %s %v: %+v moves to %+v when put on its strip again", key, race, v, p, again)
+				}
+			}
+		}
+	}
+}
+
+func TestABurstOfHoldPositionStaysBelowAdvanced(t *testing.T) {
+	m, _ := Load()
+	burst := ScaledMicro(2.0/13, 2*microArmyValue)
+	for _, race := range []string{"T", "P", "Z"} {
+		if p := m.Evaluate(race, "", ContextOneVsOne, map[string]float64{MicroActions: burst}).Metrics[MicroActions]; p.Tier >= TierAdvanced {
+			t.Errorf("%s: 20 Hold Position presses in 20 seconds of a 15 minute game read %+v", race, p)
+		}
 	}
 }

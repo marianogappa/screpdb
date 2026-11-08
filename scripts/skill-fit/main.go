@@ -54,7 +54,7 @@ var combinedFeatures = chartMetrics
 // perRaceMetrics depend on what a race's production makes, so their values only compare within a race:
 // idle production is idle buildings for Terran and Protoss but waiting larva for Zerg, and Protoss, whose
 // gateway units cost the most, starts army units least often. Micro actions are each race's own abilities:
-// Terran sieges and stims, Protoss merges Archons, Zerg mostly only holds position.
+// Terran stims, Protoss merges Archons, Zerg mostly only holds position.
 var perRaceMetrics = map[string]bool{skill.ArmyCadence: true, skill.ProductionIdle: true, skill.MicroActions: true}
 
 // perMatchupMetrics depend on the opponent's race: Protoss holds positions against Terran far more than in

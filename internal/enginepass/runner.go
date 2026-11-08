@@ -618,7 +618,9 @@ func Summarize(d *engine.Digest, moneyMap bool) *library.EngineData {
 				ep.HallBusy = float32(w.HallBusy)
 			}
 		}
-		ep.IdleArmyShare = float32(macro.IdleArmyShare(d, p.Slot))
+		use := macro.ArmyUseOf(d, p.Slot)
+		ep.IdleArmyShare, ep.ArmyValue = float32(use.IdleShare), float32(use.Value)
+		ep.ArmyStartCadence = float32(macro.ArmyStartCadence(d, p.Slot, p.Seconds))
 		data.Players = append(data.Players, ep)
 	}
 	return data

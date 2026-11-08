@@ -122,7 +122,7 @@ func summarizeSkill(model *skill.Model, rated []ratedPlayer) *workflowPlayerSkil
 	// the tier itself: one or two would decide it on their own.
 	for k, ps := range byMetric {
 		if len(ps) >= minSkillGames {
-			out.Metrics[k] = gamesPlacement(ps)
+			out.Metrics[k] = gamesPlacement(model, k, ps)
 		}
 	}
 	headline := model.Headline(shares, out.Metrics)
@@ -149,8 +149,8 @@ func summarizeSkill(model *skill.Model, rated []ratedPlayer) *workflowPlayerSkil
 
 // gamesPlacement is the median of a player's game placements, with the tier its position falls in. Per-game
 // positions stop at the axis ends, so a mean would pull strong and weak players toward the middle tiers.
-func gamesPlacement(ps []skill.Placement) skill.Placement {
-	m := medianPlacement(ps)
+func gamesPlacement(model *skill.Model, key string, ps []skill.Placement) skill.Placement {
+	m := medianPlacement(model, key, ps)
 	return skill.Placement{Value: m.Value, Position: m.Position, Tier: min(skill.TierPro, int(m.Position))}
 }
 
@@ -167,6 +167,8 @@ type workflowSkillMetric struct {
 	Rho            float64            `json:"rho"`
 	HigherIsBetter bool               `json:"higher_is_better"`
 	Share          map[string]float64 `json:"share"`
+	// Step is the precision the strip placed the metric's values at, and so the precision to print them at.
+	Step float64 `json:"step"`
 }
 
 func skillModelSummary(m *skill.Model) *workflowSkillModel {
@@ -179,7 +181,7 @@ func skillModelSummary(m *skill.Model) *workflowSkillModel {
 	}
 	for i, key := range m.Combined.Features {
 		mc := m.Metrics[key]
-		metric := workflowSkillMetric{Key: key, Rho: mc.Rho, HigherIsBetter: mc.HigherIsBetter, Share: map[string]float64{}}
+		metric := workflowSkillMetric{Key: key, Rho: mc.Rho, HigherIsBetter: mc.HigherIsBetter, Share: map[string]float64{}, Step: skill.Step[key]}
 		for race, cr := range m.Combined.Races {
 			if totals[race] > 0 && i < len(cr.Weights) {
 				metric.Share[race] = max(cr.Weights[i], -cr.Weights[i]) / totals[race]

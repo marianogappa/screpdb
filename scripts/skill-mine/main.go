@@ -64,6 +64,9 @@ type sample struct {
 	// the metrics rather than how they follow MMR.
 	MapKind string `json:"map_kind,omitempty"`
 	Humans  int    `json:"humans,omitempty"`
+	// Series are per-minute and per-snapshot measurements, for yardsticks built from what players of a kind
+	// of game typically have at each point of it.
+	Series map[string][]float64 `json:"series,omitempty"`
 }
 
 type job struct {
@@ -320,6 +323,9 @@ func run(j job, data *engine.Data) []sample {
 			for k, v := range armyUseValues(d, int8(p.Slot)) {
 				values[k] = v
 			}
+			for k, v := range startCadenceValues(d, int8(p.Slot), m.Seconds) {
+				values[k] = v
+			}
 			for k, v := range windowed[int8(p.Slot)] {
 				values[k] = v
 			}
@@ -334,7 +340,11 @@ func run(j job, data *engine.Data) []sample {
 			values["e8_supply"] = float64(e.SupplyUsed) / 2
 			values["e8_gathered"] = float64(e.GatheredMinerals + e.GatheredGas)
 		}
+		adjustCommandMetrics(values)
 		s := sample{Match: j.row.MatchID, Duration: j.row.Duration, Side: j.sides[i], Engine: engineState, Values: values}
+		if d != nil && engineState == "high" {
+			s.Series = seriesOf(d, int8(p.Slot))
+		}
 		switch p.PlayerOutcome() {
 		case models.OutcomeWon:
 			won := true
@@ -439,12 +449,66 @@ func engineValues(m macro.Player) map[string]float64 {
 	return values
 }
 
+// adjustCommandMetrics weighs micro actions by the army they were used on and holds army cadence to started
+// units, as the dashboard does.
+func adjustCommandMetrics(values map[string]float64) {
+	if cadence, ok := values[skill.ArmyCadence]; ok {
+		started, ok := values["army_start_cadence"]
+		if !ok {
+			started = math.NaN()
+		}
+		values["cadence_clicked"] = cadence
+		values[skill.ArmyCadence] = skill.StartedCadence(cadence, started)
+	}
+	micro, ok := values[skill.MicroActions]
+	if !ok {
+		return
+	}
+	army, ok := values["army_value"]
+	if !ok {
+		army = math.NaN()
+	}
+	values["micro_unscaled"] = micro
+	values[skill.MicroActions] = skill.ScaledMicro(micro, army)
+}
+
+// seriesOf is a player's gathered resources and army production building-seconds (busy and owned, from
+// 2:00) at the end of each minute, and their army worth and idle part at each snapshot from 8:00.
+func seriesOf(d *engine.Digest, slot int8) map[string][]float64 {
+	out := map[string][]float64{}
+	for _, e := range d.Economy {
+		if e.Owner == slot && int(e.Frame)/24 >= 60*len(out["gathered"]) {
+			out["gathered"] = append(out["gathered"], float64(e.GatheredMinerals+e.GatheredGas))
+		}
+	}
+	busy, owned := macro.ProductionByMinute(d, slot)
+	out["busy"], out["owned"] = busy, owned
+	for _, m := range macro.ArmyMoments(d, slot) {
+		out["army_second"] = append(out["army_second"], float64(m.Second))
+		out["army_full"] = append(out["army_full"], m.Full)
+		out["army_standing"] = append(out["army_standing"], m.Standing)
+	}
+	return out
+}
+
 func armyUseValues(d *engine.Digest, slot int8) map[string]float64 {
 	values := map[string]float64{}
-	if idle := macro.IdleArmyShare(d, slot); !math.IsNaN(idle) {
-		values[skill.IdleArmy] = idle
+	use := macro.ArmyUseOf(d, slot)
+	if !math.IsNaN(use.IdleShare) {
+		values[skill.IdleArmy] = use.IdleShare
+	}
+	if !math.IsNaN(use.Value) {
+		values["army_value"] = use.Value
 	}
 	return values
+}
+
+// startCadenceValues are the windows in which army units started, over the player's trusted seconds.
+func startCadenceValues(d *engine.Digest, slot int8, seconds int) map[string]float64 {
+	if c := macro.ArmyStartCadence(d, slot, seconds); !math.IsNaN(c) {
+		return map[string]float64{"army_start_cadence": c}
+	}
+	return nil
 }
 
 // earlySeconds is the window before a game's outcome dominates what each player can do: a player who is
@@ -669,6 +733,9 @@ func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, 
 			for k, v := range armyUseValues(d, int8(p.Slot)) {
 				values[k] = v
 			}
+			for k, v := range startCadenceValues(d, int8(p.Slot), m.Seconds) {
+				values[k] = v
+			}
 			for k, v := range windowed[int8(p.Slot)] {
 				values[k] = v
 			}
@@ -683,7 +750,12 @@ func measureUnlabelled(b []byte, rec *library.Replay, humans []*library.Player, 
 				values[k] = v
 			}
 		}
-		out = append(out, sample{Duration: int(rec.Duration), Side: side{Toon: p.Name, Race: p.Race.String()[:1]}, Engine: engineState, Values: values})
+		adjustCommandMetrics(values)
+		s := sample{Duration: int(rec.Duration), Side: side{Toon: p.Name, Race: p.Race.String()[:1]}, Engine: engineState, Values: values}
+		if d != nil {
+			s.Series = seriesOf(d, int8(p.Slot))
+		}
+		out = append(out, s)
 	}
 	return out
 }

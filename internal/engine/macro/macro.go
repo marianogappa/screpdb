@@ -97,6 +97,9 @@ func Compute(d *engine.Digest) []Player {
 		}
 		scoreSupply(&p, samples, timeline)
 		scoreResources(&p, samples)
+		if pl.Race != raceZerg {
+			timeline.productionIdle = productionIdle(timeline, p.IncomePerMinute)
+		}
 		scoreWorkers(&p, d, samples)
 		p.Floats = floats(samples, timeline)
 		for _, e := range p.Floats {
@@ -142,6 +145,32 @@ type facilityTimeline struct {
 	productionFree []bool
 	workerIdle     float64
 	productionIdle float64
+	// armyBusy and armyAlive are army production building-seconds from 2:00, over steadySeconds seconds.
+	armyBusy, armyAlive, steadySeconds float64
+	// busyByMinute and aliveByMinute are armyBusy and armyAlive up to the end of each minute.
+	busyByMinute, aliveByMinute []float64
+}
+
+// ProductionByMinute is a Terran or Protoss player's army production building-seconds from 2:00, busy and
+// owned, up to the end of each minute of their game.
+func ProductionByMinute(d *engine.Digest, slot int8) (busy, owned []float64) {
+	end := playerEnds(d)[slot]
+	t := buildingTimeline(d, slot, len(economyOf(d, slot, end)))
+	return t.busyByMinute, t.aliveByMinute
+}
+
+// incomePerBuilding is the income one Terran or Protoss production building turns into army when kept busy.
+const incomePerBuilding = 500
+
+// productionIdle is the share of production capacity left idle from 2:00, where the capacity is the
+// buildings the player had or, when more, the ones their income could keep busy: a beginner keeping one
+// Barracks busy all game is not producing like a pro who keeps ten busy.
+func productionIdle(t facilityTimeline, incomePerMinute float64) float64 {
+	capacity := max(t.armyAlive, incomePerMinute/incomePerBuilding*t.steadySeconds)
+	if math.IsNaN(capacity) || capacity == 0 {
+		return math.NaN()
+	}
+	return 1 - t.armyBusy/capacity
 }
 
 func scoreSupply(p *Player, samples []engine.EconomySample, t facilityTimeline) {
@@ -337,8 +366,8 @@ func buildingTimeline(d *engine.Digest, slot int8, seconds int) facilityTimeline
 		workers[i] = s.Workers < workerTarget
 	}
 
-	t := facilityTimeline{productionFree: make([]bool, seconds)}
-	var hallIdle, hallSeconds, armyIdle, armySeconds float64
+	t := facilityTimeline{productionFree: make([]bool, seconds), steadySeconds: float64(max(0, seconds-steadyFromSecond))}
+	var hallIdle, hallSeconds float64
 	for i := range seconds {
 		for _, b := range byUnit {
 			if i < b.alive.from || i >= b.alive.to {
@@ -350,9 +379,11 @@ func buildingTimeline(d *engine.Digest, slot int8, seconds int) facilityTimeline
 			}
 			switch {
 			case b.army:
-				armySeconds++
-				if idle {
-					armyIdle++
+				if i >= steadyFromSecond {
+					t.armyAlive++
+					if !idle {
+						t.armyBusy++
+					}
 				}
 			case workers[i]:
 				hallSeconds++
@@ -361,8 +392,12 @@ func buildingTimeline(d *engine.Digest, slot int8, seconds int) facilityTimeline
 				}
 			}
 		}
+		if (i+1)%secondsPerMin == 0 {
+			t.busyByMinute = append(t.busyByMinute, t.armyBusy)
+			t.aliveByMinute = append(t.aliveByMinute, t.armyAlive)
+		}
 	}
-	t.workerIdle, t.productionIdle = share(hallIdle, hallSeconds), share(armyIdle, armySeconds)
+	t.workerIdle = share(hallIdle, hallSeconds)
 	return t
 }
 
