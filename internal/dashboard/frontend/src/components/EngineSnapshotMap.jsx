@@ -198,6 +198,23 @@ const clampRegion = (region, width, height) => {
   return { x, y, w: Math.min(region.w, width - x), h: Math.min(region.h, height - y) };
 };
 
+// The Ghost painting a nuke stands within its sight range of the target: 11 tiles with Ocular Implants.
+const NUKE_GHOST_REACH = 14 * TILE;
+
+const nukeGhost = (units, playerId, point) => {
+  let best = null;
+  let bestDist = NUKE_GHOST_REACH;
+  for (const u of units || []) {
+    if (u.player_id !== playerId || spriteKeyOf(u.unit_type) !== 'ghost') continue;
+    const d = Math.hypot(u.x - point.x, u.y - point.y);
+    if (d <= bestDist) {
+      best = u;
+      bestDist = d;
+    }
+  }
+  return best;
+};
+
 const polygonCentroid = (polygon) => {
   const n = (polygon || []).length;
   if (n === 0) return null;
@@ -447,6 +464,8 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const byY = (a, b) => a.y - b.y;
   ground.sort(byY);
   air.sort(byY);
+  const nukePoint = event?.type === 'nuke' && engine?.point ? engine.point : null;
+  const ghost = nukePoint ? nukeGhost(snapshot?.units, event?.actor?.player_id, nukePoint) : null;
 
   return (
     <div className="engine-snapshot" ref={rootRef}>
@@ -499,6 +518,19 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
             {ground.map((g) => g.node)}
             {air.map((a) => a.node)}
             {focus ? <rect className="engine-focus-dim" width={width} height={height} fill={`url(#${focusId})`} /> : null}
+            {ghost ? (
+              <g className="engine-nuke-ghost" pointerEvents="none">
+                <line x1={ghost.x} y1={ghost.y} x2={nukePoint.x} y2={nukePoint.y} stroke="#ff2b2b" strokeOpacity={0.7} strokeWidth={2 * uiScale} strokeDasharray={`${6 * uiScale} ${5 * uiScale}`} />
+                <circle className="engine-nuke-ghost-ring" cx={ghost.x} cy={ghost.y} r={Math.max(24, 18 * uiScale)} strokeWidth={3 * uiScale} />
+              </g>
+            ) : null}
+            {nukePoint ? (
+              <g className={`engine-nuke-target${event?.result === 'cancelled' || event?.result === 'ghost_killed' ? ' engine-nuke-target--failed' : ''}`} pointerEvents="none">
+                <circle className="engine-nuke-target-wave" cx={nukePoint.x} cy={nukePoint.y} r={24 * uiScale} strokeWidth={4 * uiScale} />
+                <circle cx={nukePoint.x} cy={nukePoint.y} r={24 * uiScale} fill="#ff1a1a" fillOpacity={0.3} />
+                <circle cx={nukePoint.x} cy={nukePoint.y} r={12 * uiScale} fill="#ff1a1a" stroke="#fff" strokeWidth={2.5 * uiScale} />
+              </g>
+            ) : null}
             {bases.map((b) => (
               <polygon
                 key={`base-hit-${b.name}-${b.clock}-${b.polygon[0].x}`}

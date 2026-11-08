@@ -103,7 +103,25 @@ type Event struct {
 	Outcome        Outcome
 	// Seconds is how long the event lasted, for those that are a span (a supply block).
 	Seconds int
+	// Result is how a nuke or a recall ended: one of the Nuke* or Recall* values, or empty when unknown.
+	Result string
+	// Count is how many units a recall brought.
+	Count int
+	// Hallucinated is how many hallucinated Arbiters went in with a recall.
+	Hallucinated int
 }
+
+const (
+	NukeLanded      = "landed"
+	NukeGhostKilled = "ghost_killed"
+	NukeCancelled   = "cancelled"
+
+	RecallRazedBase    = "razed_base"
+	RecallRazed        = "razed"
+	RecallWiped        = "wiped"
+	RecallTradedWell   = "traded_well"
+	RecallTradedPoorly = "traded_poorly"
+)
 
 // Outcome is what an attack, drop or harass did, from the actor's side.
 type Outcome struct {
@@ -114,6 +132,8 @@ type Outcome struct {
 	TownHall     bool
 	// First is the actor's first attack on that target.
 	First bool
+	// KilledUnits is how many of the target's units died.
+	KilledUnits int
 }
 
 // Region is a rectangle of the map in pixels.
@@ -837,10 +857,12 @@ func (g *game) killsAt(actor, target int8, base int, from, to int) int32 {
 }
 
 // teleports turns units crossing the map in a second into recalls (Protoss, with an accepted Recall cast
-// near the arrival) and nydus attacks (Zerg arriving in a base an enemy holds).
+// where they left from: Recall is cast on the units, which jump to the Arbiter) and nydus attacks (Zerg
+// arriving in a base an enemy holds).
 func (g *game) teleports() []Event {
 	var out []Event
 	lastNydus := map[[2]int64]int{}
+	var recalls []*recall
 	for _, t := range g.d.Teleports {
 		if len(t.Units) < teleportMinUnits {
 			continue
@@ -851,15 +873,18 @@ func (g *game) teleports() []Event {
 		target := g.holder(to, sec)
 		switch p.Race {
 		case openbw.RaceProtoss:
-			if !g.recallCast(t.Owner, sec, t.ToX, t.ToY) {
+			if !g.recallCast(t.Owner, sec, t.FromX, t.FromY) {
+				continue
+			}
+			if r := openRecall(recalls, t, sec); r != nil {
+				r.last = sec
+				r.units = append(r.units, t.Units...)
 				continue
 			}
 			if !g.enemies(t.Owner, target) {
 				target = NoPlayer
 			}
-			e := g.event("recall", sec, t.Owner, target, to, t.ToX, t.ToY, append([]uint16{ut(bwgame.UnitTypesProtossArbiter)}, byCount(t.Units)...)).shownAt(sec + arrivalLead)
-			e.SourceBase = g.baseOf(t.FromX, t.FromY)
-			out = append(out, e)
+			recalls = append(recalls, &recall{owner: t.Owner, target: target, to: to, from: g.baseOf(t.FromX, t.FromY), first: sec, last: sec, x: t.ToX, y: t.ToY, units: slices.Clone(t.Units)})
 		case openbw.RaceZerg:
 			if !g.enemies(t.Owner, target) {
 				continue
@@ -872,7 +897,49 @@ func (g *game) teleports() []Event {
 			out = append(out, g.event("nydus_attack", sec, t.Owner, target, to, t.ToX, t.ToY, byCount(t.Units)).shownAt(sec+arrivalLead))
 		}
 	}
+	for _, r := range recalls {
+		e := g.event("recall", r.first, r.owner, r.target, r.to, r.x, r.y, append([]uint16{ut(bwgame.UnitTypesProtossArbiter)}, byCount(r.units)...)).shownAt(r.first + arrivalLead)
+		e.SourceBase = r.from
+		e.Count = len(r.units)
+		e.Hallucinated = g.hallucinatedArbiters(r.owner, r.first)
+		deaths := g.deathsNear(r.owner, r.x, r.y, recallReach, r.first, r.last+recallFollowUp)
+		e.Outcome = g.outcome(r.owner, deaths)
+		e.Result = recallResult(e.Outcome, unitsValue(r.units), g.lostBy(r.owner, deaths, r.last+recallQuickDeath))
+		e.Region = fightRegion(deaths, e.Region, r.x, r.y)
+		out = append(out, e)
+	}
 	return out
+}
+
+const (
+	// One Arbiter's recall lands over a couple of seconds and a second Arbiter often recalls into the same
+	// spot right after: arrivals by one player within 30 s and 20 tiles are one recall.
+	recallMergeSeconds = 30
+	recallMergeReach   = 20 * tile
+	// What a recall did is read from deaths within 16 tiles of the arrival in the 45 s after it.
+	recallReach      = 16 * tile
+	recallFollowUp   = 45
+	recallQuickDeath = 20
+	// Hallucination is cast up to a minute before the recall, and a hallucination lasts 1350 frames.
+	hallucinationBefore = 60
+	hallucinationLife   = 57
+)
+
+type recall struct {
+	owner, target int8
+	to, from      int
+	first, last   int
+	x, y          int32
+	units         []uint16
+}
+
+func openRecall(recalls []*recall, t engine.Teleport, sec int) *recall {
+	for _, r := range recalls {
+		if r.owner == t.Owner && sec-r.last <= recallMergeSeconds && dist2(r.x, r.y, t.ToX, t.ToY) <= recallMergeReach*recallMergeReach {
+			return r
+		}
+	}
+	return nil
 }
 
 func (g *game) recallCast(owner int8, sec int, x, y int32) bool {
@@ -885,13 +952,104 @@ func (g *game) recallCast(owner int8, sec int, x, y int32) bool {
 	return false
 }
 
+// hallucinatedArbiters counts the owner's hallucinated Arbiters alive at a recall: a Hallucination cast in
+// the minute before it, and hallucinated Arbiters of theirs dying (killed or expired) after the recall and
+// within a hallucination's life of that cast. The cast alone does not say what was hallucinated.
+func (g *game) hallucinatedArbiters(owner int8, sec int) int {
+	var casts []int
+	for _, c := range g.d.Casts {
+		if cs := second(c.Frame); c.Owner == owner && c.Order == orderHallucination && cs <= sec && sec-cs <= hallucinationBefore {
+			casts = append(casts, cs)
+		}
+	}
+	if len(casts) == 0 {
+		return 0
+	}
+	n := 0
+	for _, x := range g.d.Deaths {
+		ds := second(x.Frame)
+		if x.Owner != owner || x.Type != ut(bwgame.UnitTypesProtossArbiter) || openbw.UnitClass(x.Class) != openbw.ClassHallucination || ds < sec {
+			continue
+		}
+		if slices.ContainsFunc(casts, func(cs int) bool { return ds <= cs+hallucinationLife }) {
+			n++
+		}
+	}
+	return n
+}
+
+// deathsNear is every real unit of the player's, or killed by them, that died within reach of a point in a window.
+func (g *game) deathsNear(player int8, x, y, reach int32, from, to int) []engine.Death {
+	var out []engine.Death
+	for _, d := range g.deaths {
+		sec := second(d.Frame)
+		if sec < from || sec > to || openbw.UnitClass(d.Class) == openbw.ClassHallucination || dist2(d.X, d.Y, x, y) > int64(reach)*int64(reach) {
+			continue
+		}
+		if d.Owner == player && g.enemies(player, d.KillerOwner) || d.KillerOwner == player && g.enemies(player, d.Owner) {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+func (g *game) lostBy(player int8, deaths []engine.Death, until int) int32 {
+	var lost int32
+	for _, d := range deaths {
+		if d.Owner == player && second(d.Frame) <= until {
+			lost += max(CostOf(d.Type).Value(), 1)
+		}
+	}
+	return lost
+}
+
+func unitsValue(types []uint16) int32 {
+	var v int32
+	for _, t := range types {
+		v += CostOf(t).Value()
+	}
+	return v
+}
+
 const (
-	orderRecall    = 0x89
-	orderNukePaint = 0x7e
+	recallRazedBuildings = 2
+	recallMinTrade       = 300
+)
+
+// recallResult says how a recall went: a base razed, buildings razed, the recalled units dying at once (three
+// quarters of their value within 20 s, having killed less than half of that), or the trade either way.
+func recallResult(o Outcome, recalled, lostQuickly int32) string {
+	switch {
+	case o.TownHall:
+		return RecallRazedBase
+	case o.Buildings >= recallRazedBuildings:
+		return RecallRazed
+	case recalled > 0 && lostQuickly*4 >= recalled*3 && o.Killed*2 < lostQuickly:
+		return RecallWiped
+	case o.Killed >= recallMinTrade && o.Killed*2 >= o.Lost*3:
+		return RecallTradedWell
+	case o.Lost >= recallMinTrade && o.Lost*2 >= o.Killed*3:
+		return RecallTradedPoorly
+	}
+	return ""
+}
+
+const (
+	orderRecall        = 0x89
+	orderNukePaint     = 0x7e
+	orderHallucination = 0x94
+)
+
+const (
+	// From the paint order to the missile's end: the Ghost walking into range, the launch and the flight.
+	nukeResolveWithin = 30
+	nukeBlastReach    = 9 * tile
+	nukeGhostReach    = 14 * tile
 )
 
 func (g *game) nukes() []Event {
 	var out []Event
+	used := map[int]bool{}
 	for _, c := range g.d.Casts {
 		if c.Order != orderNukePaint {
 			continue
@@ -902,9 +1060,67 @@ func (g *game) nukes() []Event {
 		if !g.enemies(c.Owner, target) {
 			continue
 		}
-		out = append(out, g.event("nuke", sec, c.Owner, target, b, c.X, c.Y, []uint16{ut(bwgame.UnitTypesTerranGhost)}))
+		e := g.event("nuke", sec, c.Owner, target, b, c.X, c.Y, []uint16{ut(bwgame.UnitTypesTerranGhost)})
+		end, result := g.nukeResult(c, used)
+		e.Result = result
+		if result != "" {
+			// Shown the moment before it ends, with the Ghost still painting the target.
+			e.SnapshotSecond = max(sec, end-1)
+		}
+		if result == NukeLanded {
+			e.Outcome = g.outcome(c.Owner, g.deathsNear(c.Owner, c.X, c.Y, nukeBlastReach, end, end+1))
+		}
+		out = append(out, e)
 	}
 	return out
+}
+
+// nukeResult reads how a nuke ended from its missile: it dies Detonated on landing, and dies Linked when the
+// Ghost painting the target dies or stops. A Ghost of the owner dying that same second was killed; a
+// missile that never flew (the Ghost stopped or died before it was in range) leaves no missile death.
+func (g *game) nukeResult(c engine.Cast, used map[int]bool) (int, string) {
+	sec := second(c.Frame)
+	if sec+nukeResolveWithin >= g.trusted {
+		return 0, ""
+	}
+	for i, x := range g.deaths {
+		ds := second(x.Frame)
+		if used[i] || x.Owner != c.Owner || x.Type != ut(bwgame.UnitTypesTerranNuclearMissile) || ds < sec || ds > sec+nukeResolveWithin {
+			continue
+		}
+		switch openbw.DeathReason(x.Reason) {
+		case openbw.ReasonDetonated:
+			if dist2(x.X, x.Y, c.X, c.Y) > 2*tile*2*tile {
+				continue
+			}
+			used[i] = true
+			return ds, NukeLanded
+		case openbw.ReasonLinked:
+			used[i] = true
+			if _, killed := g.ghostKilled(c.Owner, ds-1, ds+1, nil); killed {
+				return ds, NukeGhostKilled
+			}
+			return ds, NukeCancelled
+		}
+	}
+	if ds, killed := g.ghostKilled(c.Owner, sec, sec+nukeResolveWithin, &[2]int32{c.X, c.Y}); killed {
+		return ds, NukeGhostKilled
+	}
+	return sec, NukeCancelled
+}
+
+// ghostKilled finds a Ghost of the owner killed between from and to, within reach of near when given.
+func (g *game) ghostKilled(owner int8, from, to int, near *[2]int32) (int, bool) {
+	for _, d := range g.deaths {
+		ds := second(d.Frame)
+		if d.Owner != owner || d.Type != ut(bwgame.UnitTypesTerranGhost) || ds < from || ds > to || d.Reason != uint8(openbw.ReasonDamage) && d.Reason != uint8(openbw.ReasonSpell) {
+			continue
+		}
+		if near == nil || dist2(d.X, d.Y, near[0], near[1]) <= int64(nukeGhostReach)*int64(nukeGhostReach) {
+			return ds, true
+		}
+	}
+	return 0, false
 }
 
 func combatUnit(t uint16) bool {
@@ -1170,6 +1386,7 @@ func (g *game) outcome(actor int8, deaths []engine.Death) Outcome {
 			continue
 		}
 		o.Killed += v
+		o.KilledUnits++
 		_, building := FootprintOf(x.Type)
 		switch {
 		case isWorker(x.Type):
