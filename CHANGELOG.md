@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.36.0](https://github.com/marianogappa/screpdb/compare/v1.35.1...v1.36.0) (2026-11-08)
+
+
+### Features
+
+* **events:** uncropped engine maps, nuke and recall outcomes, phase snapshots ([#487](https://github.com/marianogappa/screpdb/issues/487)) ([31be95b](https://github.com/marianogappa/screpdb/commit/31be95bafaeefb4ecf65d159e96f97dd9972b62b))
+* **skill:** one-scale strips, worst-to-best submetrics and sturdier idle army and micro readings ([#488](https://github.com/marianogappa/screpdb/issues/488)) ([f0c7b68](https://github.com/marianogappa/screpdb/commit/f0c7b68ff403ce1c60922214cd857edcaaf7e67f))
+
+
+### Bug Fixes
+
+* **dashboard:** keep pro pages' Battle.net recent games current ([#485](https://github.com/marianogappa/screpdb/issues/485)) ([7419887](https://github.com/marianogappa/screpdb/commit/7419887e0e44528237867fd4939b9e9844a5693e))
+
 ## [1.35.1](https://github.com/marianogappa/screpdb/compare/v1.35.0...v1.35.1) (2026-11-08)
 
 
