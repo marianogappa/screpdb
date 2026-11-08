@@ -160,3 +160,21 @@ func TestChecksumMatchesSHA256(t *testing.T) {
 		t.Errorf("parsed checksum does not match sha256(asset)")
 	}
 }
+
+func TestIsNewer(t *testing.T) {
+	for _, tc := range []struct {
+		a, b string
+		want bool
+	}{
+		{"v1.36.1", "v1.36.0", true},
+		{"v2.0.0", "v1.99.99", true},
+		{"v1.36.0", "v1.36.0", false},
+		{"v1.35.9", "v1.36.0", false},
+		{"dev", "v1.36.0", false},
+		{"v1.36.1", "", false},
+	} {
+		if got := IsNewer(tc.a, tc.b); got != tc.want {
+			t.Errorf("IsNewer(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		}
+	}
+}

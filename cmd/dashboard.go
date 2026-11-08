@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/appdata"
+	"github.com/marianogappa/screpdb/internal/buildinfo"
 	"github.com/marianogappa/screpdb/internal/dashboard"
 	"github.com/marianogappa/screpdb/internal/dashboardrun"
 	"github.com/marianogappa/screpdb/internal/netfacade"
@@ -56,9 +57,17 @@ func RunDashboardWithContext(ctx context.Context, opts dashboardrun.Options) err
 		// by a foreign process, fall through to the next free port in range.
 		// Skipped during a self-update relaunch, where we deliberately want to
 		// wait for and rebind the same port.
-		resolvedPort, alreadyRunning, resolveErr := resolveDashboardPort(opts.Port)
+		resolvedPort, runningVersion, alreadyRunning, resolveErr := resolveDashboardPort(opts.Port)
 		if resolveErr != nil {
 			return resolveErr
+		}
+		if alreadyRunning && selfupdate.IsNewer(buildinfo.Version, runningVersion) {
+			addr := fmt.Sprintf("localhost:%d", resolvedPort)
+			if err := takeOverOlderInstance(addr, runningVersion); err != nil {
+				log.Printf("Could not replace the running screpdb %s: %v", runningVersion, err)
+			} else {
+				alreadyRunning = false
+			}
 		}
 		if alreadyRunning {
 			serverURL := fmt.Sprintf("http://localhost:%d", resolvedPort)
@@ -145,23 +154,45 @@ const dashboardPortScanRange = 10
 
 // resolveDashboardPort implements screpdb's single-instance policy. Starting at
 // the preferred port it scans a small range and returns either a free port to
-// bind (alreadyRunning=false) or the port of an existing screpdb to reconnect to
-// (alreadyRunning=true). A port held by a foreign process is skipped. It errors
-// only if the whole range is occupied by non-screpdb processes.
-func resolveDashboardPort(preferred int) (port int, alreadyRunning bool, err error) {
+// bind (alreadyRunning=false) or the port and version of an existing screpdb to
+// reconnect to (alreadyRunning=true). A port held by a foreign process is
+// skipped. It errors only if the whole range is occupied by non-screpdb
+// processes.
+func resolveDashboardPort(preferred int) (port int, runningVersion string, alreadyRunning bool, err error) {
 	for p := preferred; p < preferred+dashboardPortScanRange; p++ {
 		addr := fmt.Sprintf("localhost:%d", p)
 		if netfacade.LocalPortAvailable(addr) {
-			return p, false, nil
+			return p, "", false, nil
 		}
-		if netfacade.IsLocalScrepdb(addr, 2*time.Second) {
-			return p, true, nil
+		if version, ok := netfacade.LocalScrepdbVersion(addr, 2*time.Second); ok {
+			return p, version, true, nil
 		}
 		log.Printf("Port %d is in use by another process; trying the next one.", p)
 	}
-	return 0, false, fmt.Errorf(
+	return 0, "", false, fmt.Errorf(
 		"no free port found in range %d-%d, and no existing screpdb to reconnect to",
 		preferred, preferred+dashboardPortScanRange-1)
+}
+
+const takeOverTimeout = 20 * time.Second
+
+// takeOverOlderInstance shuts down an older screpdb serving addr and waits for
+// it to release the port. Users usually launch a freshly downloaded version
+// while the old one is still running; reconnecting to the old one would leave
+// them on it.
+func takeOverOlderInstance(addr, runningVersion string) error {
+	log.Printf("screpdb %s is running at %s; replacing it with %s.", runningVersion, addr, buildinfo.Version)
+	if err := netfacade.QuitLocalScrepdb(addr, 5*time.Second); err != nil {
+		return err
+	}
+	deadline := time.Now().Add(takeOverTimeout)
+	for time.Now().Before(deadline) {
+		if netfacade.LocalPortAvailable(addr) {
+			return nil
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	return fmt.Errorf("it did not stop within %s", takeOverTimeout)
 }
 
 // openDashboardBrowser opens the dashboard in the default browser. The

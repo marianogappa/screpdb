@@ -88,28 +88,53 @@ func LocalPortAvailable(addr string) bool {
 // IsLocalScrepdb reports whether the loopback address is served by a screpdb
 // instance, by GETting /api/health and checking for screpdb's identity marker.
 // It refuses any non-loopback address and makes no request off the loopback
-// interface. Used for single-instance detection: a busy port that answers as
-// screpdb should be reused rather than treated as a fatal conflict.
+// interface.
 func IsLocalScrepdb(addr string, timeout time.Duration) bool {
+	_, ok := LocalScrepdbVersion(addr, timeout)
+	return ok
+}
+
+// LocalScrepdbVersion is IsLocalScrepdb that also returns the version the
+// running instance reports, so a newer build can decide to take over from it.
+func LocalScrepdbVersion(addr string, timeout time.Duration) (string, bool) {
 	if !isLocalAddr(addr) {
-		return false
+		return "", false
 	}
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Get("http://" + addr + "/api/health")
 	if err != nil {
-		return false
+		return "", false
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return false
+		return "", false
 	}
 	var body struct {
-		App string `json:"app"`
+		App     string `json:"app"`
+		Version string `json:"version"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<16)).Decode(&body); err != nil {
-		return false
+		return "", false
 	}
-	return body.App == "screpdb"
+	return body.Version, body.App == "screpdb"
+}
+
+// QuitLocalScrepdb asks the screpdb serving the loopback address to shut down,
+// through the same endpoint as the dashboard's Quit button.
+func QuitLocalScrepdb(addr string, timeout time.Duration) error {
+	if !isLocalAddr(addr) {
+		return fmt.Errorf("%w: %s", ErrNotLoopback, addr)
+	}
+	client := &http.Client{Timeout: timeout}
+	resp, err := client.Post("http://"+addr+"/api/custom/quit", "application/json", nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("quit returned HTTP %d", resp.StatusCode)
+	}
+	return nil
 }
 
 // ErrNotLoopback is returned when a caller asks this facade to reach an

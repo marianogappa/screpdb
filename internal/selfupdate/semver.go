@@ -70,6 +70,13 @@ func sign(n int) int {
 	}
 }
 
+// IsNewer reports whether version a is a strictly newer release than b. Either
+// side being unparseable (a dev build, an unknown version) yields false.
+func IsNewer(a, b string) bool {
+	av, bv := parseSemver(a), parseSemver(b)
+	return av.ok && bv.ok && av.cmp(bv) > 0
+}
+
 // classifyTier compares the current build against the latest release and returns
 // how loudly to nudge: loud for a newer major, quiet for a newer minor/patch,
 // none when already current or when either version is unparseable.
