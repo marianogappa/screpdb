@@ -2241,6 +2241,8 @@ function App() {
   const [mainEventsLayoutEl, setMainEventsLayoutEl] = useState(null);
   const [mainEventsMapColPx, setMainEventsMapColPx] = useState(0);
   const openMainPlayerRef = useRef(null);
+  const selectedPlayerKeyRef = useRef(null);
+  const refreshFeaturedPlayerBnetRef = useRef(null);
   // "Latest-ref" pattern: the mount-once library websocket handler needs to
   // read the *current* games-list filter/page state and call the *current*
   // refresh functions. Its dependency array intentionally excludes these to
@@ -2851,6 +2853,10 @@ function App() {
 
   const bnetState = bnetStatus?.state || 'not_running';
   const bnetDisabled = Boolean(bnetStatus?.disabled);
+  const bnetLive = !bnetDisabled && bnetState === 'connected';
+  useEffect(() => {
+    if (bnetLive) refreshFeaturedPlayerBnetRef.current?.();
+  }, [bnetLive]);
   const bnetRequestsToday = bnetStatus?.requests_today ?? 0;
   const bnetCooldownUntil = bnetStatus?.cooldown_until ? new Date(bnetStatus.cooldown_until) : null;
   const bnetCoolingDown = Boolean(bnetCooldownUntil) && bnetCooldownUntil > new Date();
@@ -3282,6 +3288,7 @@ function App() {
           // happens to refetch it.
           if (message.type === 'observation') {
             void loadGamingSessionRef.current?.({ silent: true });
+            refreshFeaturedPlayerBnetRef.current?.();
           }
         } catch (err) {
           console.error('Failed to parse library events message:', err);
@@ -3432,6 +3439,25 @@ function App() {
     }
   };
 
+  // A built-in pro page asks Battle.net for its accounts' newest games when it
+  // opens; the answer lands later, so the Battle.net section is swapped in
+  // place when it does, without remounting the page.
+  const refreshFeaturedPlayerBnet = () => {
+    const key = selectedPlayerKeyRef.current;
+    if (activeViewRef.current !== 'player' || !isFeaturedPlayerKey(key)) return;
+    api.getPlayer(key).then((data) => {
+      setMainPlayer((prev) => (prev && data && prev.player_key === data.player_key
+        ? {
+          ...prev,
+          bnet_profile: data.bnet_profile,
+          bnet_games: data.bnet_games,
+          bnet_refreshing: data.bnet_refreshing,
+          country_code: data.country_code || prev.country_code,
+        }
+        : prev));
+    }).catch(() => {});
+  };
+
   // Lightweight list-only refreshes used by the library events path. No
   // active-view re-fetch, no histogram reloads: just the lists that newly
   // loaded replays affect.
@@ -3464,6 +3490,8 @@ function App() {
   refreshPlayersListRef.current = refreshPlayersListOnly;
   loadGamingSessionRef.current = loadGamingSession;
   activeViewRef.current = activeView;
+  selectedPlayerKeyRef.current = selectedPlayerKey;
+  refreshFeaturedPlayerBnetRef.current = refreshFeaturedPlayerBnet;
   mainGamesFiltersRef.current = mainGamesFilters;
   mainGamesPageRef.current = mainGamesPage;
   mainGamesRef.current = mainGames;
@@ -6855,7 +6883,12 @@ function App() {
                         {!isFeaturedPlayer ? <PlayerSkillRow summary={mainPlayer?.skill} onHover={setSkillTabBeckon} onOpen={() => { setSkillTabBeckon(false); setMainPlayerTab('skill'); setMainPlayerSubtab(''); }} /> : null}
                         {showBnet ? (
                           <div className="wps-section">
-                            <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.title')}</span></div>
+                            <div className="workflow-card-title wps-section-title wps-section-title--with-notice">
+                              <span>{t('player.bnet.title')}</span>
+                              {bnetHasAnswer && mainPlayer?.bnet_refreshing ? (
+                                <span className="engine-notice engine-notice--running" role="status">{t('player.bnet.refreshing')}</span>
+                              ) : null}
+                            </div>
                             {!bnetHasAnswer ? (
                               <div className="chart-empty">{bnetAbsenceMessage}</div>
                             ) : (<>

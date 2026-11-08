@@ -7122,6 +7122,7 @@ span[data-tip],
 .wps-section { display: flex; flex-direction: column; gap: 10px; }
 .wps-section + .wps-section { margin-top: 22px; }
 .wps-section-title span { display: inline-flex; align-items: center; gap: 7px; }
+.wps-section-title--with-notice { flex-direction: row; align-items: center; flex-wrap: wrap; }
 
 .wps-stats { display: flex; flex-wrap: wrap; gap: 10px; }
 .wps-stat {

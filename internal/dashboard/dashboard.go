@@ -66,6 +66,8 @@ type Dashboard struct {
 
 	// regularsRefresh dedupes the session view's Battle.net freshness sweep.
 	regularsRefresh regularsRefreshState
+	// featuredRefresh dedupes the Battle.net refreshes of built-in pro pages.
+	featuredRefresh featuredProRefreshState
 	// youKeys holds the set of replay names that are the user, derived from
 	// CSettings.json. Kept in memory rather than persisted: it is a pure
 	// function of that file, so a stored copy could only go stale.
@@ -430,6 +432,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 		d.startBnetEnrich(d.ctx)
 		d.startBnetOutcomes(d.ctx)
 		d.startBnetCacheMaintenance(d.ctx)
+		d.startFeaturedProSweep(d.ctx)
 		select {
 		case errChan <- nil:
 		default:

@@ -366,6 +366,7 @@
   "player.bnet.recentGames": "🏁 최근 게임",
   "player.bnet.playersCount": "{count}명",
   "player.bnet.fetchingProfile": "이 플레이어의 배틀넷 프로필을 가져오는 중입니다. 도착하면 최근 래더 게임이 표시됩니다.",
+  "player.bnet.refreshing": "배틀넷에서 최신 게임을 확인하는 중",
   "player.bnet.connectPrompt": "이 플레이어의 최근 래더 게임을 보려면 배틀넷에 연결하세요 (스타크래프트: 리마스터 실행).",
   "player.bnet.noRecentGames": "배틀넷에 이 플레이어의 최근 게임이 없습니다.",
   "player.bnet.table.when": "시각",

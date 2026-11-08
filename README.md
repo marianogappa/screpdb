@@ -308,18 +308,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-08  OK. Undecided games are matched to their Battle.net game by the MD5 of the user's own replay file (from the game archive or the completion queue; a complete copy goes through the file it pairs with) before falling back to players and times, and the archive now keeps own-replay MD5s after their URLs expire; reads replay files through iofacade and the existing app-data files, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+2026-11-08  OK. Built-in pro pages refresh their Battle.net accounts when opened (user priority, one bridge request per account at most every 30 minutes, each attempt once per window) and a background sweep refreshes one stale pro every 10 minutes at background priority and the 24h freshness while StarCraft: Remastered is connected; recent games merge every known account newest first. All requests go through the existing bnetfacade rate limiter and budget, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-08  OK. Undecided games are matched to their Battle.net game by the MD5 of the user's own replay file (from the game archive or the completion queue; a complete copy goes through the file it pairs with) before falling back to players and times, and the archive now keeps own-replay MD5s after their URLs expire; reads replay files through iofacade and the existing app-data files, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-11-08  OK. scmapanalyzer bump renders the Corsair, Sunken Colony, Scout, Zergling, Hydralisk and Medic from idle frames; the icon cache version moves to 6 so the on disk icon cache and browsers fetch the new sprites, and sprite metrics requests carry the same version. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-31  OK. Players and Session lists gain a Skill column while the engine is on, the Skill chart keeps one line with a trend note from the last three months, the all cores switch moves under the replay folder, the replay filter gains a Use Map Settings game type, the Skill tier is the weighted average of its metrics, idle army tolerates hovering air, leaves out Carriers and needs a minute of real army (model refit on ladder and lobby games), and Skill views say when the engine pass is still running (offering all cores on hover) and refresh as it advances; reads replays and settings already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-31  OK. The engine pass reuses its per-tick unit maps instead of allocating new ones every game second; digests are unchanged. No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-10-31  OK. Release workflow can Authenticode-sign the Windows binaries through SignPath Foundation before SHA256SUMS is generated (skipped until the SignPath secrets exist), and the README gains the code signing policy; CI and docs only, no binary code changes, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-2026-10-30  OK. Skill tab idle army and micro actions: engine army snapshots keep each unit's ID and order (EngineVersion 10; older digests stay readable and upgrade in the background), the Skill tab adds the share of the army standing idle, and micro actions (Hold Position, unloads, siege, Stim, cloak, Archon merges and spells per minute) are counted from replay commands; reads replays and engine digests already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 </details>
