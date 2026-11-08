@@ -1,6 +1,6 @@
 // Bump together with gameAssetIconRenderVersion in internal/dashboard/game_asset_handlers.go
 // when icon renderer output changes (scmapanalyzer assets, mapping, etc.).
-const GAME_ASSET_ICON_RENDER_VERSION = '5';
+export const GAME_ASSET_ICON_RENDER_VERSION = '6';
 
 // iconQuery adds the optional player color (the sprite's team-color areas take it, as in the game) and
 // variant ("burrowed"). Colors other than #rrggbb are ignored, leaving the sprite untinted.
