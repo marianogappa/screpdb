@@ -38,7 +38,7 @@ func detectInstall(self string) installInfo {
 	if mgr := packageManager(self); mgr != "" {
 		return installInfo{reason: ReasonManaged, manager: mgr}
 	}
-	if !dirWritable(filepath.Dir(self)) {
+	if !installDirWritable(self) {
 		return installInfo{reason: ReasonNotWritable}
 	}
 	return installInfo{supported: true}
@@ -59,6 +59,19 @@ func packageManager(self string) string {
 	default:
 		return ""
 	}
+}
+
+// installDirWritable defers to the Windows launcher's verdict when it passed
+// one: the Low-integrity worker can never write the Medium-labelled install
+// dir, but the launcher, which performs the swap, can.
+func installDirWritable(self string) bool {
+	switch os.Getenv(installWritableEnv) {
+	case "1":
+		return true
+	case "0":
+		return false
+	}
+	return dirWritable(filepath.Dir(self))
 }
 
 // dirWritable reports whether a file can be created in dir, the precondition for

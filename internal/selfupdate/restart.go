@@ -2,11 +2,15 @@
 
 package selfupdate
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 const (
-	restartEnv      = "SCREPDB_SELFUPDATE_RESTART"
-	updateFailedEnv = "SCREPDB_SELFUPDATE_FAILED"
+	restartEnv         = "SCREPDB_SELFUPDATE_RESTART"
+	updateFailedEnv    = "SCREPDB_SELFUPDATE_FAILED"
+	installWritableEnv = "SCREPDB_INSTALL_WRITABLE"
 )
 
 // IsRestart reports whether this process was launched by Restart after a
@@ -23,6 +27,16 @@ func RestartEnvKV() string { return restartEnv + "=1" }
 // UpdateFailedEnvKV marks a worker relaunched after the launcher failed to
 // apply an update, so its status reports UpdateFailed.
 func UpdateFailedEnvKV() string { return updateFailedEnv + "=1" }
+
+// InstallWritableEnvKV probes, from the calling process, whether the install
+// dir of self accepts the in-place swap, and returns the "KEY=VALUE" entry that
+// hands the verdict to a worker that cannot probe it truthfully itself.
+func InstallWritableEnvKV(self string) string {
+	if dirWritable(filepath.Dir(self)) {
+		return installWritableEnv + "=1"
+	}
+	return installWritableEnv + "=0"
+}
 
 // Restart relaunches the just-swapped binary in place, inheriting the original
 // arguments. On Unix it replaces the current process image; on Windows it spawns

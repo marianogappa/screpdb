@@ -99,6 +99,35 @@ func TestDetectInstall(t *testing.T) {
 		}
 	})
 
+	t.Run("launcher says writable though worker cannot write", func(t *testing.T) {
+		buildinfo.Version = "v1.2.3"
+		self := filepath.Join(t.TempDir(), "does-not-exist", "screpdb")
+		t.Setenv(installWritableEnv, "1")
+		if inst := detectInstall(self); !inst.supported || inst.reason != ReasonNone {
+			t.Errorf("got %+v, want supported", inst)
+		}
+	})
+
+	t.Run("launcher says not writable", func(t *testing.T) {
+		buildinfo.Version = "v1.2.3"
+		self := filepath.Join(t.TempDir(), "screpdb")
+		t.Setenv(installWritableEnv, "0")
+		if inst := detectInstall(self); inst.supported || inst.reason != ReasonNotWritable {
+			t.Errorf("got %+v, want unsupported not-writable", inst)
+		}
+	})
+
+	t.Run("launcher verdict reflects its own probe", func(t *testing.T) {
+		writable := filepath.Join(t.TempDir(), "screpdb")
+		if got := InstallWritableEnvKV(writable); got != installWritableEnv+"=1" {
+			t.Errorf("writable dir: got %q", got)
+		}
+		missing := filepath.Join(t.TempDir(), "does-not-exist", "screpdb")
+		if got := InstallWritableEnvKV(missing); got != installWritableEnv+"=0" {
+			t.Errorf("missing dir: got %q", got)
+		}
+	})
+
 	t.Run("supported", func(t *testing.T) {
 		buildinfo.Version = "v1.2.3"
 		self := filepath.Join(t.TempDir(), "screpdb")

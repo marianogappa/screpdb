@@ -103,7 +103,8 @@ func runLauncher() int {
 // worker until it exits for good, and returns the launcher's exit code. It
 // returns 0 when ctx was cancelled (an intentional tray "Quit").
 func superviseWorker(ctx context.Context, self, dir string) int {
-	extraEnv := []string{winsandbox.WorkerEnv + "=1"}
+	baseEnv := []string{winsandbox.WorkerEnv + "=1", selfupdate.InstallWritableEnvKV(self)}
+	extraEnv := baseEnv
 	for {
 		// SCREPDB_WORKER=1 tells the child to run the dashboard rather than
 		// relaunch itself; the working dir is the Low-writable app-data root.
@@ -124,7 +125,7 @@ func superviseWorker(ctx context.Context, self, dir string) int {
 		// released the port.
 		log.Printf("launcher: worker requested self-update; applying")
 		selfupdate.CleanupOldBinary()
-		extraEnv = []string{winsandbox.WorkerEnv + "=1"}
+		extraEnv = append([]string(nil), baseEnv...)
 		newVersion, applyErr := selfupdate.Apply(ctx)
 		if applyErr != nil {
 			log.Printf("launcher: self-update failed (%v); relaunching current version", applyErr)
