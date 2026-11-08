@@ -111,3 +111,44 @@ func TestLocalAPIGetRefusesRemoteAddr(t *testing.T) {
 		}
 	}
 }
+
+func TestLocalScrepdbVersionReadsHealth(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"app":"screpdb","version":"v1.36.0"}`))
+	}))
+	defer srv.Close()
+	version, ok := LocalScrepdbVersion(strings.TrimPrefix(srv.URL, "http://"), time.Second)
+	if !ok || version != "v1.36.0" {
+		t.Fatalf("got %q %v, want v1.36.0 true", version, ok)
+	}
+}
+
+func TestLocalScrepdbVersionRejectsForeignServer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"app":"other","version":"v9.0.0"}`))
+	}))
+	defer srv.Close()
+	if _, ok := LocalScrepdbVersion(strings.TrimPrefix(srv.URL, "http://"), time.Second); ok {
+		t.Fatal("foreign server identified as screpdb")
+	}
+}
+
+func TestQuitLocalScrepdbPostsQuit(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Method + " " + r.URL.Path
+	}))
+	defer srv.Close()
+	if err := QuitLocalScrepdb(strings.TrimPrefix(srv.URL, "http://"), time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if got != "POST /api/custom/quit" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestQuitLocalScrepdbRefusesRemoteAddr(t *testing.T) {
+	if err := QuitLocalScrepdb("example.com:80", time.Millisecond); !errors.Is(err, ErrNotLoopback) {
+		t.Fatalf("got %v, want ErrNotLoopback", err)
+	}
+}
