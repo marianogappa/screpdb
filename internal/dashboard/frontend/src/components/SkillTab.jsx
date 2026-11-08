@@ -1,6 +1,8 @@
 import React from 'react';
 import { useT } from '../lib/i18nContext';
 import SkillExplainerLink from './SkillExplainer';
+import { formatSkillValue, skillStep } from '../lib/skillFormat';
+import { spreadShares } from '../lib/skillRank';
 
 // SkillTab places each player on four tiers fitted to ladder MMR (internal/skill). Positions are on a shared
 // tier axis, 0 to 4, where each whole number is a cut between tiers, so players of different races compare
@@ -8,19 +10,22 @@ import SkillExplainerLink from './SkillExplainer';
 
 export const TIER_KEYS = ['beginner', 'intermediate', 'advanced', 'pro'];
 
-const percent = (v) => `${Math.round(v * 100)}%`;
-
 const METRICS = [
-  { key: 'eapm', format: (v) => Math.round(v) },
-  { key: 'used_recalls_per_min', format: (v) => Math.round(v) },
-  { key: 'army_cadence', format: percent },
-  { key: 'production_idle_share', format: percent },
-  { key: 'idle_army_share', format: percent },
-  { key: 'micro_actions_per_min', format: (v) => v.toFixed(1) },
+  { key: 'eapm' },
+  { key: 'used_recalls_per_min' },
+  { key: 'army_cadence' },
+  { key: 'production_idle_share' },
+  { key: 'idle_army_share' },
+  { key: 'micro_actions_per_min' },
 ];
 
+const describeWith = (model, key) => (p) => formatSkillValue(key, p.value, skillStep(model, key));
+
 const ROW_PX = 22;
-const BAND_LABEL_PX = 16;
+const BAND_LABEL_PX = 20;
+// A strip that stops short of the scale's end shows this much of the next tier, faded, so a game where
+// everyone is a Beginner still shows there is more above.
+const PEEK = 0.3;
 // A label takes about this share of the strip; closer players go on the next row.
 const LABEL_SHARE = 0.16;
 
@@ -57,29 +62,40 @@ export function SkillTierChip({ placement }) {
   );
 }
 
-// MetricLabel is a submetric's row label, indented under the Skill estimate.
+// MetricLabel is a submetric's row label.
 function MetricLabel({ metric }) {
   const t = useT();
   return (
     <div className="skill-row-label skill-row-label--sub">
-      <span>{t(`skill.metric.${metric.key}.title`)}</span>
-      <Help text={t(`skill.metric.${metric.key}.hint`)} />
+      <span className="skill-sub-title">{t(`skill.metric.${metric.key}.title`)}</span>
     </div>
   );
 }
 
-// SubmetricsHead introduces the metric rows as the parts the Skill estimate is made of.
-function SubmetricsHead() {
+// HeroLabel is the Skill estimate's row label, with the way into "How Skill works" under it.
+function HeroLabel({ model }) {
   const t = useT();
-  return <div className="skill-submetrics-head">{t('skill.submetrics.title')}</div>;
+  return (
+    <div className="skill-row-label skill-row-label--hero">
+      <span>{t('skill.metric.combined.title')}</span>
+      <SkillExplainerLink model={model} className="skill-explainer-link--sub" />
+    </div>
+  );
 }
 
-function Help({ text }) {
+// SubmetricsHead introduces the metric rows as the parts the Skill estimate is made of; over the strips that
+// compare players it also marks which end is the worst and which the best.
+function SubmetricsHead({ compared }) {
+  const t = useT();
+  if (!compared) return <div className="skill-submetrics-head">{t('skill.submetrics.title')}</div>;
   return (
-    <span className="workflow-help-wrap skill-help">
-      <span className="workflow-metric-help">ⓘ</span>
-      <span className="workflow-help-bubble">{text}</span>
-    </span>
+    <>
+      <div className="skill-submetrics-head skill-submetrics-head--label">{t('skill.submetrics.title')}</div>
+      <div className="skill-compare-axis" aria-hidden="true">
+        <span>{t('skill.relative.worst')}</span>
+        <span>{t('skill.relative.best')}</span>
+      </div>
+    </>
   );
 }
 
@@ -91,32 +107,38 @@ const tierRange = (positions) => {
   return [lo, hi];
 };
 
+// Strip is one chart: players on the tier axis, zoomed to the tiers range spans, with a faded peek at the
+// next tier on each side the scale goes on.
 function Strip({ entries, range, playerColor, describe, inline, hero, tierLabels, labelShare = LABEL_SHARE }) {
   const t = useT();
-  const [lo, hi] = range;
-  const band = (pos) => (pos - lo) / (hi - lo);
+  const lo = range[0] > 0 ? range[0] - PEEK : range[0];
+  const hi = range[1] < TIER_KEYS.length ? range[1] + PEEK : range[1];
+  const band = (pos) => (Math.min(hi, Math.max(lo, pos)) - lo) / (hi - lo);
   // Markers keep a small margin from the strip's edges so a value at the end of the scale stays visible.
-  const share = (pos) => 0.015 + 0.97 * band(pos);
+  const share = (e) => 0.015 + 0.97 * band(e.placement.position);
   const rows = [];
-  const placed = [...entries].sort((a, b) => a.placement.position - b.placement.position).map((e) => {
-    const x = share(e.placement.position);
+  const placed = entries.map((e) => ({ ...e, x: share(e) })).sort((a, b) => a.x - b.x).map((e) => {
+    const { x } = e;
     let row = 0;
     while (rows[row] !== undefined && x - rows[row] < labelShare) row += 1;
     rows[row] = x;
     return { ...e, x, row };
   });
   const tiers = [];
-  for (let i = lo; i < hi; i += 1) tiers.push(i);
+  for (let i = Math.floor(lo); i < Math.ceil(hi); i += 1) tiers.push(i);
   return (
     <div
       className={`skill-strip${hero ? ' skill-strip--hero' : ''}`}
       style={{ height: `${(tierLabels ? BAND_LABEL_PX : 4) + Math.max(1, rows.length) * ROW_PX + 4}px` }}
     >
-      {tiers.map((i) => (
-        <div key={i} className={`skill-band skill-band-${TIER_KEYS[i]}`} style={{ left: `${band(i) * 100}%`, width: `${(band(i + 1) - band(i)) * 100}%` }}>
-          {tierLabels ? <span className="skill-band-label">{t(`skill.tier.${TIER_KEYS[i]}`)}</span> : null}
-        </div>
-      ))}
+      {tiers.map((i) => {
+        const peek = i < range[0] ? ' skill-band--peek skill-band--peek-left' : i >= range[1] ? ' skill-band--peek skill-band--peek-right' : '';
+        return (
+          <div key={i} className={`skill-band skill-band-${TIER_KEYS[i]}${peek}`} style={{ left: `${band(i) * 100}%`, width: `${(band(i + 1) - band(i)) * 100}%` }}>
+            {tierLabels ? <span className="skill-band-label">{t(`skill.tier.${TIER_KEYS[i]}`)}</span> : null}
+          </div>
+        );
+      })}
       {placed.map(({ player, placement, x, row }) => {
         const right = x > 1 - labelShare;
         const value = describe ? describe(placement) : '';
@@ -139,6 +161,54 @@ function Strip({ entries, range, playerColor, describe, inline, hero, tierLabels
   );
 }
 
+const COMPARE_PAD_PX = 6;
+const COMPARE_ROW_PX = 20;
+
+// CompareStrip sets players against each other on one submetric, with no values: the worst on the left edge,
+// the best on the right and the rest in proportion between them. focus highlights one player and dims the rest.
+function CompareStrip({ entries, focus, onOpen }) {
+  const [ref, width] = useWidth(720);
+  const shares = spreadShares(entries.map((e) => e.placement.position));
+  const inset = EDGE_PX + MARKER_PX / 2;
+  const placed = packLabels(entries.map((e, i) => ({ ...e, share: (inset + shares[i] * (width - 2 * inset)) / width })), width, false);
+  const rows = placed.reduce((n, e) => Math.max(n, e.row + 1), 1);
+  return (
+    <div ref={ref} className={`skill-compare${focus ? ' skill-compare--focus' : ''}`} style={{ height: `${2 * COMPARE_PAD_PX + rows * COMPARE_ROW_PX}px` }}>
+      {placed.map(({ key, name, color, share: x, row, right }) => {
+        const Tag = onOpen ? 'button' : 'div';
+        return (
+          <Tag
+            key={key}
+            {...(onOpen ? { type: 'button', onClick: () => onOpen(key) } : {})}
+            className={`skill-compare-marker${right ? ' skill-compare-marker--right' : ''}${focus === key ? ' skill-compare-marker--focused' : ''}`}
+            style={{ left: `${x * 100}%`, top: `${COMPARE_PAD_PX + row * COMPARE_ROW_PX}px` }}
+          >
+            <span className="skill-compare-dot" style={color ? { background: color } : undefined} />
+            <span>{name}</span>
+          </Tag>
+        );
+      })}
+    </div>
+  );
+}
+
+// Submetrics are the rows that compare players on each part of the Skill estimate.
+function Submetrics({ metrics, entriesFor, focus, onOpen }) {
+  const shown = metrics.map((m) => ({ m, entries: entriesFor(m.key) })).filter((r) => r.entries.length);
+  if (!shown.length) return null;
+  return (
+    <div className="skill-subs">
+      <SubmetricsHead compared />
+      {shown.map(({ m, entries }) => (
+        <React.Fragment key={m.key}>
+          <MetricLabel metric={m} />
+          <CompareStrip entries={entries} focus={focus} onOpen={onOpen} />
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
 export default function SkillTab({ game, players, playerColor }) {
   const t = useT();
   const status = game?.skill_status;
@@ -154,48 +224,28 @@ export default function SkillTab({ game, players, playerColor }) {
   const caveats = game?.skill_caveats || [];
   const entriesFor = (key) => rated.map((player) => ({ player, placement: placementOf(player, key) })).filter((e) => e.placement);
   const combined = entriesFor('combined');
-  const range = tierRange(['combined', ...METRICS.map((m) => m.key)].flatMap((k) => entriesFor(k).map((e) => e.placement.position)));
+  const range = tierRange(combined.map((e) => e.placement.position));
   return (
     <div className="workflow-card skill-tab">
       {caveats.length ? (
         <div className="workflow-section-warning skill-caveat">{t('skill.caveat')}</div>
       ) : null}
-      <SkillExplainerLink model={game?.skill_model} className="skill-explainer-link--corner" />
-      <div className="skill-rows">
-        {combined.length ? (
-          <>
-            <div className="skill-row-label skill-row-label--hero">
-              <span>{t('skill.metric.combined.title')}</span>
-              <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
-            </div>
-            <Strip
-              entries={combined}
-              range={range}
-              playerColor={playerColor}
-              hero
-              tierLabels
-            />
-          </>
-        ) : null}
-        {combined.length ? <SubmetricsHead /> : null}
-        {METRICS.filter((m) => entriesFor(m.key).length).map((m, index) => {
-          const entries = entriesFor(m.key);
-          if (!entries.length) return null;
-          return (
-            <React.Fragment key={m.key}>
-              <MetricLabel metric={m} />
-              <Strip
-                entries={entries}
-                range={range}
-                playerColor={playerColor}
-                inline
-                tierLabels={index === 0}
-                describe={(p) => String(m.format(p.value))}
-              />
-            </React.Fragment>
-          );
-        })}
-      </div>
+      {combined.length ? (
+        <div className="skill-rows">
+          <HeroLabel model={game?.skill_model} />
+          <Strip
+            entries={combined}
+            range={range}
+            playerColor={playerColor}
+            hero
+            tierLabels
+          />
+          <Submetrics
+            metrics={METRICS}
+            entriesFor={(key) => entriesFor(key).map(({ player, placement }) => ({ key: player.player_id, name: player.name, color: playerColor(player.color), placement }))}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -406,7 +456,7 @@ export function PlayerSkillTab({ summary, name, color }) {
         {METRICS.filter((m) => summary.metrics?.[m.key]).map((m, index) => (
           <React.Fragment key={m.key}>
             <MetricLabel metric={m} />
-            <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline tierLabels={index === 0} describe={(p) => String(m.format(p.value))} />
+            <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline tierLabels={index === 0} describe={describeWith(summary.model, m.key)} />
           </React.Fragment>
         ))}
       </div>
@@ -459,7 +509,7 @@ function PopulationStrip({ median, players, stars, describe, hero, tierLabels, f
   const t = useT();
   const [ref, width] = useWidth(900);
   const [lo, hi] = FULL_RANGE;
-  const band = (pos) => (pos - lo) / (hi - lo);
+  const band = (pos) => Math.min(1, Math.max(0, (pos - lo) / (hi - lo)));
   const share = (pos) => 0.015 + 0.97 * band(pos);
   const entries = [
     ...players.map((p) => ({ ...p, pro: false, share: share(p.placement.position) })),
@@ -531,7 +581,6 @@ export function PlayersSkillTab({ data, loading, error, emptyNotice, showFeature
   const playersFor = (key) => library
     .map((p) => ({ key: p.player_key, name: p.player_name, placement: key === 'combined' ? p.combined : p.metrics?.[key] }))
     .filter((d) => d.placement);
-  const metrics = METRICS.filter((m) => data?.metrics?.[m.key] || starsFor(m.key).length);
   if (!data?.combined && !pros.length) {
     return (
       <div className="workflow-card skill-tab">
@@ -542,36 +591,17 @@ export function PlayersSkillTab({ data, loading, error, emptyNotice, showFeature
   }
   return (
     <div className="workflow-card skill-tab skill-players-tab">
-      <SkillExplainerLink model={data?.model} className="skill-explainer-link--corner" />
       <div className="skill-rows">
-        <div className="skill-row-label skill-row-label--hero">
-          <span>{t('skill.metric.combined.title')}</span>
-          <Help text={`${t('skill.metric.combined.hint')} ${t('skill.footnote')}`} />
-        </div>
+        <HeroLabel model={data?.model} />
         <PopulationStrip median={data?.combined} players={playersFor('combined')} stars={starsFor('combined')} hero tierLabels focus={focus} onFocus={setFocus} onOpenPlayer={onOpenPlayer} />
-        <SubmetricsHead />
-        {metrics.map((m, index) => (
-          <React.Fragment key={m.key}>
-            <MetricLabel metric={m} />
-            <PopulationStrip
-              median={data?.metrics?.[m.key]}
-              players={playersFor(m.key)}
-              focus={focus}
-              onFocus={setFocus}
-              stars={starsFor(m.key)}
-              tierLabels={index === 0}
-              describe={(p) => String(m.format(p.value))}
-              onOpenPlayer={onOpenPlayer}
-            />
-          </React.Fragment>
-        ))}
-      </div>
-      <div className="skill-players-legend">
-        {data?.combined ? (
-          <span className="skill-players-legend-median">{t('skill.players.median', { count: data.combined.players })}</span>
-        ) : null}
-        {pros.length ? <span>{t('players.featuredNote')}</span> : null}
-        {featured.length ? <span className="skill-players-legend-toggle">{featuredToggle(featured.length)}</span> : null}
+        <div className="skill-players-legend skill-players-legend--under">
+          {data?.combined ? (
+            <span className="skill-players-legend-median">{t('skill.players.median', { count: data.combined.players })}</span>
+          ) : null}
+          {pros.length ? <span>{t('players.featuredNote')}</span> : null}
+          {featured.length ? <span className="skill-players-legend-toggle">{featuredToggle(featured.length)}</span> : null}
+        </div>
+        <Submetrics metrics={METRICS} entriesFor={playersFor} focus={focus} onOpen={onOpenPlayer} />
       </div>
     </div>
   );

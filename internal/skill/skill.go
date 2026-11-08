@@ -12,6 +12,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sync"
 )
 
@@ -135,9 +136,29 @@ type Placement struct {
 }
 
 func place(value float64, cuts [3]float64, ends [2]float64, medians [4]float64, higherIsBetter bool) Placement {
-	v, c, e, m := value, cuts, ends, medians
+	a := newAxis(cuts, ends, medians, higherIsBetter)
+	v := a.sign * value
+	tier := 0
+	for _, cut := range a.cuts {
+		if v >= cut {
+			tier++
+		}
+	}
+	return Placement{Value: value, Position: axisPosition(v, a.points), Tier: tier}
+}
+
+// axis maps values to positions. Lower-is-better metrics are negated (sign -1) so that position always grows
+// with sign*value.
+type axis struct {
+	points []axisPoint
+	cuts   [3]float64
+	sign   float64
+}
+
+func newAxis(cuts [3]float64, ends [2]float64, medians [4]float64, higherIsBetter bool) axis {
+	sign, c, e, m := 1.0, cuts, ends, medians
 	if !higherIsBetter {
-		v, c, e = -value, [3]float64{-cuts[0], -cuts[1], -cuts[2]}, [2]float64{-ends[0], -ends[1]}
+		sign, c, e = -1, [3]float64{-cuts[0], -cuts[1], -cuts[2]}, [2]float64{-ends[0], -ends[1]}
 		m = [4]float64{-medians[0], -medians[1], -medians[2], -medians[3]}
 	}
 	// The outer tiers reach the data's ends; without ends past the cuts, they are as wide as their neighbour.
@@ -148,14 +169,23 @@ func place(value float64, cuts [3]float64, ends [2]float64, medians [4]float64, 
 	if e[1] > c[2] {
 		hi = e[1]
 	}
-	pos := axisPosition(v, axisPoints(lo, c, hi, m, medians != [4]float64{}))
-	tier := 0
-	for _, cut := range c {
-		if v >= cut {
-			tier++
+	return axis{points: axisPoints(lo, c, hi, m, medians != [4]float64{}), cuts: c, sign: sign}
+}
+
+func (a axis) position(value float64) float64 { return axisPosition(a.sign*value, a.points) }
+
+func (a axis) value(position float64) float64 {
+	ps := a.points
+	if position <= ps[0].position {
+		return a.sign * ps[0].value
+	}
+	for i := 1; i < len(ps); i++ {
+		if position <= ps[i].position {
+			lo, hi := ps[i-1], ps[i]
+			return a.sign * (lo.value + (position-lo.position)/(hi.position-lo.position)*(hi.value-lo.value))
 		}
 	}
-	return Placement{Value: value, Position: pos, Tier: tier}
+	return a.sign * ps[len(ps)-1].value
 }
 
 type axisPoint struct{ value, position float64 }
@@ -188,6 +218,68 @@ func axisPosition(v float64, points []axisPoint) float64 {
 		}
 	}
 	return 4
+}
+
+// Step is the precision the Skill tab prints each metric's value at.
+var Step = map[string]float64{
+	EAPM:           1,
+	UsedRecalls:    1,
+	CheckRecalls:   1,
+	ArmyCadence:    0.01,
+	ProductionIdle: 0.01,
+	IdleArmy:       0.001,
+	MicroActions:   0.1,
+}
+
+// OnStrip puts a placement on its metric's strip, where every player of every race and game shares one
+// scale: a value printed further right is always better, and two players printed alike sit together. Metrics
+// placed on per-race or per-matchup cuts, or shifted for team games and money maps, print the value the shared
+// scale reads at their position, so their tier is unchanged; the others print what was measured. Either way
+// the value is rounded to Step and the position follows the rounded value.
+func (m *Model) OnStrip(key string, p Placement) Placement {
+	mc, ok := m.Metrics[key]
+	if !ok {
+		return p
+	}
+	cuts, ok := mc.Cuts[AllRaces]
+	if !ok {
+		return p
+	}
+	a := newAxis(cuts, mc.Ends[AllRaces], mc.Medians[AllRaces], mc.HigherIsBetter)
+	v := p.Value
+	if m.convertedOnStrip(key) {
+		v = a.value(p.Position)
+	}
+	return m.onStripAxis(key, a, v)
+}
+
+// StripAt is the placement at position on key's strip.
+func (m *Model) StripAt(key string, position float64) Placement {
+	mc := m.Metrics[key]
+	a := newAxis(mc.Cuts[AllRaces], mc.Ends[AllRaces], mc.Medians[AllRaces], mc.HigherIsBetter)
+	return m.onStripAxis(key, a, a.value(position))
+}
+
+func (m *Model) onStripAxis(key string, a axis, v float64) Placement {
+	if step := Step[key]; step > 0 {
+		v = math.Round(v/step) * step
+	}
+	pos := a.position(v)
+	return Placement{Value: v, Position: pos, Tier: min(TierPro, int(pos))}
+}
+
+// convertedOnStrip says whether a metric's placements come from somewhere else than the shared scale.
+func (m *Model) convertedOnStrip(key string) bool {
+	mc := m.Metrics[key]
+	if mc.PerRace || mc.PerMatchup {
+		return true
+	}
+	for _, shifts := range m.ContextShift {
+		if shifts[key] != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Result is one player's game.
@@ -226,7 +318,7 @@ func (m *Model) Evaluate(race, opponent, context string, values map[string]float
 		}
 		p := place(adjusted[key], cuts, mc.Ends[scale], mc.Medians[scale], mc.HigherIsBetter)
 		p.Value = v
-		res.Metrics[key] = p
+		res.Metrics[key] = m.OnStrip(key, p)
 	}
 	cr, ok := m.Combined.Races[race]
 	if !ok {

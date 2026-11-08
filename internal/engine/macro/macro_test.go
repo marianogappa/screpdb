@@ -99,8 +99,9 @@ func TestTerranMacro(t *testing.T) {
 	if math.Abs(p.WorkerIdleShare-0.5) > 0.01 {
 		t.Fatalf("worker idle %v, want 0.5 (the CC trained for 300 of 600 s)", p.WorkerIdleShare)
 	}
-	if math.Abs(p.ProductionIdleShare-0.4) > 0.01 {
-		t.Fatalf("production idle %v, want 0.4 (the Barracks idled 200 of its 500 s)", p.ProductionIdleShare)
+	// From 2:00 the Barracks trained for 280 of 480 s, but 600 income a minute keeps 1.2 buildings busy.
+	if want := 1 - 280/(1.2*480); math.Abs(p.ProductionIdleShare-want) > 0.01 {
+		t.Fatalf("production idle %v, want %v", p.ProductionIdleShare, want)
 	}
 	if math.Abs(p.IncomePerMinute-600) > 2 || math.Abs(p.AverageUnspent-300) > 1e-9 {
 		t.Fatalf("income %v unspent %v", p.IncomePerMinute, p.AverageUnspent)

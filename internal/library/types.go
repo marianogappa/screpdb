@@ -275,8 +275,11 @@ type EnginePlayer struct {
 	LarvaPerHatch float32
 	// BankedShare is the share of the game spent floating resources (the first 20 minutes on money maps).
 	BankedShare float32
-	// IdleArmyShare is macro.IdleArmyShare: the army standing idle from 8:00.
+	// IdleArmyShare and ArmyValue are macro.ArmyUse: the army standing idle from 8:00 and its average worth.
 	IdleArmyShare float32
+	ArmyValue     float32
+	// ArmyStartCadence is macro.ArmyStartCadence: the share of 10-second windows in which army units started.
+	ArmyStartCadence float32
 	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
 	Income  []uint16
 	Workers []uint16

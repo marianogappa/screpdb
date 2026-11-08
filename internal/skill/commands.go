@@ -1,6 +1,8 @@
 package skill
 
 import (
+	"math"
+
 	"github.com/icza/screp/rep/repcmd"
 )
 
@@ -13,8 +15,8 @@ type Commands struct {
 	CheckRecalls float64
 	// ArmyCadence is the share of 10-second windows in which the player started army production.
 	ArmyCadence float64
-	// MicroActions are unit abilities used per minute: Hold Position, unloads, sieging, Stim Packs, cloaking,
-	// Archon merges and spells.
+	// MicroActions are the 15-second windows per minute in which the player used a unit ability: Hold
+	// Position, Stim Packs, cloaking, Archon merges or transport drops.
 	MicroActions float64
 }
 
@@ -26,9 +28,10 @@ const (
 	cadenceBinFrames   = 10 * 1000 / millisPerFrame
 	// doubleTapFrames joins presses of one group into one recall: a double tap only moves the camera there.
 	doubleTapFrames = 8
-	// repeatFrames joins presses of one ability within a second into one use: spamming Stim or Hold Position
-	// is one decision.
-	repeatFrames = 1000 / millisPerFrame
+	// microWindowFrames is the stretch in which any number of micro actions count as one: Hold Position pressed
+	// 20 times in 20 seconds is one burst, not 20 decisions. On ladder 15 seconds kept as many pros on Pro as
+	// counting presses did, while 20 or more seconds started to cost them.
+	microWindowFrames = 15 * 1000 / millisPerFrame
 )
 
 // nonArmy are the SCV, Drone, Overlord and Probe unit IDs.
@@ -112,56 +115,33 @@ func armyCadence(cmds []repcmd.Cmd, bins int) float64 {
 	return float64(n) / float64(bins)
 }
 
-// Burrowing and lifting off are left out of micro actions: on ladder, Zerg who burrowed more were rated lower,
-// and a floating building is not micro.
+// Only Hold Position, Stim Packs, cloaking, Archon merges and transport drops count as micro: on ladder they
+// followed MMR, while sieging, Bunker unloads and spells did not. A beginner sieging and unsieging one tank
+// all game is not microing.
 func microAction(c repcmd.Cmd) (kind byte, ok bool) {
 	switch id := c.BaseCmd().Type.ID; id {
 	case repcmd.TypeIDHoldPosition, repcmd.TypeIDStim:
 		return id, true
-	case repcmd.TypeIDSiege, repcmd.TypeIDUnsiege:
-		return repcmd.TypeIDSiege, true
 	case repcmd.TypeIDCloack, repcmd.TypeIDDecloack:
 		return repcmd.TypeIDCloack, true
 	case repcmd.TypeIDMergeArchon, repcmd.TypeIDMergeDarkArchon:
 		return repcmd.TypeIDMergeArchon, true
-	case repcmd.TypeIDUnloadAll, repcmd.TypeIDUnload, repcmd.TypeIDUnload121:
-		return repcmd.TypeIDUnload, true
 	}
-	t, ok := c.(*repcmd.TargetedOrderCmd)
-	switch {
-	case !ok || t.Order == nil:
-		return 0, false
-	case t.Order.ID == repcmd.OrderIDUnload || t.Order.ID == repcmd.OrderIDMoveUnload:
+	if t, ok := c.(*repcmd.TargetedOrderCmd); ok && t.Order != nil && (t.Order.ID == repcmd.OrderIDUnload || t.Order.ID == repcmd.OrderIDMoveUnload) {
 		return repcmd.TypeIDUnload, true
-	case spellOrders[t.Order.ID]:
-		return t.Order.ID, true
 	}
 	return 0, false
 }
 
-// spellOrders are every spell a unit can be ordered to cast, plus painting a Nuke.
-var spellOrders = map[byte]bool{
-	0x7e: true, 0x73: true, 0x77: true, 0x78: true, 0x79: true, 0x7a: true, 0x89: true, 0x8d: true, 0x8e: true,
-	0x8f: true, 0x90: true, 0x91: true, 0x92: true, 0x93: true, 0x94: true, 0xb4: true, 0xb5: true, 0xb6: true,
-	0xb8: true, 0xb9: true, 0xba: true,
-}
-
 func microActions(cmds []repcmd.Cmd) float64 {
-	n := 0.0
-	last := map[byte]int32{}
+	windows := map[int32]bool{}
 	for _, c := range cmds {
 		f := int32(c.BaseCmd().Frame)
-		kind, ok := microAction(c)
-		if !ok || f < fromFrame {
-			continue
+		if _, ok := microAction(c); ok && f >= fromFrame {
+			windows[(f-fromFrame)/microWindowFrames] = true
 		}
-		if prev, seen := last[kind]; seen && f-prev < repeatFrames {
-			continue
-		}
-		last[kind] = f
-		n++
 	}
-	return n
+	return float64(len(windows))
 }
 
 func hotkeySelect(c repcmd.Cmd) (*repcmd.HotkeyCmd, bool) {
@@ -189,4 +169,31 @@ func isAction(c repcmd.Cmd) bool {
 		return false
 	}
 	return true
+}
+
+// microArmyValue is the army worth, from 8:00, at which every micro action counts in full. Below it they
+// count in proportion: Hold Position spammed on two Zerglings is not microing an army.
+const microArmyValue = 3000
+
+// ScaledMicro is micro actions per minute weighed by the army they were used on; armyValue is NaN when the
+// game never measured an army, and then the actions count in full.
+func ScaledMicro(micro, armyValue float64) float64 {
+	if math.IsNaN(armyValue) {
+		return micro
+	}
+	return micro * min(1, armyValue/microArmyValue)
+}
+
+// startedCadenceSlack is how much more often than units start a player may click to train them: on ladder,
+// players of every tier start units in nearly every window they click in (1.03 to 1.15 times as many).
+const startedCadenceSlack = 1.25
+
+// StartedCadence is army cadence held to the windows in which army units really started, so clicking Train on
+// full queues all game is not steady production; started is NaN without an engine pass, and then the clicks
+// count.
+func StartedCadence(cadence, started float64) float64 {
+	if math.IsNaN(started) {
+		return cadence
+	}
+	return min(cadence, startedCadenceSlack*started)
 }
