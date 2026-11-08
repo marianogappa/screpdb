@@ -459,12 +459,44 @@ const fallbackEventName = (event) => {
   return t.server(`server.marker.${normalizeEventType(rawType)}.name`, prettyPatternName(rawType));
 };
 
+const NUKE_SENTENCE_KEYS = {
+  ghost_killed: 'events.sentence.nukeGhostKilled',
+  cancelled: 'events.sentence.nukeCancelled',
+};
+
+const nukeSentence = (event) => {
+  const killed = Number(event?.outcome?.killed_units) || 0;
+  if (event?.result === 'landed' && killed > 0) return { key: 'events.sentence.nukesKilling', count: killed };
+  return { key: NUKE_SENTENCE_KEYS[event?.result] || 'events.sentence.nukes', count: killed };
+};
+
+const RECALL_RESULT_KEYS = {
+  razed_base: 'events.recall.razedBase',
+  razed: 'events.recall.razed',
+  wiped: 'events.recall.wiped',
+  traded_well: 'events.recall.tradedWell',
+  traded_poorly: 'events.recall.tradedPoorly',
+};
+
+// An engine recall says how many units came through; a command-inferred one, how many recalls it groups.
+const recallCountFragment = (event) => {
+  if (Number(event?.unit_count) > 0) return t('events.fragment.units', { count: event.unit_count });
+  return Number(event?.recall_count || 0) > 1 ? t('events.fragment.count', { count: event.recall_count }) : '';
+};
+
+const recallOutcomeSuffix = (event) => {
+  const hallucination = Number(event?.hallucinated) > 0 ? t('events.recall.hallucination') : '';
+  const key = RECALL_RESULT_KEYS[event?.result];
+  return hallucination + (key ? t(key, { count: Number(event?.outcome?.buildings) || 0 }) : '');
+};
+
 const gameEventDescription = (event, registry) => {
   const eventType = normalizeEventType(event?.type);
   const actor = String(event?.actor?.name || '').trim();
   const target = String(event?.target?.name || '').trim();
   const location = gameEventLocationLabel(event);
 
+  if (eventType === 'phase_snapshot') return t(`events.phase.${event.phase}`);
   if (eventType === 'bo_openers') {
     const lines = boOpenerLines(event);
     if (lines.length === 0) return t('events.buildOrders');
@@ -531,20 +563,25 @@ const gameEventDescription = (event, registry) => {
     // proxy fires we surface "(destination unknown)".
     const targetLocation = gameEventTargetLocationLabel(event);
     const targetOwnerName = String(event?.target_owner?.name || '').trim();
-    const count = Number(event?.recall_count || 0) > 1 ? t('events.fragment.count', { count: event.recall_count }) : '';
+    const count = recallCountFragment(event);
     if (!actor) return t('events.recall');
     const from = location ? t('events.fragment.from', { location }) : '';
     const params = { actor, icon: '', count, from, owner: targetOwnerName, location: targetLocation };
+    const suffix = recallOutcomeSuffix(event);
     if (targetLocation) {
-      return targetOwnerName ? t('events.sentence.recallsToOwner', params) : t('events.sentence.recallsTo', params);
+      return (targetOwnerName ? t('events.sentence.recallsToOwner', params) : t('events.sentence.recallsTo', params)) + suffix;
     }
-    return t('events.sentence.recallsUnknown', params);
+    return t('events.sentence.recallsUnknown', params) + suffix;
   }
   if (eventType === 'nydus_attack') {
     if (!actor || !target || !location) return t('events.offensiveNydus');
     return t('events.sentence.nydus', { actor, target, location, icon: '' });
   }
-  if (eventType === 'nuke') return actor && target && location ? t('events.sentence.nukes', { actor, target, location }) : t('events.nuke');
+  if (eventType === 'nuke') {
+    if (!actor || !target || !location) return t('events.nuke');
+    const { key, count } = nukeSentence(event);
+    return t(key, { actor, target, location, count });
+  }
   if (RUSH_SENTENCE_KEYS[eventType]) {
     const kind = RUSH_SENTENCE_KEYS[eventType];
     if (actor && target) return t(`events.sentence.${kind}`, { actor, target });
@@ -979,6 +1016,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   const targetSpan = gamePlayerNameSpan(event?.target, 't');
   const fill = (key, parts) => fillTemplate(t(key), parts);
 
+  if (eventType === 'phase_snapshot') return t(`events.phase.${event.phase}`);
   if (eventType === 'bo_openers') {
     const lines = boOpenerLines(event);
     if (lines.length === 0) return t('events.buildOrders');
@@ -1113,7 +1151,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     const targetOwner = event?.target_owner;
     const targetOwnerSpan = gamePlayerNameSpan(targetOwner, 'to');
     const targetOwnerName = String(targetOwner?.name || '').trim();
-    const count = Number(event?.recall_count || 0) > 1 ? t('events.fragment.count', { count: event.recall_count }) : '';
+    const count = recallCountFragment(event);
     const arbiterIconURL = getUnitIcon('arbiter');
     const arbiterName = t.server('server.name.arbiter', 'Arbiter');
     const arbiterIcon = arbiterIconURL ? (
@@ -1121,15 +1159,16 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     ) : null;
     const from = location ? t('events.fragment.from', { location }) : '';
     const parts = { actor: actorSpan, icon: arbiterIcon, count, from, owner: targetOwnerSpan, location: targetLocation };
-    if (targetLocation) {
-      return targetOwnerName ? fill('events.sentence.recallsToOwner', parts) : fill('events.sentence.recallsTo', parts);
-    }
-    return fill('events.sentence.recallsUnknown', parts);
+    const sentence = targetLocation
+      ? fill(targetOwnerName ? 'events.sentence.recallsToOwner' : 'events.sentence.recallsTo', parts)
+      : fill('events.sentence.recallsUnknown', parts);
+    const suffix = recallOutcomeSuffix(event);
+    return suffix ? <>{sentence}{suffix}</> : sentence;
   }
   if (eventType === 'nuke') {
-    return actorName && targetName && location
-      ? fill('events.sentence.nukes', { actor: actorSpan, target: targetSpan, location })
-      : t('events.nuke');
+    if (!actorName || !targetName || !location) return t('events.nuke');
+    const { key, count } = nukeSentence(event);
+    return fill(key, { actor: actorSpan, target: targetSpan, location, count });
   }
   if (RUSH_SENTENCE_KEYS[eventType]) {
     const kind = RUSH_SENTENCE_KEYS[eventType];
@@ -1170,6 +1209,13 @@ const gameEventSearchText = (event, registry) => {
 };
 
 const gameEventTopicKey = (topicIndex) => `game-event-${topicIndex}`;
+
+const gamePhaseKey = (phase) => `game-phase-${phase}`;
+
+const parseGamePhaseKey = (key) => {
+  const m = /^game-phase-(mid|late)$/.exec(String(key || ''));
+  return m ? m[1] : null;
+};
 
 const parseGameEventTopicKey = (key) => {
   const m = /^game-event-(\d+)$/.exec(String(key || ''));
@@ -4015,9 +4061,12 @@ function App() {
     }
     return counts;
   }, [mainGame?.game_events, markerRegistry, t]);
-  const mainEngineEventSeconds = useMemo(() => (
-    [...new Set((mainGame?.game_events || []).filter((e) => e?.engine).map((e) => e.engine.snapshot_second))].sort((a, b) => a - b)
-  ), [mainGame?.game_events]);
+  const mainEngineEventSeconds = useMemo(() => {
+    const seconds = (mainGame?.game_events || []).filter((e) => e?.engine).map((e) => e.engine.snapshot_second);
+    if (seconds.length === 0) return [];
+    const phases = [Number(mainGame?.early_game_ends_at_second) || 0, Number(mainGame?.mid_game_ends_at_second) || 0].filter((sec) => sec > 0);
+    return [...new Set([...seconds, ...phases])].sort((a, b) => a - b);
+  }, [mainGame?.game_events, mainGame?.early_game_ends_at_second, mainGame?.mid_game_ends_at_second]);
   const mainMapVisual = mainGame?.map_visual || {};
   const mainMapVisualURL = String(mainMapVisual?.url || '').trim();
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
@@ -4028,14 +4077,34 @@ function App() {
       mapBoundsFromGameEvents(mainGame?.game_events || []),
     [mainGame?.game_events, mainGame?.map_width_pixels, mainGame?.map_height_pixels],
   );
+  // In an engine game the Mid game and Late game headers are stops of their own: the whole map, every
+  // player's buildings and units, at the moment the phase starts.
+  const mainPhaseSnapshots = useMemo(() => {
+    const events = mainGame?.game_events || [];
+    if (mainGame?.mode !== 'engine' || !events.some((e) => e?.engine)) return {};
+    const earlyEnd = Number(mainGame?.early_game_ends_at_second) || 0;
+    const midEnd = Number(mainGame?.mid_game_ends_at_second) || 0;
+    const trustedUntil = Number(mainGame?.engine_trusted_until_seconds) || Infinity;
+    const out = {};
+    const add = (phase, second) => {
+      if (second > 0 && second < trustedUntil) out[phase] = { type: 'phase_snapshot', phase, second, engine: { snapshot_second: second, end_second: second } };
+    };
+    if (midEnd > 0) {
+      add('mid', earlyEnd);
+      add('late', midEnd);
+    }
+    return out;
+  }, [mainGame]);
   const selectedMainGameEvent = useMemo(() => {
+    const phase = parseGamePhaseKey(mainSelectedGameEventKey);
+    if (phase && mainPhaseSnapshots[phase]) return mainPhaseSnapshots[phase];
     if (!topicFilteredGameEvents.length) return null;
     const topicIdx = parseGameEventTopicKey(mainSelectedGameEventKey);
     if (topicIdx != null && topicIdx >= 0 && topicIdx < topicFilteredGameEvents.length) {
       return topicFilteredGameEvents[topicIdx];
     }
     return topicFilteredGameEvents[0];
-  }, [topicFilteredGameEvents, mainSelectedGameEventKey]);
+  }, [topicFilteredGameEvents, mainSelectedGameEventKey, mainPhaseSnapshots]);
   const mainGamePlayers = mainGame?.players || [];
   const mainGameIsEngine = mainGame?.mode === 'engine';
   const mainGameHasSkill = mainGame?.skill_status === 'ok';
@@ -4056,6 +4125,7 @@ function App() {
   }, [mainGame, selectedReplayId, mainGameTab, mainTimingCategory, mainSupplyFromEngine]);
   const selectedMainGameEventKeyResolved = useMemo(() => {
     if (!selectedMainGameEvent) return '';
+    if (selectedMainGameEvent.type === 'phase_snapshot') return gamePhaseKey(selectedMainGameEvent.phase);
     const idx = topicFilteredGameEvents.indexOf(selectedMainGameEvent);
     if (idx < 0) return '';
     return gameEventTopicKey(idx);
@@ -4065,6 +4135,8 @@ function App() {
       if (mainSelectedGameEventKey) setMainSelectedGameEventKey('');
       return;
     }
+    const phase = parseGamePhaseKey(mainSelectedGameEventKey);
+    if (phase && mainPhaseSnapshots[phase]) return;
     const topicIdx = parseGameEventTopicKey(mainSelectedGameEventKey);
     if (topicIdx != null && topicIdx >= 0 && topicIdx < topicFilteredGameEvents.length) {
       return;
@@ -4075,7 +4147,35 @@ function App() {
     });
     const preferredIdx = firstRowVisibleIdx >= 0 ? firstRowVisibleIdx : 0;
     setMainSelectedGameEventKey(gameEventTopicKey(preferredIdx));
-  }, [topicFilteredGameEvents, mainEventsPlayerEnabledById, mainSelectedGameEventKey]);
+  }, [topicFilteredGameEvents, mainEventsPlayerEnabledById, mainSelectedGameEventKey, mainPhaseSnapshots]);
+
+  // The events list as shown: phase headers where the phase changes, then each event. A Mid or Late game
+  // header with a snapshot is a stop like any event row, clicked or reached with the arrows.
+  const mainEventRows = useMemo(() => {
+    const earlyEnd = Number(mainGame?.early_game_ends_at_second) || 0;
+    const midEnd = Number(mainGame?.mid_game_ends_at_second) || 0;
+    const phaseFor = (sec) => {
+      if (earlyEnd > 0 && sec < earlyEnd) return 'early';
+      if (midEnd > 0 && sec < midEnd) return 'mid';
+      return 'late';
+    };
+    const rows = [];
+    let lastPhase = null;
+    filteredGameEvents.forEach((event) => {
+      const phase = phaseFor(Number(event?.second) || 0);
+      const isLeaveGame = ['leave_game', 'player_dropped', 'mass_disconnect'].includes(normalizeEventType(event?.type));
+      if (!isLeaveGame && phase !== lastPhase) {
+        // Only show "Mid game" / "Late game" when mid game actually ended; otherwise the game never
+        // reached those phases.
+        if (phase === 'early' ? earlyEnd > 0 : midEnd > 0) {
+          rows.push({ kind: 'phase', phase, key: gamePhaseKey(phase), snapshot: mainPhaseSnapshots[phase] || null });
+        }
+        lastPhase = phase;
+      }
+      rows.push({ kind: 'event', event, key: gameEventTopicKey(topicFilteredGameEvents.indexOf(event)) });
+    });
+    return rows;
+  }, [filteredGameEvents, topicFilteredGameEvents, mainPhaseSnapshots, mainGame?.early_game_ends_at_second, mainGame?.mid_game_ends_at_second]);
 
   // Up/Down arrows step through the visible event rows so the map animation can
   // be followed without clicking. Ignored while typing in a text field.
@@ -4089,29 +4189,28 @@ function App() {
       if (target?.isContentEditable || ((tag === 'input' && !isCheckable) || tag === 'textarea' || tag === 'select')) {
         return;
       }
-      const visible = filteredGameEvents;
-      if (visible.length === 0) return;
+      const stops = mainEventRows.filter((row) => row.kind === 'event' || row.snapshot);
+      if (stops.length === 0) return;
       e.preventDefault();
-      const curIdx = selectedMainGameEvent ? visible.indexOf(selectedMainGameEvent) : -1;
+      const curIdx = stops.findIndex((row) => row.key === selectedMainGameEventKeyResolved);
       let nextIdx;
       if (curIdx < 0) {
-        nextIdx = e.key === 'ArrowDown' ? 0 : visible.length - 1;
+        nextIdx = e.key === 'ArrowDown' ? 0 : stops.length - 1;
       } else {
         nextIdx = e.key === 'ArrowDown'
-          ? Math.min(visible.length - 1, curIdx + 1)
+          ? Math.min(stops.length - 1, curIdx + 1)
           : Math.max(0, curIdx - 1);
       }
-      const topicIdx = topicFilteredGameEvents.indexOf(visible[nextIdx]);
-      if (topicIdx >= 0) setMainSelectedGameEventKey(gameEventTopicKey(topicIdx));
+      setMainSelectedGameEventKey(stops[nextIdx].key);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [mainGameTab, filteredGameEvents, topicFilteredGameEvents, selectedMainGameEvent]);
+  }, [mainGameTab, mainEventRows, selectedMainGameEventKeyResolved]);
 
   // Keep the selected row visible in the scrolling events list as arrows move it.
   useEffect(() => {
     if (mainGameTab !== 'events') return;
-    const selected = document.querySelector('.workflow-events .workflow-event-row-selected');
+    const selected = document.querySelector('.workflow-events .workflow-event-row-selected, .workflow-events .workflow-events-section-header--selected');
     if (selected && typeof selected.scrollIntoView === 'function') {
       selected.scrollIntoView({ block: 'nearest' });
     }
@@ -6461,43 +6560,36 @@ function App() {
                           </div>
                         <div className="workflow-events">
                           {filteredGameEvents.length > 0 ? (
-                            (() => {
-                              const earlyEnd = Number(mainGame?.early_game_ends_at_second) || 0;
-                              const midEnd = Number(mainGame?.mid_game_ends_at_second) || 0;
-                              const phaseFor = (sec) => {
-                                if (earlyEnd > 0 && sec < earlyEnd) return 'early';
-                                if (midEnd > 0 && sec < midEnd) return 'mid';
-                                return 'late';
-                              };
-                              const nodes = [];
-                              let lastPhase = null;
-                              filteredGameEvents.forEach((event) => {
-                                const topicIndex = topicFilteredGameEvents.indexOf(event);
-                                const eventKey = gameEventTopicKey(topicIndex);
+                            mainEventRows.map((row) => {
+                              if (row.kind === 'phase') {
+                                const label = t(`events.phase.${row.phase}`);
+                                if (!row.snapshot) {
+                                  return (
+                                    <div key={`hdr-${row.phase}`} className={`workflow-events-section-header workflow-events-section-header--${row.phase}`}>
+                                      {label}
+                                    </div>
+                                  );
+                                }
+                                const phaseSelected = row.key === selectedMainGameEventKeyResolved;
+                                return (
+                                  <button
+                                    key={`hdr-${row.phase}`}
+                                    type="button"
+                                    className={`workflow-events-section-header workflow-events-section-header--${row.phase} workflow-events-section-header--snapshot${phaseSelected ? ' workflow-events-section-header--selected' : ''}`}
+                                    onClick={() => setMainSelectedGameEventKey(row.key)}
+                                  >
+                                    <span className="workflow-event-row-time">{formatDuration(row.snapshot.second)}</span>
+                                    {label}
+                                  </button>
+                                );
+                              }
+                              const { event, key: eventKey } = row;
                                 const selected = eventKey === selectedMainGameEventKeyResolved;
                                 const iconEntries = gameEventRowIconEntries(event, mainEventRaceByPlayerID, markerRegistry);
                                 const castEntries = event?.attack_cast_counts && typeof event.attack_cast_counts === 'object'
                                   ? Object.entries(event.attack_cast_counts)
                                   : [];
-                                const phase = phaseFor(Number(event?.second) || 0);
-                                const isLeaveGame = ['leave_game', 'player_dropped', 'mass_disconnect'].includes(normalizeEventType(event?.type));
-                                if (!isLeaveGame && phase !== lastPhase) {
-                                  // Only show "Mid game" / "Late game" when mid game actually
-                                  // ended; otherwise the game never reached those phases.
-                                  let label = null;
-                                  if (phase === 'early' && earlyEnd > 0) label = t('events.phase.early');
-                                  else if (phase === 'mid' && midEnd > 0) label = t('events.phase.mid');
-                                  else if (phase === 'late' && midEnd > 0) label = t('events.phase.late');
-                                  if (label) {
-                                    nodes.push(
-                                      <div key={`hdr-${phase}`} className={`workflow-events-section-header workflow-events-section-header--${phase}`}>
-                                        {label}
-                                      </div>,
-                                    );
-                                  }
-                                  lastPhase = phase;
-                                }
-                                nodes.push(
+                                return (
                                   <button
                                     key={eventKey}
                                     type="button"
@@ -6535,11 +6627,9 @@ function App() {
                                         </span>
                                       ) : null}
                                     </span>
-                                  </button>,
+                                  </button>
                                 );
-                              });
-                              return nodes;
-                            })()
+                            })
                           ) : (
                             <div className="chart-empty">{t('events.noMatch')}</div>
                           )}

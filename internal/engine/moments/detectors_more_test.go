@@ -357,7 +357,7 @@ func TestNydusAttacks(t *testing.T) {
 func TestRecallIntoAnUnheldBaseHasNoTarget(t *testing.T) {
 	d := digest()
 	d.Teleports = []engine.Teleport{{Frame: f(700), Owner: 1, FromX: 3600, FromY: 3600, ToX: 2000, ToY: 400, Units: []uint16{65, 65}}}
-	d.Casts = []engine.Cast{{Frame: f(680), Owner: 1, Order: orderRecall, X: 2000, Y: 400}}
+	d.Casts = []engine.Cast{{Frame: f(680), Owner: 1, Order: orderRecall, X: 3600, Y: 3600}}
 	if got := Detect(d, testBases, zvp); len(got) != 0 {
 		t.Fatalf("a Recall cast 20 s earlier is not this one: %+v", got)
 	}
@@ -412,7 +412,7 @@ func TestAttackOutcomeAndLateFightingMovesTheSecond(t *testing.T) {
 		t.Fatalf("one attack: %+v", got)
 	}
 	e := got[0]
-	want := Outcome{Killed: 4*50 + 300, Lost: 100, Workers: 4, Buildings: 1, TownHall: true, First: true}
+	want := Outcome{Killed: 4*50 + 300, Lost: 100, Workers: 4, Buildings: 1, TownHall: true, First: true, KilledUnits: 5}
 	if e.Outcome != want {
 		t.Fatalf("outcome %+v, want %+v", e.Outcome, want)
 	}

@@ -114,9 +114,10 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		}
 		e.ActorStartClock, e.TargetStartClock = startClock(e.Actor), startClock(e.Target)
 		if o := m.Outcome; o != (moments.Outcome{}) {
-			e.Outcome = &workflowGameEventOutcome{Killed: int64(o.Killed), Lost: int64(o.Lost), Workers: int64(o.Workers), Buildings: int64(o.Buildings), TownHall: o.TownHall, First: o.First}
+			e.Outcome = &workflowGameEventOutcome{Killed: int64(o.Killed), Lost: int64(o.Lost), Workers: int64(o.Workers), Buildings: int64(o.Buildings), TownHall: o.TownHall, First: o.First, KilledUnits: int64(o.KilledUnits)}
 		}
 		e.DurationSeconds = int64(m.Seconds)
+		e.Result, e.UnitCount, e.Hallucinated = m.Result, int64(m.Count), int64(m.Hallucinated)
 		switch m.Type {
 		case "recall":
 			e.Base, e.TargetBase, e.TargetOwner = base(m.SourceBase), base(m.Base), player(m.Target)

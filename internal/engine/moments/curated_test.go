@@ -112,6 +112,10 @@ func TestRecallNeedsTheCast(t *testing.T) {
 		t.Fatalf("a teleport without a Recall cast: %v", types(got))
 	}
 	d.Casts = []engine.Cast{{Frame: f(695), Owner: 1, Order: orderRecall, X: 410, Y: 410}}
+	if got := Detect(d, testBases, zvp); len(got) != 0 {
+		t.Fatalf("Recall is cast where the units leave from, not where they arrive: %v", types(got))
+	}
+	d.Casts[0].X, d.Casts[0].Y = 3610, 3590
 	got := Detect(d, testBases, zvp)
 	if len(got) != 1 || got[0].Type != "recall" || got[0].Base != 0 || got[0].SourceBase != 2 || got[0].Target != 0 {
 		t.Fatalf("recall: %+v", got)

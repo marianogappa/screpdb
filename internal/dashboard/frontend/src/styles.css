@@ -4596,6 +4596,38 @@ html.events-snap .workflow-nav-app {
   margin-top: 2px;
 }
 
+.workflow-events-section-header--snapshot {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 0.7rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workflow-events-section-header--snapshot .workflow-event-row-time {
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.workflow-events-section-header--snapshot:hover {
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.workflow-events-section-header--selected,
+.workflow-events-section-header--selected:hover {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(100, 150, 255, 0.12);
+}
+
 @keyframes workflow-event-overlay-appear {
   from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -7673,8 +7705,55 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-trend-avg { fill: none; stroke: #60a5fa; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
 
 /* Engine event map: who holds which base, and a dim around what the event is about. */
+/* A flex item sizes to its content, and the map frame's max-width: 100% resolves against this box: without
+   a cap of its own the frame keeps its height-driven width and the stage clips both map edges. */
 .engine-snapshot {
   position: relative;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* The Ghost painting a nuke breathes; the target is the game's red laser dot, a wave rolling off it. */
+.engine-nuke-ghost-ring {
+  fill: none;
+  stroke: #ff3b3b;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: engine-nuke-ghost-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes engine-nuke-ghost-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.engine-nuke-target {
+  filter: drop-shadow(0 0 6px rgba(255, 30, 30, 0.95));
+}
+
+.engine-nuke-target-wave {
+  fill: none;
+  stroke: #ff1a1a;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: engine-nuke-target-wave 1.4s ease-out infinite;
+}
+
+.engine-nuke-target--failed .engine-nuke-target-wave {
+  animation: none;
+  opacity: 0;
+}
+
+@keyframes engine-nuke-target-wave {
+  from { opacity: 0.9; transform: scale(0.6); }
+  to { opacity: 0; transform: scale(2.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .engine-nuke-ghost-ring,
+  .engine-nuke-target-wave {
+    animation: none;
+  }
 }
 
 .engine-base {

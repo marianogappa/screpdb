@@ -482,6 +482,11 @@ type workflowGameEvent struct {
 	Outcome *workflowGameEventOutcome `json:"outcome,omitempty"`
 	// DurationSeconds is how long a span event (a long supply block) lasted.
 	DurationSeconds int64 `json:"duration_seconds,omitempty"`
+	// Result is how an engine nuke or recall ended (moments.Nuke*, moments.Recall*).
+	Result string `json:"result,omitempty"`
+	// UnitCount is how many units an engine recall brought; Hallucinated, the hallucinated Arbiters with it.
+	UnitCount    int64 `json:"unit_count,omitempty"`
+	Hallucinated int64 `json:"hallucinated,omitempty"`
 	// Key events are the few the tab shows by default; the rest show on request.
 	Key bool `json:"key"`
 }
@@ -493,6 +498,8 @@ type workflowGameEventOutcome struct {
 	Buildings int64 `json:"buildings,omitempty"`
 	TownHall  bool  `json:"town_hall,omitempty"`
 	First     bool  `json:"first,omitempty"`
+	// KilledUnits is how many of the target's units died.
+	KilledUnits int64 `json:"killed_units,omitempty"`
 }
 
 type workflowEngineEvent struct {
