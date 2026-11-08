@@ -1,4 +1,5 @@
 import { t } from './lib/i18nContext';
+import { GAME_ASSET_ICON_RENDER_VERSION } from './lib/gameAssets';
 
 const API_BASE = '/api';
 const API_CUSTOM = `${API_BASE}/custom`;
@@ -248,7 +249,7 @@ export const api = {
     return response.json();
   },
   getSpriteMetrics: async (names) => {
-    const response = await fetch(`${API_BASE}/custom/game-assets/sprite-metrics?names=${encodeURIComponent(names.join(','))}`);
+    const response = await fetch(`${API_BASE}/custom/game-assets/sprite-metrics?names=${encodeURIComponent(names.join(','))}&v=${GAME_ASSET_ICON_RENDER_VERSION}`);
     if (!response.ok) throw new Error('Failed to get sprite metrics');
     return response.json();
   },

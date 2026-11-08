@@ -23,7 +23,7 @@ var gameAssetFlight singleflight.Group
 // gameAssetIconRenderVersion segments on-disk icon cache and must match the `v` query param
 // the dashboard frontend appends to unit/building icon URLs. Bump when scmapanalyzer (or our
 // icon mapping) changes so browsers and disk cache pick up new PNGs.
-const gameAssetIconRenderVersion = "5"
+const gameAssetIconRenderVersion = "6"
 
 // gameAssetMapRenderVersion segments the on-disk map cache under
 // game-assets/maps/v<N>/. Bump when the map render changes (scmapanalyzer or
