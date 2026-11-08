@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.35.1](https://github.com/marianogappa/screpdb/compare/v1.35.0...v1.35.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **dashboard:** show idle sprites for units baked from attack frames ([#481](https://github.com/marianogappa/screpdb/issues/481)) ([3d94007](https://github.com/marianogappa/screpdb/commit/3d94007e91918f9b468b834aa276fd594f787b95))
+* **outcomes:** match undecided games to Battle.net by the replay file's MD5 ([#483](https://github.com/marianogappa/screpdb/issues/483)) ([8f41a30](https://github.com/marianogappa/screpdb/commit/8f41a30cb98612e4004d9500281f9bcac8a0a69c))
+
 ## [1.35.0](https://github.com/marianogappa/screpdb/compare/v1.34.0...v1.35.0) (2026-10-31)
 
 
