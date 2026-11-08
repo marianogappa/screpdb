@@ -366,6 +366,7 @@
   "player.bnet.recentGames": "🏁 Recent games",
   "player.bnet.playersCount": "{count} players",
   "player.bnet.fetchingProfile": "Fetching this player's Battle.net profile. Recent ladder games appear once it arrives.",
+  "player.bnet.refreshing": "Checking Battle.net for newer games",
   "player.bnet.connectPrompt": "Connect to Battle.net (start StarCraft: Remastered) to see this player's recent ladder games.",
   "player.bnet.noRecentGames": "Battle.net reports no recent games for this player.",
   "player.bnet.table.when": "When",

@@ -145,13 +145,6 @@ func bnetProfileDetailFromRecord(p persist.BnetProfile, games []persist.BnetGame
 		weekly += t.GamesLastWeek
 	}
 	detail.GamesLastWeek = &weekly
-	// Most played first, so the account someone actually uses leads.
-	sort.SliceStable(detail.Toons, func(i, j int) bool {
-		if detail.Toons[i].GamesLastWeek != detail.Toons[j].GamesLastWeek {
-			return detail.Toons[i].GamesLastWeek > detail.Toons[j].GamesLastWeek
-		}
-		return strings.ToLower(detail.Toons[i].Toon) < strings.ToLower(detail.Toons[j].Toon)
-	})
 
 	// A player can hold several matchmaking records (per season and mode). The
 	// best current rating is the meaningful headline; wins/losses are summed
@@ -204,7 +197,31 @@ func bnetProfileDetailFromRecord(p persist.BnetProfile, games []persist.BnetGame
 	if len(detail.RecentGames) > 0 {
 		detail.LastPlayedAt = detail.RecentGames[0].PlayedAt
 	}
+	sortBnetToonsByRecency(detail.Toons, detail.RecentGames)
 	return detail
+}
+
+// sortBnetToonsByRecency puts the toon played most recently first, so the
+// account someone uses now leads; toons with no archived game follow by how
+// much they played last week.
+func sortBnetToonsByRecency(toons []bnetProfileToon, recent []bnetRecentGame) {
+	lastPlayed := map[string]string{}
+	for _, g := range recent {
+		key := normalizePlayerKey(g.Toon)
+		if key != "" && g.PlayedAt > lastPlayed[key] {
+			lastPlayed[key] = g.PlayedAt
+		}
+	}
+	sort.SliceStable(toons, func(i, j int) bool {
+		li, lj := lastPlayed[normalizePlayerKey(toons[i].Toon)], lastPlayed[normalizePlayerKey(toons[j].Toon)]
+		if li != lj {
+			return li > lj
+		}
+		if toons[i].GamesLastWeek != toons[j].GamesLastWeek {
+			return toons[i].GamesLastWeek > toons[j].GamesLastWeek
+		}
+		return strings.ToLower(toons[i].Toon) < strings.ToLower(toons[j].Toon)
+	})
 }
 
 // bnetRecentGamesFromArchive reads the account's games from its side: the

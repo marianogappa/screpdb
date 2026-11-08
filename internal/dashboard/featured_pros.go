@@ -13,6 +13,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
+	"github.com/marianogappa/screpdb/internal/library/persist"
 	"github.com/marianogappa/screpdb/internal/propack"
 )
 
@@ -89,7 +90,9 @@ var featuredVisibleIDs = map[string]bool{
 }
 
 // featuredPros returns the curated built-in profiles the user is not, most
-// popular first: curated rank, then pros with a portrait, then label.
+// popular first: pros with a known Battle.net account (someone still playing,
+// whose page has recent games to show), then curated rank, then pros with a
+// portrait, then label.
 func (d *Dashboard) featuredPros() []*propack.Pro {
 	pack := d.loadProPack()
 	if pack == nil {
@@ -105,6 +108,9 @@ func (d *Dashboard) featuredPros() []*propack.Pro {
 		out = append(out, pro)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
+		if (len(out[i].Toons) > 0) != (len(out[j].Toons) > 0) {
+			return len(out[i].Toons) > 0
+		}
 		ri, rj := rankOrZeroLast(out[i].Rank), rankOrZeroLast(out[j].Rank)
 		if ri != rj {
 			return ri < rj
@@ -244,8 +250,8 @@ func featuredProfileOf(pack *propack.Pack, pro *propack.Pro) *featuredProfile {
 
 // buildFeaturedPlayerOverview is the player-page overview of a built-in
 // profile. Local-dataset fields (wins, matchups, tech orders, chat) stay empty;
-// the Battle.net section is served from the profile cache keyed on the pro's
-// known toons, and a background fetch fills it when the bridge is connected.
+// the Battle.net section merges every cached account of the pro's known toons,
+// and opening the page refreshes those accounts while the bridge is connected.
 func (d *Dashboard) buildFeaturedPlayerOverview(playerKey string) (workflowPlayerOverview, error) {
 	pro := d.featuredPro(playerKey)
 	if pro == nil {
@@ -281,22 +287,22 @@ func (d *Dashboard) buildFeaturedPlayerOverview(playerKey string) (workflowPlaye
 		return result.RaceBreakdown[i].Race < result.RaceBreakdown[j].Race
 	})
 
-	toonKeys := make([]string, 0, len(pro.Toons))
-	for _, toon := range pro.Toons {
-		toonKeys = append(toonKeys, normalizePlayerKey(toon.Toon))
-	}
-	details := d.bnetProfileDetailsByPlayerKeys(d.ctx, toonKeys)
-	for _, detail := range details {
-		// Misses reach the page now so ordinary players can be told their name
-		// is not on Battle.net. A pro page has nothing to say with one: it
-		// decorates a known account, so only a found profile counts.
-		if !detail.Found {
+	profiles := d.featuredProBnetProfiles(d.ctx, pro)
+	gamesByAccount := map[int64][]persist.BnetGame{}
+	for _, p := range profiles {
+		if !p.Found || p.AuroraID == 0 {
 			continue
 		}
-		if result.BnetProfile == nil || bnetProfileDetailScore(detail) > bnetProfileDetailScore(result.BnetProfile) {
-			result.BnetProfile = detail
+		if _, ok := gamesByAccount[p.AuroraID]; ok {
+			continue
 		}
+		games, err := d.dbStore.ListBnetGamesByAccount(d.ctx, p.AuroraID)
+		if err != nil {
+			games = nil
+		}
+		gamesByAccount[p.AuroraID] = games
 	}
+	result.BnetProfile = mergeFeaturedBnetDetail(profiles, gamesByAccount, time.Now())
 	if result.BnetProfile != nil {
 		result.BnetGames = int64(pro.GamesSampled)
 		if result.CountryCode == "" {
@@ -304,47 +310,8 @@ func (d *Dashboard) buildFeaturedPlayerOverview(playerKey string) (workflowPlaye
 		}
 		result.BnetProfile.Habits = d.bnetPlayHabitsFor(d.ctx, result.BnetProfile.AuroraID, result.CountryCode, time.Now())
 	}
-	d.backfillBnetProfilesForToons(pro.Toons)
+	result.BnetRefreshing = d.refreshFeaturedProBnet(pro, profiles, bnetfacade.PriorityUser, featuredProVisitMaxAge)
 	return result, nil
-}
-
-// backfillBnetProfilesForToons fetches, in the background, the profiles of
-// known (toon, gateway) accounts that are not cached yet. Unlike
-// backfillBnetProfiles it never has to guess the gateway, so it spends at most
-// one bridge request per account.
-func (d *Dashboard) backfillBnetProfilesForToons(toons []propack.Toon) {
-	if d.bnetDisabled.Load() {
-		return
-	}
-	addr, _ := d.bnetAddr.Load().(string)
-	if addr == "" || len(toons) == 0 {
-		return
-	}
-	var pending []propack.Toon
-	for _, toon := range toons {
-		if _, ok := bnetfacade.GatewayNames[toon.Gateway]; !ok || strings.TrimSpace(toon.Toon) == "" {
-			continue
-		}
-		row, err := d.dbStore.GetBnetProfile(d.ctx, toon.Toon, int64(toon.Gateway))
-		if err != nil {
-			continue
-		}
-		if row != nil && time.Since(row.FetchedAt) < bnetProfileTTL {
-			continue
-		}
-		pending = append(pending, toon)
-	}
-	if len(pending) == 0 {
-		return
-	}
-	d.bnetBackfillActive.Add(1)
-	go func() {
-		defer crashreport.GuardNonFatal(nil)
-		defer d.bnetBackfillActive.Add(-1)
-		for _, toon := range pending {
-			_, _ = d.getOrFetchBnetProfile(d.ctx, toon.Toon, int64(toon.Gateway), bnetfacade.PriorityBackground, 0)
-		}
-	}()
 }
 
 func (d *Dashboard) featuredHotkeySignature(pro *propack.Pro) hotkeySignaturePayload {

@@ -506,6 +506,13 @@ func TestDistillBnetProfile(t *testing.T) {
 	if len(games) != 2 {
 		t.Fatalf("games: %d", len(games))
 	}
+	oldest := games[0].CreateTime
+	if games[1].CreateTime.Before(oldest) {
+		oldest = games[1].CreateTime
+	}
+	if !profile.ListedFrom.Equal(oldest) {
+		t.Fatalf("listed from %v, want the oldest listed game %v", profile.ListedFrom, oldest)
+	}
 	byID := map[string]BnetGame{}
 	for _, g := range games {
 		byID[g.GameID] = g
@@ -846,5 +853,27 @@ func TestBnetCacheGatewaysByToons(t *testing.T) {
 	}
 	if _, ok := got["never-seen"]; ok {
 		t.Fatalf("a toon we hold nothing for must stay unknown: %v", got)
+	}
+}
+
+func TestBnetCacheProfilesListingToons(t *testing.T) {
+	cache := NewBnetCache(t.TempDir())
+	now := time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
+	for _, p := range []BnetProfile{
+		{Toon: "Alias", Gateway: 20, Found: true, AuroraID: 1, FetchedAt: now, Toons: []BnetToon{{Toon: "PackToon", Gateway: 30}, {Toon: "Alias", Gateway: 20}}},
+		{Toon: "packtoon", Gateway: 30, Found: true, AuroraID: 1, FetchedAt: now},
+		{Toon: "PackToon", Gateway: 45, FetchedAt: now},
+		{Toon: "Stranger", Gateway: 30, Found: true, AuroraID: 2, FetchedAt: now, Toons: []BnetToon{{Toon: "Stranger", Gateway: 30}}},
+	} {
+		if err := cache.Upsert(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := map[string]bool{}
+	for _, p := range cache.ProfilesListingToons([]string{"packtoon"}) {
+		got[p.Toon] = true
+	}
+	if len(got) != 2 || !got["Alias"] || !got["packtoon"] {
+		t.Fatalf("listing %v, want the found row of the toon and the row listing it, not misses or strangers", got)
 	}
 }

@@ -736,6 +736,7 @@ type workflowPlayerOverview struct {
 	SecondaryBadge      *IdentityBadge                `json:"secondary_badge,omitempty"`
 	CountryCode         string                        `json:"country_code,omitempty"`
 	BnetProfile         *bnetProfileDetail            `json:"bnet_profile,omitempty"`
+	BnetRefreshing      bool                          `json:"bnet_refreshing,omitempty"`
 	// The summary tab shows its Battle.net section only when this is non-zero.
 	BnetGames int64 `json:"bnet_games"`
 	// Set only for built-in progamer profiles (internal/propack); carries what the

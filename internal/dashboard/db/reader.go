@@ -149,6 +149,7 @@ type Reader interface {
 	GetBnetCountryCodesByPlayerKeys(ctx context.Context, playerKeys []string) (map[string]string, error)
 	GetBnetFetchedAtByPlayerKeys(ctx context.Context, playerKeys []string) (map[string]time.Time, error)
 	ListBnetProfilesByPlayerKeys(ctx context.Context, playerKeys []string) ([]persist.BnetProfile, error)
+	ListBnetProfilesListingPlayerKeys(ctx context.Context, playerKeys []string) ([]persist.BnetProfile, error)
 	ListBnetAuroraIDsByPlayerKeys(ctx context.Context, playerKeys []string) ([]int64, error)
 	UpsertBnetGames(ctx context.Context, games []persist.BnetGame) error
 	ListBnetGamesByAccount(ctx context.Context, auroraID int64) ([]persist.BnetGame, error)
