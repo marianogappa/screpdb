@@ -45,6 +45,11 @@ type BnetProfile struct {
 	Toons       []BnetToon     `json:"o,omitempty"`
 	Ladder      []BnetLadder   `json:"m,omitempty"`
 	Lifetime    []BnetLifetime `json:"l,omitempty"`
+	// ListedFrom is when the oldest game this answer listed was played, or the
+	// fetch time when it listed none: the account's games from then on are
+	// exactly the list Battle.net last gave. Zero on rows saved before it
+	// existed.
+	ListedFrom time.Time `json:"lf,omitzero"`
 }
 
 // BnetToon is one toons[] row: a name the account plays under on one gateway.
@@ -365,6 +370,33 @@ func (c *BnetCache) ProfilesByToons(toons []string) []BnetProfile {
 	for _, p := range c.entries {
 		if _, ok := wanted[library.PlayerKey(p.Toon)]; ok {
 			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// ProfilesListingToons returns every found profile that names one of the given
+// toons (case-insensitive), as its own toon or among its account's toons. A
+// toon renamed since leaves its account reachable through any profile fetched
+// for another of the account's toons.
+func (c *BnetCache) ProfilesListingToons(toons []string) []BnetProfile {
+	wanted := playerKeySet(toons)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var out []BnetProfile
+	for _, p := range c.entries {
+		if !p.Found {
+			continue
+		}
+		if _, ok := wanted[library.PlayerKey(p.Toon)]; ok {
+			out = append(out, p)
+			continue
+		}
+		for _, t := range p.Toons {
+			if _, ok := wanted[library.PlayerKey(t.Toon)]; ok {
+				out = append(out, p)
+				break
+			}
 		}
 	}
 	return out

@@ -208,9 +208,17 @@ func TestFeaturedProsOrderedByCuratedRank(t *testing.T) {
 		t.Skip("pack has fewer than two pros")
 	}
 	lastRank := 0
+	seenWithoutAccount := false
 	for _, pro := range pros {
+		if len(pro.Toons) == 0 {
+			seenWithoutAccount = true
+			continue
+		}
+		if seenWithoutAccount {
+			t.Fatalf("%s has a Battle.net account but is listed after a pro without one", pro.ID)
+		}
 		if pro.Rank <= 0 {
-			break
+			continue
 		}
 		if pro.Rank < lastRank {
 			t.Fatalf("%s (rank %d) listed after rank %d", pro.ID, pro.Rank, lastRank)

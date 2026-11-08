@@ -90,7 +90,9 @@ var featuredVisibleIDs = map[string]bool{
 }
 
 // featuredPros returns the curated built-in profiles the user is not, most
-// popular first: curated rank, then pros with a portrait, then label.
+// popular first: pros with a known Battle.net account (someone still playing,
+// whose page has recent games to show), then curated rank, then pros with a
+// portrait, then label.
 func (d *Dashboard) featuredPros() []*propack.Pro {
 	pack := d.loadProPack()
 	if pack == nil {
@@ -106,6 +108,9 @@ func (d *Dashboard) featuredPros() []*propack.Pro {
 		out = append(out, pro)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
+		if (len(out[i].Toons) > 0) != (len(out[j].Toons) > 0) {
+			return len(out[i].Toons) > 0
+		}
 		ri, rj := rankOrZeroLast(out[i].Rank), rankOrZeroLast(out[j].Rank)
 		if ri != rj {
 			return ri < rj

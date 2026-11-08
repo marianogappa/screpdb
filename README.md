@@ -308,7 +308,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-08  OK. Built-in pro pages refresh their Battle.net accounts when opened (user priority, one bridge request per account at most every 30 minutes, each attempt once per window) and a background sweep refreshes one stale pro every 10 minutes at background priority and the 24h freshness while StarCraft: Remastered is connected; recent games merge every known account newest first. All requests go through the existing bnetfacade rate limiter and budget, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+2026-11-08  OK. Built-in pro pages refresh their Battle.net accounts when opened (user priority, one bridge request per account at most every 30 minutes, trying another toon of the account when one is gone, one request at a time because the bridge times out on parallel requests) and a background sweep refreshes one stale pro every 10 minutes at background priority and the 24h freshness while StarCraft: Remastered is connected; recent games are the newest 25 of the most recently active account's latest answer, profiles record when that answer's oldest game was played, and pros without a known account sort last. All requests go through the existing bnetfacade rate limiter and budget, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>

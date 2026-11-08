@@ -23,6 +23,15 @@ type featuredProRefreshState struct {
 	mu        sync.Mutex
 	inflight  map[string]bool
 	attempted map[bnetToonGateway]time.Time
+	// learned holds, per pro, the toons that answered for an account after a
+	// pack toon stopped doing so. A renamed toon drops out of its account's
+	// list, so nothing cached links the pro to the account any more; this
+	// does until the pack is rebaked with the new name.
+	learned map[string][]string
+	// fetching runs the refreshes one request at a time: the bridge answers
+	// serially, so pros refreshing side by side queue past its timeout and
+	// every one of them fails.
+	fetching sync.Mutex
 }
 
 type bnetToonGateway struct {
@@ -30,70 +39,79 @@ type bnetToonGateway struct {
 	gateway int64
 }
 
-// featuredProBnetProfiles returns every cached profile row of the pro's
-// accounts: the rows of the pack's toons, plus rows of any other toon those
-// accounts own, since a profile fetched for an alias (by the session sweep, say)
-// is just as fresh an answer about the account.
+// bnetRefreshTarget is one request plus the toons to try when it answers
+// "not found": a toon can be renamed while its account lives on, and asking an
+// alternate is how the account's games keep arriving.
+type bnetRefreshTarget struct {
+	bnetToonGateway
+	alternates []bnetToonGateway
+}
+
+const featuredProMaxAlternates = 3
+
+// featuredProBnetProfiles returns the cached rows that speak for the pro: the
+// rows of the pack's toons, misses included, plus every found profile that
+// lists one of them among its account's toons. The latter keeps an account in
+// view after one of its toons is renamed, and counts a profile fetched for an
+// alias (by the session sweep, say) as the fresh answer about the account it is.
 func (d *Dashboard) featuredProBnetProfiles(ctx context.Context, pro *propack.Pro) []persist.BnetProfile {
-	keys := make([]string, 0, len(pro.Toons))
-	seen := map[string]bool{}
+	names := make([]string, 0, len(pro.Toons))
 	for _, toon := range pro.Toons {
-		if key := normalizePlayerKey(toon.Toon); key != "" && !seen[key] {
+		names = append(names, toon.Toon)
+	}
+	d.featuredRefresh.mu.Lock()
+	names = append(names, d.featuredRefresh.learned[pro.ID]...)
+	d.featuredRefresh.mu.Unlock()
+	keys := make([]string, 0, len(names))
+	seen := map[string]bool{}
+	for _, name := range names {
+		if key := normalizePlayerKey(name); key != "" && !seen[key] {
 			seen[key] = true
 			keys = append(keys, key)
 		}
 	}
-	profiles, err := d.dbStore.ListBnetProfilesByPlayerKeys(ctx, keys)
+	direct, err := d.dbStore.ListBnetProfilesByPlayerKeys(ctx, keys)
 	if err != nil {
 		return nil
 	}
-	accounts := map[int64]bool{}
-	var aliasKeys []string
-	for _, p := range profiles {
-		if !p.Found || p.AuroraID == 0 {
-			continue
-		}
-		accounts[p.AuroraID] = true
-		for _, t := range p.Toons {
-			if key := normalizePlayerKey(t.Toon); key != "" && !seen[key] {
-				seen[key] = true
-				aliasKeys = append(aliasKeys, key)
-			}
-		}
-	}
-	if len(aliasKeys) == 0 {
-		return profiles
-	}
-	aliases, err := d.dbStore.ListBnetProfilesByPlayerKeys(ctx, aliasKeys)
+	listing, err := d.dbStore.ListBnetProfilesListingPlayerKeys(ctx, keys)
 	if err != nil {
-		return profiles
+		return direct
 	}
-	for _, p := range aliases {
-		if p.Found && accounts[p.AuroraID] {
+	profiles := direct
+	have := map[bnetToonGateway]bool{}
+	for _, p := range direct {
+		have[bnetToonGateway{p.Toon, p.Gateway}] = true
+	}
+	for _, p := range listing {
+		if key := (bnetToonGateway{p.Toon, p.Gateway}); !have[key] {
+			have[key] = true
 			profiles = append(profiles, p)
 		}
 	}
 	return profiles
 }
 
-// featuredProRefreshTargets picks the (toon, gateway) requests that would bring
-// the pro's picture up to maxAge. Battle.net reports games per account, so one
-// request per account is enough however many toons it holds; a pack toon that
-// no cached account owns is asked on its own, since it may be an account we
-// have never seen. A toon Battle.net does not have keeps that answer for the
-// usual 24h.
-func featuredProRefreshTargets(toons []propack.Toon, profiles []persist.BnetProfile, now time.Time, maxAge time.Duration) []bnetToonGateway {
+// featuredProRefreshTargets picks the requests that would bring the pro's
+// picture up to maxAge. Battle.net reports games per account, so one request
+// per account is enough however many toons it holds; a pack toon that no cached
+// account owns is asked on its own, since it may be an account we have never
+// seen. A toon Battle.net does not have keeps that answer for the usual 24h.
+// Toons are compared exactly: Battle.net tells I from l, so lowercasing would
+// let a miss for one spelling stand in for a found row of another.
+func featuredProRefreshTargets(toons []propack.Toon, profiles []persist.BnetProfile, now time.Time, maxAge time.Duration) []bnetRefreshTarget {
 	type account struct {
 		freshest time.Time
-		fallback bnetToonGateway
-		toon     bnetToonGateway
-		toonAt   time.Time
+		row      bnetToonGateway
+		toons    []persist.BnetToon
+		pack     bnetToonGateway
+		packAt   time.Time
 	}
 	accounts := map[int64]*account{}
 	owned := map[bnetToonGateway]bool{}
 	rows := map[bnetToonGateway]persist.BnetProfile{}
 	for _, p := range profiles {
-		rows[bnetToonGateway{normalizePlayerKey(p.Toon), p.Gateway}] = p
+		rows[bnetToonGateway{strings.TrimSpace(p.Toon), p.Gateway}] = p
 		if !p.Found || p.AuroraID == 0 {
 			continue
 		}
@@ -102,26 +120,26 @@ func featuredProRefreshTargets(toons []propack.Toon, profiles []persist.BnetProf
 			a = &account{}
 			accounts[p.AuroraID] = a
 		}
-		if a.fallback.toon == "" || p.FetchedAt.After(a.freshest) {
+		if a.row.toon == "" || p.FetchedAt.After(a.freshest) {
 			a.freshest = p.FetchedAt
-			a.fallback = bnetToonGateway{strings.TrimSpace(p.Toon), p.Gateway}
+			a.row = bnetToonGateway{strings.TrimSpace(p.Toon), p.Gateway}
+			a.toons = p.Toons
 		}
 		for _, t := range p.Toons {
-			owned[bnetToonGateway{normalizePlayerKey(t.Toon), int64(t.Gateway)}] = true
+			owned[bnetToonGateway{strings.TrimSpace(t.Toon), int64(t.Gateway)}] = true
 		}
 	}
-	var targets []bnetToonGateway
+	var targets []bnetRefreshTarget
 	for _, toon := range toons {
-		gateway := int64(toon.Gateway)
 		if _, ok := bnetfacade.GatewayNames[toon.Gateway]; !ok || strings.TrimSpace(toon.Toon) == "" {
 			continue
 		}
-		key := bnetToonGateway{normalizePlayerKey(toon.Toon), gateway}
+		key := bnetToonGateway{strings.TrimSpace(toon.Toon), int64(toon.Gateway)}
 		row, cached := rows[key]
 		if cached && row.Found && row.AuroraID != 0 {
 			a := accounts[row.AuroraID]
-			if a.toon.toon == "" || row.FetchedAt.After(a.toonAt) {
-				a.toon, a.toonAt = bnetToonGateway{strings.TrimSpace(toon.Toon), gateway}, row.FetchedAt
+			if a.pack.toon == "" || row.FetchedAt.After(a.packAt) {
+				a.pack, a.packAt = key, row.FetchedAt
 			}
 			continue
 		}
@@ -131,7 +149,7 @@ func featuredProRefreshTargets(toons []propack.Toon, profiles []persist.BnetProf
 		if cached && now.Sub(row.FetchedAt) < bnetProfileTTL {
 			continue
 		}
-		targets = append(targets, bnetToonGateway{strings.TrimSpace(toon.Toon), gateway})
+		targets = append(targets, bnetRefreshTarget{bnetToonGateway: key})
 	}
 	ids := make([]int64, 0, len(accounts))
 	for id := range accounts {
@@ -143,10 +161,26 @@ func featuredProRefreshTargets(toons []propack.Toon, profiles []persist.BnetProf
 		if now.Sub(a.freshest) < maxAge {
 			continue
 		}
-		if a.toon.toon == "" {
-			a.toon = a.fallback
+		target := bnetRefreshTarget{bnetToonGateway: a.pack}
+		if target.toon == "" {
+			target.bnetToonGateway = a.row
 		}
-		targets = append(targets, a.toon)
+		alternates := append([]persist.BnetToon(nil), a.toons...)
+		sort.SliceStable(alternates, func(i, j int) bool { return alternates[i].GamesLastWeek > alternates[j].GamesLastWeek })
+		for _, t := range alternates {
+			alt := bnetToonGateway{strings.TrimSpace(t.Toon), int64(t.Gateway)}
+			if _, ok := bnetfacade.GatewayNames[t.Gateway]; !ok || alt.toon == "" || alt == target.bnetToonGateway {
+				continue
+			}
+			if row, cached := rows[alt]; cached && !row.Found && now.Sub(row.FetchedAt) < bnetProfileTTL {
+				continue
+			}
+			if len(target.alternates) == featuredProMaxAlternates {
+				break
+			}
+			target.alternates = append(target.alternates, alt)
+		}
+		targets = append(targets, target)
 	}
 	return targets
 }
@@ -171,10 +205,9 @@ func (d *Dashboard) refreshFeaturedProBnet(pro *propack.Pro, profiles []persist.
 		s.mu.Unlock()
 		return true
 	}
-	var pending []bnetToonGateway
+	var pending []bnetRefreshTarget
 	for _, target := range featuredProRefreshTargets(pro.Toons, profiles, now, maxAge) {
-		key := bnetToonGateway{normalizePlayerKey(target.toon), target.gateway}
-		if at, ok := s.attempted[key]; ok && now.Sub(at) < maxAge {
+		if at, ok := s.attempted[target.bnetToonGateway]; ok && now.Sub(at) < maxAge {
 			continue
 		}
 		pending = append(pending, target)
@@ -186,6 +219,7 @@ func (d *Dashboard) refreshFeaturedProBnet(pro *propack.Pro, profiles []persist.
 	if s.inflight == nil {
 		s.inflight = map[string]bool{}
 		s.attempted = map[bnetToonGateway]time.Time{}
+		s.learned = map[string][]string{}
 	}
 	for key, at := range s.attempted {
 		if now.Sub(at) >= bnetProfileTTL {
@@ -193,7 +227,7 @@ func (d *Dashboard) refreshFeaturedProBnet(pro *propack.Pro, profiles []persist.
 		}
 	}
 	for _, target := range pending {
-		s.attempted[bnetToonGateway{normalizePlayerKey(target.toon), target.gateway}] = now
+		s.attempted[target.bnetToonGateway] = now
 	}
 	s.inflight[pro.ID] = true
 	s.mu.Unlock()
@@ -211,17 +245,45 @@ func (d *Dashboard) refreshFeaturedProBnet(pro *propack.Pro, profiles []persist.
 			}
 		}()
 		for _, target := range pending {
-			_, _ = d.getOrFetchBnetProfile(d.ctx, target.toon, target.gateway, prio, maxAge)
+			for i, ask := range append([]bnetToonGateway{target.bnetToonGateway}, target.alternates...) {
+				s.fetching.Lock()
+				res, err := d.getOrFetchBnetProfile(d.ctx, ask.toon, ask.gateway, prio, maxAge)
+				s.fetching.Unlock()
+				if err == nil && res.Found && i > 0 {
+					s.mu.Lock()
+					s.learned[pro.ID] = append(s.learned[pro.ID], ask.toon)
+					s.mu.Unlock()
+				}
+				if err != nil || res.Found || res.Stale {
+					break
+				}
+			}
 		}
 	}()
 	return true
 }
 
+// bnetProfileGamesListed is how many games the page lists: a profile answer
+// holds each toon's last 25, so a toon that went quiet months ago would
+// otherwise trail the account's current games with its old ones.
+const bnetProfileGamesListed = 25
+
+// latestListedGames keeps the newest games of the profile's latest answer,
+// from the account's archived games sorted newest first.
+func latestListedGames(p persist.BnetProfile, archived []persist.BnetGame) []persist.BnetGame {
+	n := 0
+	for n < len(archived) && n < bnetProfileGamesListed && !archived[n].CreateTime.Before(p.ListedFrom) {
+		n++
+	}
+	return archived[:n]
+}
+
 // mergeFeaturedBnetDetail builds one Battle.net section out of all of a pro's
-// accounts. The account that played most recently leads with its ratings and
-// totals; its alias list and recent games are the union of every account's,
-// newest first, so moving to a new account does not leave the page reading
-// the old one.
+// accounts. The account that played most recently leads: its ratings, totals
+// and recent games are the page's, and the games are the newest of its latest
+// answer, so an older account's games or ones that answer has rolled off never
+// pad the list with months-old play. Every account's toons still show as
+// aliases, most recently played first.
 func mergeFeaturedBnetDetail(profiles []persist.BnetProfile, gamesByAccount map[int64][]persist.BnetGame) *bnetProfileDetail {
 	byAccount := map[int64]persist.BnetProfile{}
 	for _, p := range profiles {
@@ -262,21 +324,22 @@ func mergeFeaturedBnetDetail(profiles []persist.BnetProfile, gamesByAccount map[
 	})
 	lead := byAccount[ids[0]]
 	lead.Toons = append([]persist.BnetToon(nil), lead.Toons...)
-	var games []persist.BnetGame
-	seenGames := map[string]bool{}
-	for _, id := range ids {
-		if id != ids[0] {
-			lead.Toons = append(lead.Toons, byAccount[id].Toons...)
-		}
-		for _, g := range gamesByAccount[id] {
-			if g.GameID != "" && seenGames[g.GameID] {
-				continue
-			}
-			seenGames[g.GameID] = true
-			games = append(games, g)
-		}
+	for _, id := range ids[1:] {
+		lead.Toons = append(lead.Toons, byAccount[id].Toons...)
 	}
-	return bnetProfileDetailFromRecord(lead, games)
+	archived := append([]persist.BnetGame(nil), gamesByAccount[ids[0]]...)
+	sort.SliceStable(archived, func(i, j int) bool { return archived[i].CreateTime.After(archived[j].CreateTime) })
+	games := latestListedGames(lead, archived)
+	detail := bnetProfileDetailFromRecord(lead, games)
+	if len(archived) > 0 {
+		detail.LastPlayedAt = archived[0].CreateTime.UTC().Format(time.RFC3339)
+	}
+	var allGames []bnetRecentGame
+	for _, id := range ids {
+		allGames = append(allGames, bnetRecentGamesFromArchive(lead, gamesByAccount[id])...)
+	}
+	sortBnetToonsByRecency(detail.Toons, allGames)
+	return detail
 }
 
 // featuredProSweepEvery paces the background refresh of the pros nobody has

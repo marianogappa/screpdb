@@ -62,6 +62,9 @@ func (d *Dashboard) getOrFetchBnetProfile(ctx context.Context, toon string, gate
 
 	fresh, err := d.fetchAndCacheBnetProfile(ctx, toon, gateway, prio, now)
 	if err != nil {
+		if d.debug {
+			log.Printf("[bnet-profile] refetching %q on gateway %d: %v", toon, gateway, err)
+		}
 		if cached != nil {
 			return bnetProfileResultFromRecord(cached, true, true), nil
 		}

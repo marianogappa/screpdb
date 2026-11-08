@@ -44,6 +44,13 @@ func (s *LibStore) ListBnetProfilesByPlayerKeys(_ context.Context, playerKeys []
 	return s.bnet.ProfilesByToons(playerKeys), nil
 }
 
+func (s *LibStore) ListBnetProfilesListingPlayerKeys(_ context.Context, playerKeys []string) ([]persist.BnetProfile, error) {
+	if len(playerKeys) == 0 {
+		return []persist.BnetProfile{}, nil
+	}
+	return s.bnet.ProfilesListingToons(playerKeys), nil
+}
+
 func (s *LibStore) ListBnetAuroraIDsByPlayerKeys(_ context.Context, playerKeys []string) ([]int64, error) {
 	if len(playerKeys) == 0 {
 		return []int64{}, nil

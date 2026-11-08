@@ -148,7 +148,14 @@ func DistillBnetProfile(toon string, gateway int64, fetchedAt time.Time, payload
 	if !profile.Found {
 		return profile, nil
 	}
-	return profile, distillBnetGames(raw)
+	games := distillBnetGames(raw)
+	profile.ListedFrom = profile.FetchedAt
+	for _, g := range games {
+		if g.CreateTime.Before(profile.ListedFrom) {
+			profile.ListedFrom = g.CreateTime
+		}
+	}
+	return profile, games
 }
 
 func distillBnetGames(raw rawAuroraProfile) []BnetGame {
