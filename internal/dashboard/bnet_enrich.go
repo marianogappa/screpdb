@@ -237,7 +237,7 @@ func (d *Dashboard) enrichDeps() enrichDeps {
 			for _, g := range games {
 				ref := bnetfacade.ProfileGameRef{GameID: g.GameID, CreateTime: g.CreateTime.Unix()}
 				p.GameRefs = append(p.GameRefs, ref)
-				if g.MD5 == "" {
+				if g.MD5 == "" || g.URL == "" {
 					continue
 				}
 				p.Replays = append(p.Replays, bnetfacade.ProfileReplay{

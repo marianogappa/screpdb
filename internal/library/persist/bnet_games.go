@@ -53,8 +53,9 @@ type BnetGame struct {
 	// the per-account files are gone.
 	Accounts []int64 `json:"ac,omitempty"`
 
-	// Own replay. Present only for the fetching account's own games, and only
-	// while GCS still serves it (17-46 days). Cleared by retention.
+	// Own replay. Present only for the fetching account's own games. The URL
+	// is cleared once GCS stops serving it (17-46 days); the MD5 is kept, as it
+	// ties the user's replay file to this game for good.
 	MD5 string `json:"d,omitempty"`
 	URL string `json:"u,omitempty"`
 }
@@ -367,21 +368,21 @@ func (g *BnetGame) reportedBy(auroraID int64) bool {
 	return false
 }
 
-// ClearReplayRefsOlderThan drops the own-replay MD5/URL of games older than
-// maxAge: GCS has already stopped serving them, so the bytes buy nothing.
-func (a *BnetGameArchive) ClearReplayRefsOlderThan(maxAge time.Duration) error {
+// ClearReplayURLsOlderThan drops the own-replay URL of games older than
+// maxAge: GCS has already stopped serving them.
+func (a *BnetGameArchive) ClearReplayURLsOlderThan(maxAge time.Duration) error {
 	cutoff := time.Now().Add(-maxAge)
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	cleared := false
 	for id, g := range a.games {
-		if g.MD5 == "" && g.URL == "" {
+		if g.URL == "" {
 			continue
 		}
 		if g.CreateTime.IsZero() || !g.CreateTime.Before(cutoff) {
 			continue
 		}
-		g.MD5, g.URL = "", ""
+		g.URL = ""
 		a.games[id] = g
 		cleared = true
 	}

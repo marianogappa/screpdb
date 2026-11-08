@@ -2,6 +2,9 @@ package dashboard
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -70,6 +73,114 @@ func TestBnetGameForTellsRematchesApartByTimePlayed(t *testing.T) {
 	}
 	if got, ok := bnetGameFor(r, indexBnetGames([]persist.BnetGame{next})); ok {
 		t.Fatalf("a game whose times contradict the replay matched %q", got.GameID)
+	}
+}
+
+// An 8-player game from the user's library, whose Battle.net times run 1.2% to 5.7% longer than the
+// replay's: too far apart for matching by players and times, so only the file's MD5 can name the game.
+func lagStretchedGame(t *testing.T, path string) (*library.Replay, persist.BnetGame) {
+	t.Helper()
+	start := time.Date(2026, 10, 18, 16, 15, 31, 0, time.UTC)
+	r := librarytest.Replay(
+		librarytest.WithPath(path, start),
+		librarytest.WithDate(start),
+		librarytest.WithDuration(2591),
+		librarytest.WithPlayer("chobo86"),
+		librarytest.WithPlayer("0lipower90"),
+		librarytest.WithPlayer("tk:kot0"),
+		librarytest.WithPlayer("HUSKY_LOKI"),
+	)
+	r.Players[1].Flags |= library.PlayerLeft
+	r.Players[1].LeaveSec = 470
+	r.Players[2].Flags |= library.PlayerLeft
+	r.Players[2].LeaveSec = 741
+	game := outcomeGame("1734417998", start.Add(43*time.Minute),
+		persist.BnetGamePlayer{Toon: "chobo86", Seconds: 2623, Result: persist.BnetResultLoss},
+		persist.BnetGamePlayer{Toon: "0lipower90", Seconds: 497, Result: persist.BnetResultLoss},
+		persist.BnetGamePlayer{Toon: "tk:kot0", Seconds: 770, Result: persist.BnetResultLoss},
+		persist.BnetGamePlayer{Toon: "HUSKY_LOKI", Seconds: 2626, Result: persist.BnetResultWin})
+	if _, ok := bnetGameFor(r, indexBnetGames([]persist.BnetGame{game})); ok {
+		t.Fatal("the fixture no longer needs the MD5 to match")
+	}
+	return r, game
+}
+
+func outcomeDashboard(t *testing.T, r *library.Replay, games ...persist.BnetGame) (*Dashboard, *library.Library, string) {
+	t.Helper()
+	lib := library.New(library.Options{})
+	t.Cleanup(lib.Close)
+	lib.Add(0, r)
+	lib.Flush()
+	root := t.TempDir()
+	if err := iofacade.AllowDir(root); err != nil {
+		t.Fatalf("AllowDir: %v", err)
+	}
+	store := dashboarddb.NewLibStore(lib, persist.NewBnetCache(root), nil)
+	archive := persist.NewBnetGameArchive(root)
+	store.SetGameArchive(archive)
+	if err := archive.Upsert(games); err != nil {
+		t.Fatal(err)
+	}
+	return &Dashboard{ctx: context.Background(), dbStore: store, library: &libraryRuntime{lib: lib, root: root}}, lib, root
+}
+
+func writeReplayFile(t *testing.T, path, content string) string {
+	t.Helper()
+	if err := iofacade.AllowDir(filepath.Dir(path)); err != nil {
+		t.Fatalf("AllowDir: %v", err)
+	}
+	if err := iofacade.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sum := md5.Sum([]byte(content))
+	return hex.EncodeToString(sum[:])
+}
+
+func TestResolveBnetOutcomesMatchesTheOwnReplayByMD5(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "205902,(8)Big Game Hunters.rep")
+	sum := writeReplayFile(t, path, "own replay bytes")
+	r, game := lagStretchedGame(t, path)
+	game.MD5 = sum
+	d, lib, _ := outcomeDashboard(t, r, game)
+
+	d.resolveBnetOutcomes(context.Background())
+	lib.Flush()
+	got, _ := lib.Snapshot().ByChecksum(r.Checksum)
+	if got.Players[3].TeamOutcome() != models.OutcomeWon || got.Players[0].TeamOutcome() != models.OutcomeLost {
+		t.Fatalf("outcomes %v / %v", got.Players[3].TeamOutcome(), got.Players[0].TeamOutcome())
+	}
+}
+
+// The archive no longer lists the MD5 of games played before it kept them, but the completion worker
+// recorded each chased game's id against the user's file; a complete copy is matched through that file.
+func TestResolveBnetOutcomesMatchesACompleteCopyThroughTheQueue(t *testing.T) {
+	own := filepath.Join(t.TempDir(), "205902,(8)Big Game Hunters.rep")
+	sum := writeReplayFile(t, own, "own replay bytes")
+	r, game := lagStretchedGame(t, library.CompletePathFor(own))
+	d, lib, root := outcomeDashboard(t, r, game)
+	if err := persist.NewEnrichQueue(root).Upsert(persist.EnrichEntry{MD5: sum, Path: own, GameID: game.GameID, Status: persist.EnrichNotBetter}); err != nil {
+		t.Fatal(err)
+	}
+
+	d.resolveBnetOutcomes(context.Background())
+	lib.Flush()
+	got, _ := lib.Snapshot().ByChecksum(r.Checksum)
+	if got.Players[3].TeamOutcome() != models.OutcomeWon {
+		t.Fatalf("outcome %v", got.Players[3].TeamOutcome())
+	}
+}
+
+func TestResolveBnetOutcomesIgnoresAnotherFilesMD5(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "205902,(8)Big Game Hunters.rep")
+	writeReplayFile(t, path, "own replay bytes")
+	r, game := lagStretchedGame(t, path)
+	game.MD5 = "0123456789abcdef0123456789abcdef"
+	d, lib, _ := outcomeDashboard(t, r, game)
+
+	d.resolveBnetOutcomes(context.Background())
+	lib.Flush()
+	if got, _ := lib.Snapshot().ByChecksum(r.Checksum); !got.WinnerUndecided() {
+		t.Fatal("settled from a game recorded by a different file")
 	}
 }
 
