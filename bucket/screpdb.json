@@ -1,5 +1,5 @@
 {
-    "version": "1.36.1",
+    "version": "1.36.2",
     "description": "Advanced StarCraft: Brood War replay reporting tool (CLI + local dashboard).",
     "homepage": "https://github.com/marianogappa/screpdb",
     "license": "MIT",
@@ -17,12 +17,12 @@
     "architecture": {
         "64bit": {
             "url": [
-                "https://github.com/marianogappa/screpdb/releases/download/v1.36.1/screpdb-windows-amd64.exe",
-                "https://github.com/marianogappa/screpdb/releases/download/v1.36.1/screpdb-gui-windows-amd64.exe"
+                "https://github.com/marianogappa/screpdb/releases/download/v1.36.2/screpdb-windows-amd64.exe",
+                "https://github.com/marianogappa/screpdb/releases/download/v1.36.2/screpdb-gui-windows-amd64.exe"
             ],
             "hash": [
-                "a47138641afa526494bb6dc976af0c52728b773b366ea9f907a183497faf116e",
-                "a3ce09d5d661743399cbb3a5cd228ff613034ea03af6f1517cb83c30e4933cce"
+                "61e5dca152e338928b82c8dafb5a839e6b139e589a5c50fe3b58bc08dfe067ca",
+                "4bfe8102bbbd19b223ca4585eff4b47dc0767669c0ff8418c7afb4bb4cae7d9c"
             ],
             "bin": [
                 [
