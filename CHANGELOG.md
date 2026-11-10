@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/marianogappa/screpdb/compare/v1.36.2...v2.0.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* the engine-powered features are no longer opt-in.
+
+### Features
+
+* engine-powered features for everyone, plus video tour and safety video ([#496](https://github.com/marianogappa/screpdb/issues/496)) ([159b979](https://github.com/marianogappa/screpdb/commit/159b9796781090ea2c0da78e65c7ebf3097c42a1))
+
 ## [1.36.2](https://github.com/marianogappa/screpdb/compare/v1.36.1...v1.36.2) (2026-11-08)
 
 
