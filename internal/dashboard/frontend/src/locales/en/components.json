@@ -121,7 +121,6 @@
   "engine.updated.one": "1 game updated · refresh",
   "engine.updated.other": "{count} games updated · refresh",
   "snapshot.underConstruction": "{unit} (under construction)",
-  "labs.feature.enginePass": "Analyze games with the game engine (needs StarCraft: Remastered installed)",
   "labs.feature.enginePassAllCores": "Use all cores while StarCraft is closed",
   "game.tabs.skill": "Skill",
   "skill.tier.beginner": "Beginner",

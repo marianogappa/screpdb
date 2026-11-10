@@ -35,3 +35,10 @@ func TestTheBatterySettingIsGone(t *testing.T) {
 		t.Fatal("the retired battery flag is still settable")
 	}
 }
+
+func TestTheEngineSwitchIsGone(t *testing.T) {
+	d := newTestDashboard(t)
+	if _, err := d.setFeatureFlag(d.ctx, "engine_pass", true); err == nil {
+		t.Fatal("the retired engine_pass flag is still settable")
+	}
+}

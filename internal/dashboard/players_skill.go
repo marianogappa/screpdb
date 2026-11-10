@@ -83,7 +83,7 @@ func (d *Dashboard) librarySkillPlayersMemo(model *skill.Model) []workflowLibrar
 // skillByPlayer is each library player's Skill average for the list columns; nil while the engine is off,
 // since Skill is an engine feature.
 func (d *Dashboard) skillByPlayer(ctx context.Context) map[string]skill.Placement {
-	if d.library == nil || !d.featureFlagEnabled(ctx, featureFlagEnginePass) {
+	if d.library == nil || !d.enginePassEnabled {
 		return nil
 	}
 	model, err := skill.Load()
