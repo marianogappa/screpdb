@@ -20,6 +20,12 @@ screpdb is an advanced Starcraft replay reporting tool.
 
 macOS, Linux and other options: see [Installation](#installation).
 
+## Video tour
+
+[![screpdb video tour](https://img.youtube.com/vi/p2KgiVLyyZE/maxresdefault.jpg)](https://www.youtube.com/watch?v=p2KgiVLyyZE)
+
+More videos on [YouTube @screpdb](https://www.youtube.com/@screpdb).
+
 ## Features
 ### Filtering and finding replays by high-level semantic features
 <img width="1680" alt="Game list: filter and find replays by high-level semantic features" src="docs/images/game-list.png" />
@@ -308,18 +314,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-08  OK. A newer screpdb launched while an older one is running asks it to quit through its loopback Quit endpoint, waits for the port and takes over instead of reopening the old version; the new request goes through netfacade and only ever targets a loopback address.
+2026-11-10  OK. The engine pass and Skill views are always on: the Labs engine_pass switch is retired, so the engine starts after the library loads for everyone, and the README credits OpenBW and links the YouTube tour; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-08  OK. A newer screpdb launched while an older one is running asks it to quit through its loopback Quit endpoint, waits for the port and takes over instead of reopening the old version; the new request goes through netfacade and only ever targets a loopback address.
 2026-11-08  OK. The Windows launcher tells the Low integrity worker whether the install folder is writable, so the update check stops reporting a read only folder; no new paths are read or written, the launcher only probes the folder it already swaps the binary in.
 2026-11-08  OK. Skill submetrics stop reading Pro for beginners: micro actions count Hold Position, Stim, cloak, Archon merges and transport drops weighed by army size (retitled Hold Position and abilities), idle production counts the capacity an income could keep busy, army rhythm is held to units that really started, and an army smaller than a minute of income counts what is missing as idle (model refit on ladder and lobby games); reads replays and engine digests already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes. Every Skill strip now prints values on one scale for every race and game kind, rounded to the precision it places them at, so a better number always sits further right. Micro actions count the 15 second windows with an ability instead of presses, so a burst of Hold Position counts once. Skill submetric strips rank players worst to best, evenly spaced with no values (Players tab without pros); the Skill estimate strip shows a faded peek of the next tier. Players out before 8:00 are not rated; parked Sieged Tanks and Lurkers, and Carriers left without orders, count as idle army. Idle army also counts as idle the part of an army smaller than ladder armies at that minute.
 2026-11-08  OK. Game Events: the engine event map no longer overflows its panel and clips both map edges, engine recalls match the Recall cast at the units' departure and say how many units came, Hallucination before them and what they razed or traded, nukes say whether they landed or the Ghost died or stopped, and the Mid and Late game headers open whole map snapshots. Detectors read existing digests only (no EngineVersion bump). No new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 2026-11-08  OK. Built-in pro pages refresh their Battle.net accounts when opened (user priority, one bridge request per account at most every 30 minutes, trying another toon of the account when one is gone, one request at a time because the bridge times out on parallel requests) and a background sweep refreshes one stale pro every 10 minutes at background priority and the 24h freshness while StarCraft: Remastered is connected; recent games are the most recently active account's latest answer from the last 30 days, profiles record when that answer's oldest game was played, and pros without a known account sort last. All requests go through the existing bnetfacade rate limiter and budget, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-2026-11-08  OK. Undecided games are matched to their Battle.net game by the MD5 of the user's own replay file (from the game archive or the completion queue; a complete copy goes through the file it pairs with) before falling back to players and times, and the archive now keeps own-replay MD5s after their URLs expire; reads replay files through iofacade and the existing app-data files, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
 ```
 
 </details>
@@ -332,4 +338,5 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 - This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 - Due to security safeguards I can no longer accept PRs or other code contributions, but please feel free to file an [Issue](https://github.com/marianogappa/screpdb/issues), and you're more than welcome to contribute non-code improvements.
 - Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing. This project would have been impossible without [András Belicza](https://github.com/icza)'s work.
+- Engine-powered features run on [openbw-go](https://github.com/marianogappa/openbw-go), a Go port of [OpenBW](https://github.com/OpenBW/openbw), the open-source StarCraft: Brood War engine. These features would have been impossible without Vegard Mella's work.
 - Country flags on platforms that lack them (Windows) are drawn with the [Twemoji Country Flags](https://github.com/talkjs/country-flag-emoji-polyfill) font, whose artwork comes from [Twemoji](https://github.com/jdecked/twemoji) and is used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

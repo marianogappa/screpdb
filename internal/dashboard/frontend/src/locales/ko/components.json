@@ -121,7 +121,6 @@
   "engine.updated.one": "1게임 업데이트됨 · 새로고침",
   "engine.updated.other": "{count}게임 업데이트됨 · 새로고침",
   "snapshot.underConstruction": "{unit} (건설 중)",
-  "labs.feature.enginePass": "게임 엔진으로 게임 분석하기 (스타크래프트: 리마스터 설치 필요)",
   "labs.feature.enginePassAllCores": "스타크래프트가 꺼져 있을 때 모든 코어 사용하기",
   "game.tabs.skill": "실력",
   "skill.tier.beginner": "초보",

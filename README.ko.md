@@ -16,6 +16,12 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 
 macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
 
+## 영상 투어
+
+[![screpdb 영상 투어](https://img.youtube.com/vi/p2KgiVLyyZE/maxresdefault.jpg)](https://www.youtube.com/watch?v=p2KgiVLyyZE)
+
+더 많은 영상은 [YouTube @screpdb](https://www.youtube.com/@screpdb)에서 볼 수 있습니다.
+
 ## 주요 기능
 ### 고수준 의미 기반 특징으로 리플레이 필터링 및 검색
 <img width="1680" alt="게임 목록: 고수준 의미 기반 특징으로 리플레이를 필터링하고 찾기" src="docs/images/game-list.ko.png" />
@@ -222,4 +228,4 @@ screpdb는 모든 디스크와 네트워크 접근을 `internal/iofacade` 등 �
 
 ## 라이선스, 기여 및 감사의 말
 
-이 프로젝트는 MIT 라이선스로 배포됩니다([LICENSE](LICENSE) 참고). 보안상의 이유로 코드 PR은 받지 않지만 [이슈](https://github.com/marianogappa/screpdb/issues) 제출과 코드 외 기여는 언제나 환영합니다. 리플레이 파싱은 [András Belicza](https://github.com/icza)의 [github.com/icza/screp](https://github.com/icza/screp) 라이브러리에 기반합니다. [영어 README의 License, Contributing & Acknowledgements 참고](README.md#license-contributing--acknowledgements).
+이 프로젝트는 MIT 라이선스로 배포됩니다([LICENSE](LICENSE) 참고). 보안상의 이유로 코드 PR은 받지 않지만 [이슈](https://github.com/marianogappa/screpdb/issues) 제출과 코드 외 기여는 언제나 환영합니다. 리플레이 파싱은 [András Belicza](https://github.com/icza)의 [github.com/icza/screp](https://github.com/icza/screp) 라이브러리에 기반합니다. 엔진 기반 기능은 Vegard Mella의 오픈소스 스타크래프트: 브루드 워 엔진 [OpenBW](https://github.com/OpenBW/openbw)를 Go로 포팅한 [openbw-go](https://github.com/marianogappa/openbw-go)로 동작합니다. [영어 README의 License, Contributing & Acknowledgements 참고](README.md#license-contributing--acknowledgements).

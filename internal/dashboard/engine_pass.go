@@ -15,7 +15,7 @@ const (
 	engineSnapshotCacheFile = "engine_snapshots.bin"
 )
 
-// enginePassHolder guards the runner: the Labs switch starts and stops it while requests read it.
+// enginePassHolder guards the runner: shutdown clears it while requests read it.
 type enginePassHolder struct {
 	mu     sync.Mutex
 	runner *enginepass.Runner
@@ -29,10 +29,10 @@ func (h *enginePassHolder) get() *enginepass.Runner {
 	return h.runner
 }
 
-// startEnginePass upgrades the library to engine data in the background, once the Labs switch is on.
+// startEnginePass upgrades the library to engine data in the background.
 // Without a StarCraft: Remastered install it only logs: the fast pass alone keeps the dashboard working.
 func (d *Dashboard) startEnginePass() {
-	if !d.enginePassEnabled || d.library == nil || !d.featureFlagEnabled(d.ctx, featureFlagEnginePass) {
+	if !d.enginePassEnabled || d.library == nil {
 		return
 	}
 	d.enginePass.mu.Lock()
@@ -51,29 +51,6 @@ func (d *Dashboard) startEnginePass() {
 	d.enginePass.runner = runner
 	d.libraryHub.setEngineState(func() string { return enginePassState(runner) })
 	runner.Start()
-}
-
-// stopEnginePass turns the engine off and drops its data from memory, so every page is back to the
-// command-inferred views at once. The digest cache stays on disk for when it is switched on again.
-func (d *Dashboard) stopEnginePass() {
-	d.enginePass.mu.Lock()
-	runner := d.enginePass.runner
-	d.enginePass.runner = nil
-	d.enginePass.mu.Unlock()
-	if runner == nil {
-		return
-	}
-	runner.Close()
-	d.libraryHub.setEngineState(func() string { return engineStateOff })
-	d.library.lib.ClearEngineData()
-}
-
-func (d *Dashboard) enginePassToggled(on bool) {
-	if on {
-		d.startEnginePass()
-	} else {
-		d.stopEnginePass()
-	}
 }
 
 // enginePassWorkers keeps the engine pass off the cores StarCraft: Remastered needs while someone plays,

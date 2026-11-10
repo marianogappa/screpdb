@@ -24,11 +24,6 @@ import (
 // switched it on in Labs simply keep the behaviour they already had.
 const featureFlagDisableCompleteReplays = "disable_complete_replays"
 
-// featureFlagEnginePass is the Labs switch for everything built on the game engine: extracting game data,
-// the background engine pass, and every engine view in the dashboard. It is a preview, so it is named
-// positively and defaults to off; with it off, screpdb behaves as if the engine did not exist.
-const featureFlagEnginePass = "engine_pass"
-
 // featureFlagEnginePassAllCores lets the engine pass use every core while StarCraft: Remastered is closed.
 const featureFlagEnginePassAllCores = "engine_pass_all_cores"
 
@@ -38,7 +33,6 @@ const featureFlagEnginePassAllCores = "engine_pass_all_cores"
 // this list.
 var knownFeatureFlags = map[string]struct{}{
 	featureFlagDisableCompleteReplays: {},
-	featureFlagEnginePass:             {},
 	featureFlagEnginePassAllCores:     {},
 }
 
@@ -83,9 +77,6 @@ func (d *Dashboard) setFeatureFlag(ctx context.Context, key string, enabled bool
 	}
 	if err := d.dbStore.SetFeatureFlagsJSON(ctx, globalReplayFilterConfigKey, string(encoded)); err != nil {
 		return nil, fmt.Errorf("saving feature flags: %w", err)
-	}
-	if key == featureFlagEnginePass {
-		d.enginePassToggled(enabled)
 	}
 	return flags, nil
 }

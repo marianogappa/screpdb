@@ -255,17 +255,15 @@ function GlobalReplayFilterModal({
                 />
                 <span>{t('library.completeGamesOptOut')}</span>
               </label>
-              {featureFlags?.engine_pass ? (
-                <label className="global-filter-toggle">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(featureFlags?.engine_pass_all_cores)}
-                    disabled={featureFlagsSaving}
-                    onChange={(e) => onFeatureFlagToggle('engine_pass_all_cores', e.target.checked)}
-                  />
-                  <span>{t('labs.feature.enginePassAllCores')}</span>
-                </label>
-              ) : null}
+              <label className="global-filter-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(featureFlags?.engine_pass_all_cores)}
+                  disabled={featureFlagsSaving}
+                  onChange={(e) => onFeatureFlagToggle('engine_pass_all_cores', e.target.checked)}
+                />
+                <span>{t('labs.feature.enginePassAllCores')}</span>
+              </label>
               {featureFlagsMessage ? (
                 <span className={featureFlagsMessageIsError ? 'error-message' : 'ingest-helper-text'}>
                   {featureFlagsMessage}

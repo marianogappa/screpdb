@@ -35,6 +35,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "$GITHUB_REF_NAME" --prerelease
 
+      # Prepends .github/release-notes-header.md to the release-please notes; never fails the release.
+      - name: Add the release notes header
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          header=.github/release-notes-header.md
+          body=$(gh release view "$GITHUB_REF_NAME" --json body --jq .body)
+          if printf '%s' "$body" | grep -q 'release-notes-header'; then
+            exit 0
+          fi
+          { cat "$header"; printf '\n'; printf '%s\n' "$body"; } > "$RUNNER_TEMP/notes.md"
+          gh release edit "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
