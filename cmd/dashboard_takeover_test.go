@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strconv"
@@ -28,7 +29,9 @@ func startFakeScrepdb(t *testing.T, version string) (port int, quitCalled func()
 		quit = true
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
-		go func() { _ = srv.Close() }()
+		// Shutdown, unlike Close, lets this reply reach the client before the connection goes, as the real
+		// handler does by flushing and waiting before it exits.
+		go func() { _ = srv.Shutdown(context.Background()) }()
 	})
 	srv.Handler = mux
 	go func() { _ = srv.Serve(ln) }()

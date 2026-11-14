@@ -117,12 +117,15 @@ jobs:
           git commit -m "chore(readme): refresh coverage and replay-load figures"
           # `-c http.extraheader=` drops the default token's persisted auth so
           # the App token in the URL is the one that is used.
+          # A plain force: the branch is rebuilt from main on every run, and the
+          # checkout only fetches main, so --force-with-lease has no record of
+          # a leftover branch and rejects the push as stale.
           if [ -n "${APP_TOKEN:-}" ]; then
-            git -c http.extraheader= push --force-with-lease \
+            git -c http.extraheader= push --force \
               "https://x-access-token:${APP_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BRANCH"
           else
             echo "::warning::SCOOP_APP_* secrets not set; pushing with the default token — the PR's checks will need manual approval."
-            git push --force-with-lease origin "$BRANCH"
+            git push --force origin "$BRANCH"
           fi
           if gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null | grep -q OPEN; then
             echo "PR for $BRANCH already open; updated in place."

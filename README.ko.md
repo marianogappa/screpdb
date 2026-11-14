@@ -10,8 +10,6 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 [![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](scripts/coverage.sh)
 [![Replay load throughput](https://img.shields.io/badge/replay%20load-34.6%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
 
-**▶️ [브라우저에서 바로 사용해 보기](https://marianogappa.github.io/screpdb/)** — 설치 없이 예시 리플레이로 전체 대시보드를 체험할 수 있고, 모든 처리는 브라우저에서 실행됩니다.
-
 **⬇️ Windows에 설치:** [screpdb 다운로드](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) 후 실행하세요. Windows가 PC를 보호했다고 표시하면 **추가 정보 → 실행**을 클릭하세요.
 
 macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
