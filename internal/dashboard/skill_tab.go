@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"math"
+	"time"
 
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	"github.com/marianogappa/screpdb/internal/library"
@@ -53,16 +54,27 @@ func (d *Dashboard) populateSkill(detail *workflowGameDetail) {
 			}
 		}
 	}
+	for ordinal := range g.leftEarly {
+		id := library.PlayerID(rec.ID, uint8(ordinal))
+		for i := range detail.Players {
+			if detail.Players[i].PlayerID == id {
+				detail.Players[i].SkillLeftEarly = true
+			}
+		}
+	}
 }
 
 type ratedGame struct {
 	status  string
 	caveats []string
 	players map[int]ratedPlayer
+	// leftEarly are the humans not rated because they played less than skill.MinGameSeconds.
+	leftEarly map[int]bool
 }
 
 type ratedPlayer struct {
 	race   string
+	date   time.Time
 	values map[string]float64
 	result skill.Result
 }
@@ -86,7 +98,7 @@ func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 	case int(rec.Duration) < skill.MinGameSeconds:
 		return ratedGame{status: skillStatusTooShort}
 	}
-	g := ratedGame{status: skillStatusOK, caveats: []string{}, players: map[int]ratedPlayer{}}
+	g := ratedGame{status: skillStatusOK, caveats: []string{}, players: map[int]ratedPlayer{}, leftEarly: map[int]bool{}}
 	if len(humans) != 2 {
 		g.caveats = append(g.caveats, skillCaveatTeamGame)
 	}
@@ -109,6 +121,7 @@ func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 		// The model was fitted on players who played 8:00 or more; in a team game a player eliminated at 4:00
 		// keeps a few busy Gateways for two minutes and would read Pro.
 		if e, ok := engine[p.Slot]; ok && int(e.Seconds) < skill.MinGameSeconds {
+			g.leftEarly[ordinal] = true
 			continue
 		}
 		values := skillValues(p)
@@ -123,7 +136,7 @@ func rateGame(model *skill.Model, rec *library.Replay) ratedGame {
 				values[skill.ArmyCadence] = skill.StartedCadence(cadence, float64(e.ArmyStartCadence))
 			}
 		}
-		g.players[ordinal] = ratedPlayer{race: race, values: values, result: model.Evaluate(race, opponentRace(rec, humans, ordinal), skillContext(rec, len(humans)), values)}
+		g.players[ordinal] = ratedPlayer{race: race, date: rec.Date, values: values, result: model.Evaluate(race, opponentRace(rec, humans, ordinal), skillContext(rec, len(humans)), values)}
 	}
 	return g
 }

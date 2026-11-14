@@ -69,8 +69,6 @@ type bnetProfileDetail struct {
 	// accumulates across fetches, so it is not capped at the ~20 games one
 	// Battle.net response carries.
 	RecentGames []bnetRecentGame `json:"recent_games,omitempty"`
-	// Habits is filled by the player page from the game archive.
-	Habits *bnetPlayHabits `json:"habits,omitempty"`
 }
 
 // bnetRecentGame is one archived game, seen from this account's side. Nothing

@@ -7,10 +7,14 @@ import {
 } from './mainRoute.js';
 
 test('old Skill proxies links open Skill', () => {
-  assert.equal(parseMainRouteSearch('?view=player&player=chobo86&playerTab=skill-proxies').playerTab, 'skill');
   assert.equal(parseMainRouteSearch('?view=players&playersTab=apm-histogram').playersTab, 'skill');
   assert.equal(parseMainRouteSearch('?view=players&playersTab=skill').playersTab, 'skill');
   assert.equal(buildMainRouteSearch({ activeView: 'players', mainPlayersTab: 'skill' }), 'view=players&playersTab=skill');
+});
+
+test('old player Skill tab links open the summary, where the Skill card now is', () => {
+  assert.equal(parseMainRouteSearch('?view=player&player=chobo86&playerTab=skill').playerTab, 'summary');
+  assert.equal(parseMainRouteSearch('?view=player&player=chobo86&playerTab=skill-proxies').playerTab, 'summary');
 });
 
 test('build order permalink round-trips on the Build Orders tab only', () => {

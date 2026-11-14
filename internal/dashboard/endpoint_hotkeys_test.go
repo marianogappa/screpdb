@@ -140,3 +140,11 @@ func TestPlayerHotkeySignatureRejectsEmptyKey(t *testing.T) {
 		t.Fatal("expected error for empty player key")
 	}
 }
+
+func TestHotkeySignatureLeavesOutRacesWithNoHotkeys(t *testing.T) {
+	noHotkeys := []hotkeystream.Event{{Sec: 10, Type: hotkeystream.TypeSelect, Group: 10}}
+	byRace := map[string][][]hotkeystream.Event{"Protoss": {noHotkeys, noHotkeys, noHotkeys, noHotkeys, noHotkeys}}
+	if cards := hotkeySignatureCards("Turk", byRace); len(cards) != 0 {
+		t.Fatalf("got %d cards, want none: a race whose games never touch a hotkey has nothing to show", len(cards))
+	}
+}

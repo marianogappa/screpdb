@@ -27,4 +27,7 @@ func TestPlayersOutBeforeEightMinutesAreNotRated(t *testing.T) {
 	if len(g.players) != 3 {
 		t.Fatalf("rated %d players, want the 3 who played the whole game", len(g.players))
 	}
+	if !g.leftEarly[3] || len(g.leftEarly) != 1 {
+		t.Fatalf("leftEarly %v, want only the player out at 4:47, so the page can say why they have no tier", g.leftEarly)
+	}
 }

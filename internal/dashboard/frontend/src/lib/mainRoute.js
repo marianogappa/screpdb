@@ -22,7 +22,6 @@ export const MAIN_PLAYERS_TABS = [
 
 export const MAIN_PLAYER_TABS = [
   'summary',
-  'skill',
   'hotkeys',
   'chat-summary',
 ];
@@ -75,14 +74,15 @@ export function parseMainRouteSearch(search) {
 
   let replayId = view === 'game' ? parseReplayIdParam(replayRaw) : null;
   let playerKey = view === 'player' ? normalizePlayerKeyParam(playerRaw) : '';
-  // The Skill tab replaced Macro and the Skill proxies views; their old links open it, on the game, the
-  // Players page and the player page alike.
+  // The Skill tab replaced Macro and the Skill proxies views; their old links open it, on the game and the
+  // Players page alike.
   const legacyGameTab = { macro: 'skill', 'first-unit-efficiency': 'skill', 'unit-production-cadence': 'skill', 'viewport-multitasking': 'skill' };
   let gameTab = pickEnum(legacyGameTab[gameTabRaw] || gameTabRaw, MAIN_GAME_TABS, 'summary');
   let buildOrder = gameTab === 'build-orders' ? String(buildOrderRaw || '').trim() : '';
   const legacyPlayersTab = { 'apm-histogram': 'skill', 'unit-production-cadence': 'skill', 'viewport-multitasking': 'skill' };
   let playersTab = pickEnum(legacyPlayersTab[playersTabRaw] || playersTabRaw, MAIN_PLAYERS_TABS, 'summary');
-  let playerTab = pickEnum(playerTabRaw === 'skill-proxies' ? 'skill' : playerTabRaw, MAIN_PLAYER_TABS, 'summary');
+  // The player's Skill tab is now a card on their summary; its old links open the summary.
+  let playerTab = pickEnum(playerTabRaw, MAIN_PLAYER_TABS, 'summary');
   // playerSubtab is a race subtab of the summary: dynamic, so kept as given.
   let playerSubtab = playerTab === 'summary' ? String(playerSubtabRaw || '').trim().toLowerCase() : '';
 

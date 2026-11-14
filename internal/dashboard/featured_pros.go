@@ -308,7 +308,6 @@ func (d *Dashboard) buildFeaturedPlayerOverview(playerKey string) (workflowPlaye
 		if result.CountryCode == "" {
 			result.CountryCode = result.BnetProfile.CountryCode
 		}
-		result.BnetProfile.Habits = d.bnetPlayHabitsFor(d.ctx, result.BnetProfile.AuroraID, result.CountryCode, time.Now())
 	}
 	result.BnetRefreshing = d.refreshFeaturedProBnet(pro, profiles, bnetfacade.PriorityUser, featuredProVisitMaxAge)
 	return result, nil

@@ -3,6 +3,7 @@ package dashboard
 import (
 	"math"
 	"testing"
+	"time"
 
 	"github.com/marianogappa/screpdb/internal/skill"
 )
@@ -81,5 +82,50 @@ func TestTheHeadlineFollowsTheStrips(t *testing.T) {
 	}
 	if math.Abs(got.Combined.Position-want) > 1e-9 || math.Abs(want-(1.5-1.1*(shares[skill.ArmyCadence]+shares[skill.ProductionIdle]))) > 0.05 || got.Combined.Tier != skill.TierIntermediate {
 		t.Fatalf("headline %+v, want the strips' weighted average %v in Intermediate", got.Combined, want)
+	}
+}
+
+func TestSkillAverageReadsTheThreeMonthsBeforeTheLatestGame(t *testing.T) {
+	latest := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	at := func(daysAgo int, position float64) ratedPlayer {
+		r := ratedAt(t, position, nil)
+		r.date = latest.AddDate(0, 0, -daysAgo)
+		return r
+	}
+	var rated []ratedPlayer
+	for i := range 10 {
+		rated = append(rated, at(200+i, 0.5))
+	}
+	for i := range minSkillGames {
+		rated = append(rated, at(i*10, 2.5))
+	}
+	recent, from := recentSkillGames(rated)
+	if len(recent) != minSkillGames || !from.Equal(latest.Add(-skillWindow)) {
+		t.Fatalf("got %d games from %v, want the %d recent ones from 91 days before the latest", len(recent), from, minSkillGames)
+	}
+	if got := summarizeSkill(testModel(t), recent); got == nil || got.Combined.Tier != skill.TierAdvanced {
+		t.Fatalf("got %+v, want the recent Advanced games undiluted by the old Beginner ones", got)
+	}
+}
+
+func TestSkillAverageKeepsEveryGameWhenTheWindowIsThinOrLeavesNothingOut(t *testing.T) {
+	latest := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	var thin []ratedPlayer
+	for i := range 8 {
+		r := ratedAt(t, 1, nil)
+		r.date = latest.AddDate(0, 0, -i*60)
+		thin = append(thin, r)
+	}
+	if recent, from := recentSkillGames(thin); len(recent) != len(thin) || !from.IsZero() {
+		t.Fatalf("got %d games from %v, want all %d: the window holds fewer than %d", len(recent), from, len(thin), minSkillGames)
+	}
+	var all []ratedPlayer
+	for i := range 8 {
+		r := ratedAt(t, 1, nil)
+		r.date = latest.AddDate(0, 0, -i*10)
+		all = append(all, r)
+	}
+	if _, from := recentSkillGames(all); !from.IsZero() {
+		t.Fatalf("from %v, want zero: no game was left out, so there is no window to shade", from)
 	}
 }

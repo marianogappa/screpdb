@@ -272,6 +272,8 @@ type workflowGamePlayer struct {
 	SecondaryBadge   *IdentityBadge            `json:"secondary_badge,omitempty"`
 	// Skill places this player's game on the skill tiers; null when the game or the player cannot be measured.
 	Skill *workflowPlayerSkill `json:"skill"`
+	// SkillLeftEarly is true when the game is rated but this player is not, for playing less than 8:00.
+	SkillLeftEarly bool `json:"skill_left_early,omitempty"`
 	// SupplyCurve is the real supply used and cap at each second either changes; null in fast mode.
 	SupplyCurve []workflowSupplyPoint `json:"supply_curve"`
 }
