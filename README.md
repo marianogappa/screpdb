@@ -7,7 +7,7 @@ screpdb is an advanced Starcraft replay reporting tool.
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
-[![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](scripts/coverage.sh)
+[![Coverage](https://img.shields.io/badge/coverage-84%25-brightgreen)](scripts/coverage.sh)
 [![Replay load throughput](https://img.shields.io/badge/replay%20load-34.6%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
 
 <!-- load-bench-start -->
