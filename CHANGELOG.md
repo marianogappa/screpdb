@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/marianogappa/screpdb/compare/v2.0.0...v2.1.0) (2026-11-14)
+
+
+### Features
+
+* Skill card on the player summary, 3 month Skill window and 1v1 tug bars ([#499](https://github.com/marianogappa/screpdb/issues/499)) ([b95dd80](https://github.com/marianogappa/screpdb/commit/b95dd80bfd43c93a896d19b1624c575254f327f1))
+
 ## [2.0.0](https://github.com/marianogappa/screpdb/compare/v1.36.2...v2.0.0) (2026-11-10)
 
 
