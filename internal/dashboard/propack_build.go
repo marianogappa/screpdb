@@ -221,7 +221,7 @@ func (c *ProCorpus) Metrics(ctx context.Context, playerKeys []string) (map[strin
 		}
 		m.Hotkeys = payload.Cards
 		// A progamer's off-race games are practice, not their level: their Skill is their main race's.
-		if s := d.playerSkillAs(key, mainRace(m.Races)); s != nil {
+		if s := d.playerSkillAs(key, mainRace(m.Races), false); s != nil {
 			m.Skill = &propack.Skill{Games: s.Games, Combined: s.Combined, Metrics: s.Metrics}
 		}
 		out[key] = m

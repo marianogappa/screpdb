@@ -1,14 +1,17 @@
 import React from 'react';
 import { useT } from '../lib/i18nContext';
 import SkillExplainerLink from './SkillExplainer';
-import { formatSkillValue, skillStep } from '../lib/skillFormat';
-import { spreadShares } from '../lib/skillRank';
+import { spreadShares, tugOf } from '../lib/skillRank';
 
 // SkillTab places each player on four tiers fitted to ladder MMR (internal/skill). Positions are on a shared
 // tier axis, 0 to 4, where each whole number is a cut between tiers, so players of different races compare
 // directly. Each strip zooms to the tiers its players span: in most games they are close.
 
 export const TIER_KEYS = ['beginner', 'intermediate', 'advanced', 'pro'];
+
+// LEFT_EARLY_MARK stands in for a player who left before the 8:00 Skill needs; game clock notation reads the
+// same in every language.
+export const LEFT_EARLY_MARK = '<8:00';
 
 const METRICS = [
   { key: 'eapm' },
@@ -18,8 +21,6 @@ const METRICS = [
   { key: 'idle_army_share' },
   { key: 'micro_actions_per_min' },
 ];
-
-const describeWith = (model, key) => (p) => formatSkillValue(key, p.value, skillStep(model, key));
 
 const ROW_PX = 22;
 const BAND_LABEL_PX = 20;
@@ -83,18 +84,28 @@ function HeroLabel({ model }) {
   );
 }
 
-// SubmetricsHead introduces the metric rows as the parts the Skill estimate is made of; over the strips that
-// compare players it also marks which end is the worst and which the best.
-function SubmetricsHead({ compared }) {
+// SubmetricsHead introduces the metric rows as the parts the Skill estimate is made of, and marks which end
+// of the strips is the worst and which the best, or which player pulls which way.
+function SubmetricsHead({ pair }) {
   const t = useT();
-  if (!compared) return <div className="skill-submetrics-head">{t('skill.submetrics.title')}</div>;
   return (
     <>
       <div className="skill-submetrics-head skill-submetrics-head--label">{t('skill.submetrics.title')}</div>
-      <div className="skill-compare-axis" aria-hidden="true">
-        <span>{t('skill.relative.worst')}</span>
-        <span>{t('skill.relative.best')}</span>
-      </div>
+      {pair ? (
+        <div className="skill-compare-axis skill-tug-axis">
+          {pair.map((p) => (
+            <span key={p.key}>
+              <span className="skill-compare-dot" style={{ background: p.color }} />
+              {p.name}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="skill-compare-axis" aria-hidden="true">
+          <span>{t('skill.relative.worst')}</span>
+          <span>{t('skill.relative.best')}</span>
+        </div>
+      )}
     </>
   );
 }
@@ -109,7 +120,7 @@ const tierRange = (positions) => {
 
 // Strip is one chart: players on the tier axis, zoomed to the tiers range spans, with a faded peek at the
 // next tier on each side the scale goes on.
-function Strip({ entries, range, playerColor, describe, inline, hero, tierLabels, labelShare = LABEL_SHARE }) {
+function Strip({ entries, range, playerColor, hero, tierLabels, labelShare = LABEL_SHARE }) {
   const t = useT();
   const lo = range[0] > 0 ? range[0] - PEEK : range[0];
   const hi = range[1] < TIER_KEYS.length ? range[1] + PEEK : range[1];
@@ -141,19 +152,15 @@ function Strip({ entries, range, playerColor, describe, inline, hero, tierLabels
       })}
       {placed.map(({ player, placement, x, row }) => {
         const right = x > 1 - labelShare;
-        const value = describe ? describe(placement) : '';
         return (
           <div
             key={player.player_id}
             className={`skill-marker${right ? ' skill-marker--right' : ''}`}
             style={{ left: `${x * 100}%`, top: `${(tierLabels ? BAND_LABEL_PX : 4) + row * ROW_PX}px` }}
-            title={value ? `${player.name}: ${value}` : player.name}
+            title={player.name}
           >
             <span className="skill-marker-dot" style={{ background: playerColor(player.color) }} />
-            <span className="skill-player-label">
-              {player.name}
-              {inline && value ? <span className="skill-player-value"> {value}</span> : null}
-            </span>
+            <span className="skill-player-label">{player.name}</span>
           </div>
         );
       })}
@@ -192,18 +199,53 @@ function CompareStrip({ entries, focus, onOpen }) {
   );
 }
 
-// Submetrics are the rows that compare players on each part of the Skill estimate.
-function Submetrics({ metrics, entriesFor, focus, onOpen }) {
+// TugStrip sets two players against each other on one submetric: a bar grows from the middle toward the one
+// ahead, so it shows who leads and by how much, with no values.
+function TugStrip({ left, right }) {
+  const { side, share } = tugOf(left.placement.position, right.placement.position);
+  const leader = side === 'right' ? right : left;
+  return (
+    <div className="skill-tug" title={leader.name}>
+      <div className={`skill-tug-bar skill-tug-bar--${side}`} style={{ width: `${share * 100}%`, background: leader.color || undefined }} />
+    </div>
+  );
+}
+
+// Submetrics are the rows that compare players on each part of the Skill estimate. Two players, as in a 1v1,
+// pull a tug bar each row instead: on a strip they would always sit on opposite edges, however close.
+function Submetrics({ metrics, entriesFor, focus, onOpen, pair }) {
   const shown = metrics.map((m) => ({ m, entries: entriesFor(m.key) })).filter((r) => r.entries.length);
   if (!shown.length) return null;
+  const pairOf = (entries) => (pair && entries.length === 2
+    ? pair.map((p) => entries.find((e) => e.key === p.key)).filter(Boolean)
+    : null);
   return (
     <div className="skill-subs">
-      <SubmetricsHead compared />
-      {shown.map(({ m, entries }) => (
-        <React.Fragment key={m.key}>
-          <MetricLabel metric={m} />
-          <CompareStrip entries={entries} focus={focus} onOpen={onOpen} />
-        </React.Fragment>
+      <SubmetricsHead pair={pair} />
+      {shown.map(({ m, entries }) => {
+        const tug = pairOf(entries);
+        return (
+          <React.Fragment key={m.key}>
+            <MetricLabel metric={m} />
+            {tug?.length === 2 ? <TugStrip left={tug[0]} right={tug[1]} /> : <CompareStrip entries={entries} focus={focus} onOpen={onOpen} />}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// LeftEarly lists the players a rated game leaves out for leaving before 8:00, under the Skill estimate.
+function LeftEarly({ players, playerColor }) {
+  if (!players.length) return null;
+  return (
+    <div className="skill-left-early">
+      {players.map((player) => (
+        <span key={player.player_id} className="skill-left-early-player">
+          <span className="skill-left-early-dot" style={{ borderColor: playerColor(player.color) }} />
+          {player.name}
+          <span className="skill-left-early-mark">{LEFT_EARLY_MARK}</span>
+        </span>
       ))}
     </div>
   );
@@ -225,6 +267,8 @@ export default function SkillTab({ game, players, playerColor }) {
   const entriesFor = (key) => rated.map((player) => ({ player, placement: placementOf(player, key) })).filter((e) => e.placement);
   const combined = entriesFor('combined');
   const range = tierRange(combined.map((e) => e.placement.position));
+  const asEntry = ({ player, placement }) => ({ key: player.player_id, name: player.name, color: playerColor(player.color), placement });
+  const pair = rated.length === 2 ? rated.map((player) => asEntry({ player })) : null;
   return (
     <div className="workflow-card skill-tab">
       {caveats.length ? (
@@ -240,9 +284,11 @@ export default function SkillTab({ game, players, playerColor }) {
             hero
             tierLabels
           />
+          <LeftEarly players={(players || []).filter((p) => p.skill_left_early)} playerColor={playerColor} />
           <Submetrics
             metrics={METRICS}
-            entriesFor={(key) => entriesFor(key).map(({ player, placement }) => ({ key: player.player_id, name: player.name, color: playerColor(player.color), placement }))}
+            entriesFor={(key) => entriesFor(key).map(asEntry)}
+            pair={pair}
           />
         </div>
       ) : null}
@@ -252,32 +298,7 @@ export default function SkillTab({ game, players, playerColor }) {
 
 const PILL_TIER_KEYS = { no_hotkeys: 0, never_checks_hotkeys: 0, banks_resources: 0, hotkey_cycler: 3, nonstop_production: 3 };
 
-// PlayerSkillRow is the player summary's one line of Skill: the average tier and how many games it rests on.
-// It opens the player's Skill tab; onHover lets the page point at that tab.
-export function PlayerSkillRow({ summary, onOpen, onHover }) {
-  const t = useT();
-  if (!summary?.combined) return null;
-  return (
-    <button
-      type="button"
-      className="skill-player-row"
-      onClick={onOpen}
-      onMouseEnter={() => onHover?.(true)}
-      onMouseLeave={() => onHover?.(false)}
-      onFocus={() => onHover?.(true)}
-      onBlur={() => onHover?.(false)}
-    >
-      <span className="skill-player-row-text">
-        <span className="skill-player-row-label">{t('game.tabs.skill')}</span>
-        <span className="skill-player-row-basis">{t('skill.player.basis', { count: summary.games })}</span>
-      </span>
-      <span className={`skill-player-row-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span>
-      <span className="skill-player-row-open" aria-hidden="true">›</span>
-    </button>
-  );
-}
-
-// The chart and the trend note need this many games: fewer is a handful of dots, not a direction.
+// The sparkline and the trend note need this many games: fewer is a handful of dots, not a direction.
 const MIN_TREND_GAMES = 10;
 const DAY_MS = 86400000;
 // The note reads only the last three months, so it says where a player is heading now rather than since
@@ -315,27 +336,17 @@ const trendOf = (points) => {
   return { days, change: slope * days };
 };
 
-export const skillTrendDirection = (timeline, now = Date.now()) => {
-  const recent = (timeline || [])
-    .map((p) => ({ ms: Date.parse(p.date), position: p.position }))
-    .filter((p) => now - p.ms <= TREND_WINDOW_DAYS * DAY_MS);
+// skillTrendDirection reads the three months up to the latest game, the same games the Skill average reads.
+export const skillTrendDirection = (timeline) => {
+  const points = (timeline || []).map((p) => ({ ms: Date.parse(p.date), position: p.position }));
+  const latest = points.reduce((m, p) => Math.max(m, p.ms), -Infinity);
+  const recent = points.filter((p) => latest - p.ms <= TREND_WINDOW_DAYS * DAY_MS);
   if (recent.length < MIN_TREND_GAMES) return '';
   const { days, change } = trendOf(recent);
   if (days < TREND_MIN_DAYS) return '';
   if (change >= TREND_MIN_CHANGE) return 'up';
   if (change <= -TREND_MIN_CHANGE) return 'down';
   return 'flat';
-};
-
-const monthTicks = (fromMs, toMs) => {
-  const start = new Date(fromMs);
-  const months = (new Date(toMs).getFullYear() - start.getFullYear()) * 12 + new Date(toMs).getMonth() - start.getMonth();
-  const step = [1, 2, 3, 6, 12].find((s) => months / s <= 7) || 12;
-  const out = [];
-  for (let d = new Date(start.getFullYear(), start.getMonth() + 1, 1); d.getTime() <= toMs; d = new Date(d.getFullYear(), d.getMonth() + step, 1)) {
-    out.push(d);
-  }
-  return out;
 };
 
 const SMOOTH_SAMPLES = 90;
@@ -365,101 +376,167 @@ function smoothPath(points, first, span, x, y) {
   return d;
 }
 
-// SkillTrend plots every rated game by date on the tier axis, with a running average.
-function SkillTrend({ timeline }) {
-  const t = useT();
-  const [ref, W] = useWidth(720);
-  const H = 176, L = 84, R = 10, T = 10, B = 24;
-  const points = timeline.map((p) => ({ ...p, ms: Date.parse(p.date) }));
+// The card is one SVG with its colors inline, so the PNG it saves to is exactly what the page shows.
+const CARD = {
+  width: 360,
+  pad: 24,
+  bg: '#15171d',
+  line: '#2a2e38',
+  text: '#e5e7eb',
+  muted: '#8b93a3',
+  faint: '#4b5263',
+  font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'",
+};
+const TIER_COLORS = ['#94a3b8', '#60a5fa', '#a78bfa', '#f0c674'];
+const TIER_TEXT = ['#cbd5e1', '#bfdbfe', '#ddd6fe', '#fde7b0'];
+const TREND_COLORS = { up: '#86efac', down: '#fca5a5', flat: 'rgba(255,255,255,0.75)' };
+const PILL_COLORS = { strong: '#86efac', plain: '#cbd5e1' };
+
+let cardMeasure;
+const textWidth = (text, size, weight = 400) => {
+  if (typeof document === 'undefined') return text.length * size * 0.55;
+  cardMeasure = cardMeasure || document.createElement('canvas').getContext('2d');
+  if (!cardMeasure) return text.length * size * 0.55;
+  cardMeasure.font = `${weight} ${size}px ${CARD.font}`;
+  return cardMeasure.measureText(text).width;
+};
+
+// layoutPills puts the habit pills in centered rows that fit the card.
+const layoutPills = (labels, size, maxWidth) => {
+  const rows = [[]];
+  let used = 0;
+  labels.forEach((label) => {
+    const w = textWidth(label.text, size) + 16;
+    if (used && used + 6 + w > maxWidth) {
+      rows.push([]);
+      used = 0;
+    }
+    rows[rows.length - 1].push({ ...label, w });
+    used += (used ? 6 : 0) + w;
+  });
+  return rows.filter((r) => r.length);
+};
+
+// Sparkline is the Skill estimate over time on the card, with the games the average reads shaded.
+function Sparkline({ timeline, windowFrom, top, height }) {
+  const left = CARD.pad, right = CARD.width - CARD.pad;
+  const points = timeline.map((p) => ({ ms: Date.parse(p.date), position: p.position }));
   const first = points[0].ms, last = points[points.length - 1].ms;
   const span = Math.max(DAY_MS, last - first);
-  const x = (ms) => L + ((ms - first) / span) * (W - L - R);
+  const x = (ms) => left + ((ms - first) / span) * (right - left);
   const [lo, hi] = tierRange(points.map((p) => p.position));
-  const y = (pos) => T + (1 - (Math.max(lo, Math.min(hi, pos)) - lo) / (hi - lo)) * (H - T - B);
-  const avgPath = smoothPath(points, first, span, x, y);
-  const lang = typeof document !== 'undefined' ? document.documentElement.lang || undefined : undefined;
-  const tickLabel = (d, i) => d.toLocaleDateString(lang, i === 0 || d.getMonth() === 0 ? { month: 'short', year: 'numeric' } : { month: 'short' });
-  const dateLabel = (ms) => new Date(ms).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
-  const bands = TIER_KEYS.map((key, i) => ({ key, i })).filter(({ i }) => i >= lo && i < hi);
+  const y = (pos) => top + (1 - (Math.max(lo, Math.min(hi, pos)) - lo) / (hi - lo)) * height;
+  const windowX = windowFrom ? x(Math.max(first, Date.parse(windowFrom))) : null;
   return (
-    <div className="skill-trend-card">
-      <div className="skill-trend-head">
-        <h3>{t('skill.chart.title')}</h3>
-      </div>
-      <div ref={ref} className="skill-trend-plot">
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('skill.chart.title')}>
-          {bands.map(({ key, i }) => (
-            <rect key={key} x={L} y={y(i + 1)} width={W - L - R} height={y(i) - y(i + 1)} className={`skill-trend-band skill-trend-band--${key}`} />
-          ))}
-          {bands.map(({ key, i }) => (
-            <text key={`l-${key}`} x={L - 10} y={(y(i) + y(i + 1)) / 2} className="skill-trend-axis" textAnchor="end" dominantBaseline="middle">{t(`skill.tier.${key}`)}</text>
-          ))}
-          {Array.from({ length: hi - lo + 1 }, (_, k) => lo + k).map((v) => (
-            <line key={`g-${v}`} x1={L} x2={W - R} y1={y(v)} y2={y(v)} className={v === lo || v === hi ? 'skill-trend-frame' : 'skill-trend-cut'} />
-          ))}
-          {monthTicks(first, last).map((d, i) => (
-            <g key={d.getTime()}>
-              <line x1={x(d.getTime())} x2={x(d.getTime())} y1={H - B} y2={H - B + 4} className="skill-trend-frame" />
-              <text x={x(d.getTime())} y={H - 6} className="skill-trend-axis" textAnchor="middle">{tickLabel(d, i)}</text>
-            </g>
-          ))}
-          {points.map((p, i) => (
-            <circle key={`${p.replay_id}-${i}`} cx={x(p.ms)} cy={y(p.position)} r="2" className="skill-trend-dot">
-              <title>{dateLabel(p.ms)}</title>
-            </circle>
-          ))}
-          <path d={avgPath} className="skill-trend-avg" />
-        </svg>
-      </div>
-    </div>
+    <g>
+      <rect x={left} y={top} width={right - left} height={height} rx="4" fill="rgba(255,255,255,0.025)" />
+      {windowX !== null ? <rect x={windowX} y={top} width={right - windowX} height={height} fill="rgba(255,255,255,0.06)" /> : null}
+      {points.map((p, i) => <circle key={i} cx={x(p.ms)} cy={y(p.position)} r="1.5" fill="rgba(203,213,225,0.35)" />)}
+      <path d={smoothPath(points, first, span, x, y)} fill="none" stroke="#60a5fa" strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
+    </g>
   );
 }
 
-// PlayerSkillTab is the player page's Skill tab: the player's tier up top, how it moved over time, then the
-// six metrics behind it.
-export function PlayerSkillTab({ summary, name, color }) {
-  const t = useT();
-  if (!summary?.combined) return null;
-  const player = { player_id: 'player', name, color };
-  const entryFor = (placement) => (placement ? [{ player, placement }] : []);
-  const placements = [summary.combined, ...METRICS.map((m) => summary.metrics?.[m.key]).filter(Boolean)];
-  const range = tierRange(placements.map((p) => p.position));
-  const plain = () => color || '#9ca3af';
-  const timeline = summary.timeline || [];
-  const direction = skillTrendDirection(timeline);
+// MetricBar is one submetric on the four tiers, with no values: a dot where the player sits.
+function MetricBar({ label, placement, top, barLeft }) {
+  const left = CARD.pad, right = CARD.width - CARD.pad;
+  const segment = (right - barLeft) / TIER_KEYS.length;
+  const pos = Math.min(TIER_KEYS.length, Math.max(0, placement.position));
   return (
-    <div className="workflow-card skill-player-tab">
-      <div className="skill-hero">
-        <span className={`skill-hero-tier wpt-skill-tier--${TIER_KEYS[summary.combined.tier]}`}>{tierLabel(t, summary)}</span>
-        <div className="skill-hero-facts">
-          <span>{t('skill.player.basis', { count: summary.games })}</span>
-          {direction ? <span className={`skill-hero-trend skill-hero-trend--${direction}`}>{t(`skill.trend.${direction}`)}</span> : null}
-        </div>
-        <SkillExplainerLink model={summary.model} className="skill-hero-explain" />
-      </div>
-      {summary.pills?.length ? (
-        <div className="skill-player-pills">
-          {summary.pills.map((pill) => (
-            <span
-              key={pill.key}
-              className={`workflow-pattern-pill skill-habit-pill skill-habit-pill--${PILL_TIER_KEYS[pill.key] === 3 ? 'strong' : 'plain'}`}
-              title={t(`skill.pill.${pill.key}.hint`, { games: pill.games, of: pill.of })}
-            >
-              {t(`skill.pill.${pill.key}`)}
-            </span>
-          ))}
-        </div>
-      ) : null}
-      {timeline.length >= MIN_TREND_GAMES ? <SkillTrend timeline={timeline} /> : null}
-      <div className="skill-rows skill-player-breakdown">
-        <SubmetricsHead />
-        {METRICS.filter((m) => summary.metrics?.[m.key]).map((m, index) => (
-          <React.Fragment key={m.key}>
-            <MetricLabel metric={m} />
-            <Strip entries={entryFor(summary.metrics[m.key])} range={range} playerColor={plain} inline tierLabels={index === 0} describe={describeWith(summary.model, m.key)} />
-          </React.Fragment>
+    <g>
+      <text x={left} y={top + 4} fill={CARD.muted} fontSize="11" dominantBaseline="middle">{label}</text>
+      {TIER_KEYS.map((key, i) => (
+        <rect key={key} x={barLeft + i * segment} y={top} width={segment - 1} height="8" fill={TIER_COLORS[i]} opacity="0.2" />
+      ))}
+      <circle cx={barLeft + (pos / TIER_KEYS.length) * (right - barLeft)} cy={top + 4} r="5" fill={TIER_TEXT[placement.tier]} stroke={CARD.bg} strokeWidth="2" />
+    </g>
+  );
+}
+
+// SkillCard is a player's Skill as one card: their tier, races and APM, how they moved, the six metrics behind
+// the tier and their habits. A player with too few games for a direction gets the card without the sparkline
+// and the trend; onDownload, given only on the player's own page, saves it as a PNG.
+export function SkillCard({ summary, name, races, apm, onDownload }) {
+  const t = useT();
+  const svgRef = React.useRef(null);
+  if (!summary?.combined) return null;
+  const { combined } = summary;
+  const timeline = summary.timeline || [];
+  const charted = timeline.length >= MIN_TREND_GAMES;
+  const direction = charted ? skillTrendDirection(timeline) : '';
+  const lang = typeof document !== 'undefined' ? document.documentElement.lang || undefined : undefined;
+  const latest = timeline.length ? new Date(timeline[timeline.length - 1].date) : new Date();
+  const asOf = latest.toLocaleDateString(lang, { month: 'short', year: 'numeric' });
+  const metrics = METRICS.filter((m) => summary.metrics?.[m.key]).map((m) => ({ ...m, label: t(`skill.metric.${m.key}.title`) }));
+  const barLeft = Math.min(CARD.width / 2, CARD.pad + Math.max(0, ...metrics.map((m) => textWidth(m.label, 11))) + 14);
+  const pills = layoutPills((summary.pills || []).map((pill) => ({
+    key: pill.key,
+    text: pill.key === 'no_hotkeys' ? t('server.marker.never_used_hotkeys.summary_player.label') : t(`skill.pill.${pill.key}`),
+    hint: t(`skill.pill.${pill.key}.hint`, { games: pill.games, of: pill.of }),
+    color: PILL_COLORS[PILL_TIER_KEYS[pill.key] === 3 ? 'strong' : 'plain'],
+  })), 10.5, CARD.width - 2 * CARD.pad);
+
+  const mid = CARD.width / 2;
+  const apmText = apm ? `${Math.round(apm)} APM` : '';
+  const ICON = 18;
+  const identityWidth = races.length * (ICON + 4) + (apmText ? (races.length ? 6 : 0) + textWidth(apmText, 12) : 0);
+  let identityX = mid - identityWidth / 2;
+  const medalY = 128, medalR = 50;
+  let y = medalY + medalR + 22;
+  const sparkTop = y;
+  if (charted) y += 46 + 16;
+  else y += 4;
+  const metricTop = y;
+  y += metrics.length * 22;
+  const pillTop = y + 6;
+  if (pills.length) y = pillTop + pills.length * 26;
+  const footerY = y + 18;
+  const height = footerY + 16;
+
+  return (
+    <div className="skill-card">
+      <svg ref={svgRef} viewBox={`0 0 ${CARD.width} ${height}`} width={CARD.width} height={height} fontFamily={CARD.font} role="img" aria-label={`${t('game.tabs.skill')}: ${tierLabel(t, summary)}`}>
+        <rect x="0.5" y="0.5" width={CARD.width - 1} height={height - 1} rx="14" fill={CARD.bg} stroke={CARD.line} />
+        <text x={mid} y="38" fill={CARD.text} fontSize="18" fontWeight="600" textAnchor="middle">{name}</text>
+        {races.map((race) => {
+          const x = identityX;
+          identityX += ICON + 4;
+          return <image key={race.race} href={race.icon} x={x} y="52" width={ICON} height={ICON} />;
+        })}
+        {apmText ? <text x={identityX + (races.length ? 2 : 0)} y="61" fill={CARD.muted} fontSize="12" dominantBaseline="middle">{apmText}</text> : null}
+        <circle cx={mid} cy={medalY} r={medalR} fill={TIER_COLORS[combined.tier]} fillOpacity="0.1" stroke={TIER_COLORS[combined.tier]} strokeOpacity="0.65" strokeWidth="3" />
+        <text x={mid} y={direction ? medalY - 3 : medalY + 5} fill={TIER_TEXT[combined.tier]} fontSize="16" fontWeight="600" textAnchor="middle">{tierLabel(t, summary)}</text>
+        {direction ? <text x={mid} y={medalY + 16} fill={TREND_COLORS[direction]} fontSize="11" fontWeight="600" textAnchor="middle">{t(`skill.trend.${direction}`)}</text> : null}
+        {charted ? <Sparkline timeline={timeline} windowFrom={summary.window_from} top={sparkTop} height={46} /> : null}
+        {metrics.map((m, i) => (
+          <MetricBar key={m.key} label={m.label} placement={summary.metrics[m.key]} top={metricTop + i * 22} barLeft={barLeft} />
         ))}
-      </div>
+        {pills.map((row, r) => {
+          const rowWidth = row.reduce((sum, p) => sum + p.w, 0) + 6 * (row.length - 1);
+          let px = mid - rowWidth / 2;
+          return row.map((pill) => {
+            const x = px;
+            px += pill.w + 6;
+            return (
+              <g key={pill.key}>
+                <title>{pill.hint}</title>
+                <rect x={x} y={pillTop + r * 26} width={pill.w} height="20" rx="10" fill="none" stroke={pill.color} strokeOpacity="0.45" />
+                <text x={x + pill.w / 2} y={pillTop + r * 26 + 10} fill={pill.color} fontSize="10.5" textAnchor="middle" dominantBaseline="central">{pill.text}</text>
+              </g>
+            );
+          });
+        })}
+        <text x={CARD.pad} y={footerY} fill={CARD.faint} fontSize="10">{asOf}</text>
+        <text x={mid} y={footerY} fill={CARD.faint} fontSize="10" textAnchor="middle">{t('skill.player.basis', { count: summary.games })}</text>
+        <text x={CARD.width - CARD.pad} y={footerY} fill={CARD.faint} fontSize="10" textAnchor="end">screpdb</text>
+      </svg>
+      {onDownload ? (
+        <button type="button" className="skill-card-download" aria-label={`${t('game.tabs.skill')} PNG`} title={`${t('game.tabs.skill')} PNG`} onClick={() => onDownload(svgRef.current, latest)}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 4v11M7 10l5 5 5-5M5 19h14" />
+          </svg>
+        </button>
+      ) : null}
     </div>
   );
 }

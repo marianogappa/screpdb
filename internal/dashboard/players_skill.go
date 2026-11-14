@@ -144,7 +144,8 @@ func librarySkillPlayers(model *skill.Model, replays []*library.Replay) []workfl
 	sort.Strings(keys)
 	out := []workflowLibrarySkill{}
 	for _, k := range keys {
-		if s := summarizeSkill(model, byPlayer[k]); s != nil {
+		recent, _ := recentSkillGames(byPlayer[k])
+		if s := summarizeSkill(model, recent); s != nil {
 			out = append(out, workflowLibrarySkill{PlayerKey: k, PlayerName: names[k], Games: s.Games, Combined: s.Combined, Metrics: s.Metrics})
 		}
 	}

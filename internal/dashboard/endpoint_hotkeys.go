@@ -170,13 +170,21 @@ func (d *Dashboard) localHotkeySignature(ctx context.Context, playerKey string) 
 		d.engineHotkeyUnits(row.ReplayID, row.Slot, events)
 		byRace[row.Race] = append(byRace[row.Race], events)
 	}
-	payload := hotkeySignaturePayload{Cards: []*hotkeystream.Signature{}, GamesByRace: gamesByRace}
+	return hotkeySignaturePayload{Cards: hotkeySignatureCards(displayName, byRace), GamesByRace: gamesByRace}, nil
+}
+
+// hotkeySignatureCards is one card per race with enough games, most played first. A race whose games never
+// touch a hotkey has nothing to show, so it gets no card, and a player with no cards gets no Hotkeys tab.
+func hotkeySignatureCards(displayName string, byRace map[string][][]hotkeystream.Event) []*hotkeystream.Signature {
+	cards := []*hotkeystream.Signature{}
 	for race, games := range byRace {
 		if len(games) < hotkeySignatureMinGames {
 			continue
 		}
-		payload.Cards = append(payload.Cards, hotkeystream.ComputeSignature(displayName, race, games))
+		if card := hotkeystream.ComputeSignature(displayName, race, games); len(card.Keys) > 0 {
+			cards = append(cards, card)
+		}
 	}
-	sort.Slice(payload.Cards, func(i, j int) bool { return payload.Cards[i].Games > payload.Cards[j].Games })
-	return payload, nil
+	sort.Slice(cards, func(i, j int) bool { return cards[i].Games > cards[j].Games })
+	return cards
 }

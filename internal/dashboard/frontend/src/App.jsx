@@ -6,7 +6,10 @@ import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineProgressNote from './components/EngineProgressNote';
-import SkillTab, { PlayerSkillRow, PlayerSkillTab, PlayersSkillTab, SkillTierChip, TIER_KEYS, tierLabel } from './components/SkillTab';
+import SkillTab, { PlayersSkillTab, LEFT_EARLY_MARK, SkillCard, SkillTierChip, TIER_KEYS, tierLabel } from './components/SkillTab';
+import { cardRaces, skillCardFileName } from './lib/skillCard';
+import { downloadSvgAsPng } from './lib/svgPng';
+import { bnetFreshness } from './lib/bnetFreshness';
 import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
 import GameMap from './components/GameMap';
@@ -969,25 +972,6 @@ const FingerprintBadge = ({ match, compact, badge }) => {
         <span className="workflow-fingerprint-tooltip">{t('fingerprint.tooltip')}</span>
       </span>
       <span className="workflow-fingerprint-label">{fillTemplate(t('fingerprint.label'), { confidence: tierLabel, name: nameEl })}</span>
-    </span>
-  );
-};
-
-// "No badge" used to cover four different answers at once. Coverage carries the
-// reason now, so a player the catalogue rejected is told so instead of being
-// left to guess.
-//
-// not_enough_games is deliberately silent. Most players in a typical library
-// never play one-on-one, so it would appear on nearly every profile, and a line
-// about needing three one-on-one games does not read as being about
-// fingerprinting at all. The reason still travels in the payload.
-const FingerprintCoverageNote = ({ coverage }) => {
-  const t = useT();
-  const reason = coverage?.no_match_reason;
-  if (reason !== 'no_candidate' && reason !== 'below_bar') return null;
-  return (
-    <span className="workflow-subtle-note workflow-fingerprint-coverage">
-      {reason === 'below_bar' ? t('fingerprint.coverage.belowBar') : t('fingerprint.coverage.noMatch')}
     </span>
   );
 };
@@ -2338,7 +2322,6 @@ function App() {
   const [mainPlayersSortDir, setMainPlayersSortDir] = useState('desc');
   const [mainPlayersTab, setMainPlayersTab] = useState(() => initialMainRoute.playersTab);
   const [mainPlayerTab, setMainPlayerTab] = useState(() => initialMainRoute.playerTab);
-  const [skillTabBeckon, setSkillTabBeckon] = useState(false);
   const [mainPlayerSubtab, setMainPlayerSubtab] = useState(() => initialMainRoute.playerSubtab || '');
   const [mainPlayersFilterOptions, setMainPlayersFilterOptions] = useState({
     races: [],
@@ -3197,7 +3180,7 @@ function App() {
   }, [activeView, selectedPlayerKey, mainPlayerHotkeySig, mainPlayerHotkeySigLoading, mainPlayerHotkeySigError]);
 
   // The Hotkeys tab only exists for a player with hotkey cards; landing on it without any goes to Summary.
-  const mainPlayerHasHotkeys = (mainPlayerHotkeySig?.cards || []).length > 0;
+  const mainPlayerHasHotkeys = (mainPlayerHotkeySig?.cards || []).some((card) => card.keys?.length);
   useEffect(() => {
     if (mainPlayerTab === 'hotkeys' && mainPlayerHotkeySig && !mainPlayerHasHotkeys) setMainPlayerTab('summary');
   }, [mainPlayerTab, mainPlayerHotkeySig, mainPlayerHasHotkeys]);
@@ -6042,6 +6025,8 @@ function App() {
                                   <button type="button" className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[player.skill.combined.tier]}`} onClick={() => setMainGameTab('skill')}>
                                     {tierLabel(t, player.skill)}
                                   </button>
+                                ) : player.skill_left_early ? (
+                                  <span className="wpt-skill-tier wpt-skill-tier--static wpt-skill-tier--left">{LEFT_EARLY_MARK}</span>
                                 ) : null}
                               </div>
                             ) : null}
@@ -6880,9 +6865,6 @@ function App() {
                         <span className="workflow-fingerprint-match"><FingerprintBadge match={mainPlayer.fingerprint_match} /></span>
                       ) : null}
                     </h2>
-                    {!isFeaturedPlayer && !mainPlayer?.primary_badge && !mainPlayer?.fingerprint_match ? (
-                      <FingerprintCoverageNote coverage={mainPlayer?.fingerprint_coverage} />
-                    ) : null}
                     {isFeaturedPlayer && featured ? (
                       <div className="workflow-featured-links">
                         {featured.main_race ? <span>{raceLabel(featured.main_race)}</span> : null}
@@ -6904,13 +6886,6 @@ function App() {
                       onClick={() => { setMainPlayerTab('summary'); setMainPlayerSubtab(''); }}>
                       {t('tabs.summary')}
                     </button>
-                    {!isFeaturedPlayer && (mainPlayer?.skill || mainPlayerTab === 'skill') ? (
-                      <button type="button" role="tab" aria-selected={mainPlayerTab === 'skill'}
-                        className={`workflow-production-tab ${mainPlayerTab === 'skill' ? 'workflow-production-tab-active' : ''}${skillTabBeckon && mainPlayerTab !== 'skill' ? ' workflow-production-tab--beckon' : ''}`}
-                        onClick={() => { setMainPlayerTab('skill'); setMainPlayerSubtab(''); }}>
-                        {t('game.tabs.skill')}
-                      </button>
-                    ) : null}
                     {mainPlayerHasHotkeys || mainPlayerTab === 'hotkeys' ? (
                       <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
                         className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
@@ -6930,11 +6905,6 @@ function App() {
                 </div>
 
                 <div className="workflow-cards">
-                  {mainPlayerTab === 'skill' && !isFeaturedPlayer ? (
-                    mainPlayer?.skill
-                      ? <PlayerSkillTab summary={mainPlayer.skill} name={mainPlayer?.player_name || selectedPlayerKey} />
-                      : (mainPlayerLoading ? null : <div className="workflow-card skill-tab"><div className="chart-empty">{t('skill.player.none')}</div>{engineProgressNote}</div>)
-                  ) : null}
                   {mainPlayerTab === 'summary' && (() => {
                     const bnet = mainPlayer?.bnet_profile;
                     // A profile is now also sent for a toon Battle.net does not
@@ -6955,8 +6925,7 @@ function App() {
                         : t('player.bnet.connectPrompt');
                     const bnetRecent = Array.isArray(bnet?.recent_games) ? bnet.recent_games : [];
                     const bnetLastPlayed = bnet?.last_played_at ? formatRelativeReplayDate(bnet.last_played_at) : '';
-                    const bnetHours = bnet?.play_time_seconds == null ? null : bnet.play_time_seconds / 3600;
-                    const bnetFetchedAt = bnet?.fetched_at ? formatRelativeReplayDate(bnet.fetched_at) : '';
+                    const bnetLastPlayedFreshness = bnetFreshness(bnet?.fetched_at);
                     const keyOf = (name) => String(name || '').trim().toLowerCase();
                     // player_name carries the "you" marker, so the subject is
                     // matched on the undecorated key instead.
@@ -6969,9 +6938,23 @@ function App() {
                       aliases.push(t.toon);
                     });
                     const games = Array.isArray(mainPlayerLastGames) ? mainPlayerLastGames : [];
+                    const playerName = String(mainPlayer?.player_name || '');
+                    const isYou = playerName.endsWith(YOU_MARKER);
+                    const skillCard = !isFeaturedPlayer && mainPlayer?.skill ? (
+                      <SkillCard
+                        summary={mainPlayer.skill}
+                        name={isYou ? playerName.slice(0, -YOU_MARKER.length).trimEnd() : playerName}
+                        races={cardRaces(mainPlayer.race_breakdown).map((race) => ({ race, icon: getWorkerIconForRace(race) })).filter((r) => r.icon)}
+                        apm={mainPlayer.average_apm}
+                        onDownload={isYou ? (svg, asOf) => {
+                          downloadSvgAsPng(svg, skillCardFileName(playerName.slice(0, -YOU_MARKER.length).trimEnd(), asOf)).catch((err) => console.error('skill card download', err));
+                        } : undefined}
+                      />
+                    ) : null;
                     return (
                       <div className="workflow-card">
-                        {!isFeaturedPlayer ? <PlayerSkillRow summary={mainPlayer?.skill} onHover={setSkillTabBeckon} onOpen={() => { setSkillTabBeckon(false); setMainPlayerTab('skill'); setMainPlayerSubtab(''); }} /> : null}
+                        <div className="wps-top-row">
+                        {skillCard}
                         {showBnet ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title wps-section-title--with-notice">
@@ -6983,6 +6966,29 @@ function App() {
                             {!bnetHasAnswer ? (
                               <div className="chart-empty">{bnetAbsenceMessage}</div>
                             ) : (<>
+                            {aliases.length ? (
+                              <div className="wps-aliases">
+                                <span className="wps-aliases-label">{t('player.bnet.alsoPlaysAs')}</span>
+                                <div className="wps-aliases-list">
+                                  {aliases.map((alias) => {
+                                    const aliasKey = keyOf(alias);
+                                    return mainPlayerKnownAliases[aliasKey] ? (
+                                      <button
+                                        key={aliasKey}
+                                        type="button"
+                                        className="wps-alias wps-alias-known"
+                                        title={t('player.viewThisPlayer')}
+                                        onClick={() => openMainPlayer(aliasKey)}
+                                      >
+                                        {alias}
+                                      </button>
+                                    ) : (
+                                      <span key={aliasKey} className="wps-alias">{alias}</span>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : null}
                             <div className="wps-stats">
                               <div className="wps-stat">
                                 <span className="wps-stat-label">{t('player.bnet.ladder')}</span>
@@ -7015,25 +7021,16 @@ function App() {
                                 </span>
                               </div>
                               <div className="wps-stat">
-                                <span className="wps-stat-label">{t('player.stats.winRate')}</span>
-                                <span className="wps-stat-value">
-                                  {/* A win rate over zero games is undefined, not 0%. */}
-                                  {bnet.lifetime_games ? `${((100 * (bnet.lifetime_wins ?? 0)) / bnet.lifetime_games).toFixed(1)}%` : <NoValue />}
-                                </span>
-                              </div>
-                              <div className="wps-stat">
-                                <span className="wps-stat-label">APM</span>
+                                <span className="wps-stat-label">{t('player.bnet.allTimeApm')}</span>
                                 <span className="wps-stat-value">
                                   {bnet.average_apm == null ? <NoValue /> : bnet.average_apm.toFixed(1)}
                                 </span>
                               </div>
-                              <div className="wps-stat">
-                                <span className="wps-stat-label">{t('player.bnet.timePlayed')}</span>
-                                <span className="wps-stat-value">
-                                  {bnetHours == null ? <NoValue /> : t('player.bnet.hours', { hours: Math.round(bnetHours).toLocaleString() })}
-                                </span>
-                              </div>
-                              <div className="wps-stat">
+                              {bnetLastPlayedFreshness === 'expired' ? null : (
+                              <div
+                                className={`wps-stat${bnetLastPlayedFreshness === 'outdated' ? ' wps-stat--outdated' : ''}`}
+                                title={bnetLastPlayedFreshness === 'outdated' ? t('player.bnet.outdated') : undefined}
+                              >
                                 <span className="wps-stat-label">{t('common.lastPlayed')}</span>
                                 <span className="wps-stat-value">{bnetLastPlayed || <NoValue />}</span>
                                 <span className="wps-stat-sub">
@@ -7042,39 +7039,12 @@ function App() {
                                     : t('player.bnet.gamesLastWeek', { count: bnet.games_last_week })}
                                 </span>
                               </div>
+                              )}
                             </div>
-                            {bnetFetchedAt ? (
-                              <div className="wps-bnet-asof">{t('player.bnet.asOf', { when: bnetFetchedAt })}</div>
-                            ) : null}
-                            {bnet.habits?.summary ? (
-                              <div className="wps-about" title={t('player.bnet.habitsTip')}>
-                                🕒 {bnet.habits.summary}
-                              </div>
-                            ) : null}
-                            {aliases.length ? (
-                              <div className="wps-aliases">
-                                <span className="wps-stat-label">{t('player.bnet.alsoPlaysAs')}</span>
-                                {aliases.map((alias) => {
-                                  const aliasKey = keyOf(alias);
-                                  return mainPlayerKnownAliases[aliasKey] ? (
-                                    <button
-                                      key={aliasKey}
-                                      type="button"
-                                      className="wps-alias wps-alias-known"
-                                      title={t('player.viewThisPlayer')}
-                                      onClick={() => openMainPlayer(aliasKey)}
-                                    >
-                                      {alias}
-                                    </button>
-                                  ) : (
-                                    <span key={aliasKey} className="wps-alias">{alias}</span>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
                             </>)}
                           </div>
                         ) : null}
+                        </div>
                         {isFeaturedPlayer ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.recentGames')}</span></div>
@@ -7129,22 +7099,11 @@ function App() {
                         ) : null}
                         {!isFeaturedPlayer ? (
                         <div className="wps-section">
-                          {showBnet ? <div className="workflow-card-title wps-section-title"><span>{t('player.localGames')}</span></div> : null}
-                          <div className="wps-stats">
-                            <div className="wps-stat">
-                              <span className="wps-stat-label">{t('player.stats.games')}</span>
-                              <span className="wps-stat-value">{mainPlayer ? mainPlayer.games_played : <NoValue />}</span>
-                            </div>
-                            <div className="wps-stat">
-                              <span className="wps-stat-label">{t('player.stats.winRate')}</span>
-                              <span className="wps-stat-value">{mainPlayer ? `${(mainPlayer.win_rate * 100).toFixed(1)}%` : <NoValue />}</span>
-                              <span className="wps-stat-sub">{mainPlayer?.undecided > 0 ? t('player.stats.undecided', { value: mainPlayer.undecided }) : ''}</span>
-                            </div>
-                            <div className="wps-stat">
-                              <span className="wps-stat-label">APM</span>
-                              <span className="wps-stat-value">{mainPlayer?.average_apm == null ? <NoValue /> : mainPlayer.average_apm.toFixed(1)}</span>
-                              <span className="wps-stat-sub">{mainPlayer ? t('player.stats.eapm', { value: mainPlayer.average_eapm?.toFixed(1) }) : ''}</span>
-                            </div>
+                          <div className="workflow-card-title wps-section-title wps-section-title--with-meta">
+                            <span>{t('player.localGames')}</span>
+                            {mainPlayer ? (
+                              <span className="wps-section-meta">{t('player.stats.games')} <strong>{mainPlayer.games_played.toLocaleString()}</strong></span>
+                            ) : null}
                           </div>
                         {mainPlayerLastGamesLoading ? <div className="chart-empty">{t('player.lastGames.loading')}</div> : null}
                         {!mainPlayerLastGamesLoading && mainPlayerLastGamesError ? <div className="chart-empty">{mainPlayerLastGamesError}</div> : null}

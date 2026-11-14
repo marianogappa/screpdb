@@ -12,6 +12,11 @@ import (
 // is a guess, a handful starts to say something about the player.
 const minSkillGames = 5
 
+// skillWindow is how far back from a player's latest rated game their Skill average reads, so an improving
+// player is not held back by their old games. It runs from the latest game rather than today, so a player who
+// stopped playing still has an average.
+const skillWindow = 91 * 24 * time.Hour
+
 // workflowPlayerSkillSummary averages a player's rated games: positions on the tier axis, so a Zerg's
 // numbers and a Terran's average on one scale.
 type workflowPlayerSkillSummary struct {
@@ -22,6 +27,8 @@ type workflowPlayerSkillSummary struct {
 	Model    *workflowSkillModel        `json:"model"`
 	// Timeline is every rated game, oldest first, for the evolution chart.
 	Timeline []workflowSkillPoint `json:"timeline"`
+	// WindowFrom is where the games the average reads start, when skillWindow left older games out.
+	WindowFrom string `json:"window_from,omitempty"`
 }
 
 type workflowSkillPoint struct {
@@ -70,11 +77,12 @@ var skillHabits = []struct {
 const habitShare = 0.6
 
 func (d *Dashboard) playerSkill(playerKey string) *workflowPlayerSkillSummary {
-	return d.playerSkillAs(playerKey, "")
+	return d.playerSkillAs(playerKey, "", true)
 }
 
 // playerSkillAs is playerSkill over the games a player played as race only, or every game when race is empty.
-func (d *Dashboard) playerSkillAs(playerKey, race string) *workflowPlayerSkillSummary {
+// recent reads only the games within skillWindow.
+func (d *Dashboard) playerSkillAs(playerKey, race string, recent bool) *workflowPlayerSkillSummary {
 	if d.library == nil {
 		return nil
 	}
@@ -94,13 +102,42 @@ func (d *Dashboard) playerSkillAs(playerKey, race string) *workflowPlayerSkillSu
 			timeline = append(timeline, workflowSkillPoint{ReplayID: ref.Replay.ID, Date: ref.Replay.Date.UTC().Format(time.RFC3339), Position: r.result.Combined.Position})
 		}
 	}
+	var from time.Time
+	if recent {
+		rated, from = recentSkillGames(rated)
+	}
 	out := summarizeSkill(model, rated)
 	if out == nil {
 		return nil
 	}
 	sort.SliceStable(timeline, func(i, j int) bool { return timeline[i].Date < timeline[j].Date })
 	out.Model, out.Timeline = skillModelSummary(model), timeline
+	if !from.IsZero() {
+		out.WindowFrom = from.UTC().Format(time.RFC3339)
+	}
 	return out
+}
+
+// recentSkillGames is the games within skillWindow of the latest one, and where that window starts. A player
+// with too few games in the window keeps every game, and from is zero whenever no game was left out.
+func recentSkillGames(rated []ratedPlayer) ([]ratedPlayer, time.Time) {
+	var latest time.Time
+	for _, r := range rated {
+		if r.date.After(latest) {
+			latest = r.date
+		}
+	}
+	from := latest.Add(-skillWindow)
+	recent := make([]ratedPlayer, 0, len(rated))
+	for _, r := range rated {
+		if !r.date.Before(from) {
+			recent = append(recent, r)
+		}
+	}
+	if len(recent) < minSkillGames || len(recent) == len(rated) {
+		return rated, time.Time{}
+	}
+	return recent, from
 }
 
 func summarizeSkill(model *skill.Model, rated []ratedPlayer) *workflowPlayerSkillSummary {
