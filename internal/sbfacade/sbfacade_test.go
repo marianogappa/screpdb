@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const settledGame = `{"game":{"id":"01a1da1c-8486-7801-827d-b56d61fe89e8","results":[[17185,{"apm":0,"race":"t","result":"win"}],[18606,{"apm":0,"race":"t","result":"loss"}]],"canceledAt":null},"users":[]}`
+const settledGame = `{"game":{"id":"01a1da1c-8486-7801-827d-b56d61fe89e8","startTime":1794660664000,"config":{"teams":[[{"id":17185,"race":"t","isComputer":false},{"id":18606,"race":"t","isComputer":false}]],"gameType":"oneVOne","gameSource":"MATCHMAKING","gameSourceExtra":{"type":"1v1"}},"gameLength":719502,"results":[[17185,{"apm":0,"race":"t","result":"win"}],[18606,{"apm":0,"race":"t","result":"loss"}]],"canceledAt":null},"mmrChanges":[{"userId":17185,"matchmakingType":"1v1","rating":2366.9,"ratingChange":5.4,"outcome":"win"}],"replay":{"gameId":"01a1da1c-8486-7801-827d-b56d61fe89e8","id":"01a1da27-b27b-7eb7-9ac4-9cc6e6d40b66","url":"https://cdn.shieldbattery.net/replays/01a1da27-b27b-7eb7-9ac4-9cc6e6d40b66.rep?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=abc","hash":"85383a77","filename":"SB-1v1-Backrooms_1.1-1794660664"}}`
 
 func serve(t *testing.T, status int, body string) string {
 	t.Helper()
@@ -27,6 +27,27 @@ func TestFetchGameReadsResultsByUserID(t *testing.T) {
 		t.Fatal(err)
 	}
 	if game.Results[17185] != ResultWin || game.Results[18606] != ResultLoss || game.Canceled {
+		t.Fatalf("got %+v", game)
+	}
+	if !game.StartTime.Equal(time.UnixMilli(1794660664000)) || game.GameLength != 719502*time.Millisecond ||
+		game.GameSource != SourceMatchmaking || game.MatchmakingType != "1v1" {
+		t.Fatalf("got %+v", game)
+	}
+	if game.ReplayURL != "https://cdn.shieldbattery.net/replays/01a1da27-b27b-7eb7-9ac4-9cc6e6d40b66.rep?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=abc" ||
+		game.ReplayHash != "85383a77" || game.ReplayFilename != "SB-1v1-Backrooms_1.1-1794660664" {
+		t.Fatalf("replay %+v", game)
+	}
+	if err := checkReplayURL(game.ReplayURL); err != nil {
+		t.Fatalf("real replay URL refused: %v", err)
+	}
+}
+
+func TestFetchGameWithoutReplayOrLength(t *testing.T) {
+	game, err := fetchGameFrom(context.Background(), serve(t, http.StatusOK, `{"game":{"id":"x","startTime":1794660664000,"config":{"gameSource":"LOBBY"},"gameLength":null,"results":null,"canceledAt":null}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if game.ReplayURL != "" || game.ReplayHash != "" || game.GameLength != 0 || game.GameSource != SourceLobby || game.MatchmakingType != "" {
 		t.Fatalf("got %+v", game)
 	}
 }
@@ -58,8 +79,8 @@ func TestFetchGameErrors(t *testing.T) {
 }
 
 func TestRateLimitPausesEveryRequest(t *testing.T) {
-	saved := *thePacer
-	t.Cleanup(func() { thePacer.next = saved.next })
+	saved := thePacer.next
+	t.Cleanup(func() { thePacer.next = saved })
 	if _, err := fetchGameFrom(context.Background(), serve(t, http.StatusTooManyRequests, "")); !errors.Is(err, ErrRateLimited) {
 		t.Fatalf("429: %v", err)
 	}

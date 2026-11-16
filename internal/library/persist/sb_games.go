@@ -66,7 +66,7 @@ func (s *SBGames) Put(gameID string, game SBGame) error {
 		return err
 	}
 	file.Games[gameID] = game
-	return s.writeLocked(file)
+	return writeJSONAtomically(s.path(), file)
 }
 
 func (s *SBGames) fileLocked() (*sbGamesFileShape, error) {
@@ -91,8 +91,7 @@ func (s *SBGames) fileLocked() (*sbGamesFileShape, error) {
 	return file, nil
 }
 
-func (s *SBGames) writeLocked(file *sbGamesFileShape) error {
-	path := s.path()
+func writeJSONAtomically(path string, file any) error {
 	if err := iofacade.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
