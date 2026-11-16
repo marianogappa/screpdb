@@ -23,11 +23,6 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	if err != nil {
 		return []workflowPlayersListItem{}, 0, workflowPlayersListFilterOptions{}, err
 	}
-	playerNames := make([]string, 0, len(listRows))
-	for _, row := range listRows {
-		playerNames = append(playerNames, row.PlayerName)
-	}
-	displayByName := d.youDisplayNames(playerNames)
 	playerKeys := make([]string, 0, len(listRows))
 	for _, row := range listRows {
 		playerKeys = append(playerKeys, row.PlayerKey)
@@ -40,10 +35,7 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	for _, row := range listRows {
 		item := workflowPlayersListItem{}
 		item.PlayerKey = row.PlayerKey
-		item.PlayerName = row.PlayerName
-		if displayName, ok := displayByName[row.PlayerName]; ok {
-			item.PlayerName = displayName
-		}
+		item.PlayerName = d.youDisplayName(row.PlayerKey, row.PlayerName)
 		item.Race = row.Race
 		item.GamesPlayed = row.GamesPlayed
 		item.AverageAPM = row.AverageAPM
@@ -316,24 +308,16 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 	if err != nil {
 		return err
 	}
-	playerNames := make([]string, 0, len(rows))
-	for _, row := range rows {
-		playerNames = append(playerNames, row.Name)
-	}
-	displayByName := d.youDisplayNames(playerNames)
 	playerKeys := make([]string, 0, len(rows))
 	for _, row := range rows {
-		playerKeys = append(playerKeys, normalizePlayerKey(row.Name))
+		playerKeys = append(playerKeys, row.PlayerKey)
 	}
 	countryCodes, _ := d.countryCodesByPlayerKeys(playerKeys)
 	for _, row := range rows {
 		var player workflowGameListPlayer
 		replayID := row.ReplayID
 		player.PlayerID = row.PlayerID
-		player.Name = row.Name
-		if displayName, ok := displayByName[row.Name]; ok {
-			player.Name = displayName
-		}
+		player.Name = d.youDisplayName(row.PlayerKey, row.Name)
 		player.Race = row.Race
 		player.Team = row.Team
 		player.TeamWon = row.TeamWon
@@ -343,7 +327,7 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 		if d.debug {
 			player.OutcomeTrace = outcomeTrace(row)
 		}
-		player.PlayerKey = normalizePlayerKey(row.Name)
+		player.PlayerKey = row.PlayerKey
 		player.CountryCode = countryCodes[player.PlayerKey]
 		player.PrimaryBadge = d.primaryIdentityBadge(player.PlayerKey)
 		idx, ok := itemIndexByReplayID[replayID]
@@ -496,26 +480,18 @@ func (d *Dashboard) populateWorkflowRecentGamesCurrentPlayer(playerKey string, i
 	if err != nil {
 		return err
 	}
-	playerNames := make([]string, 0, len(playerRows))
-	for _, row := range playerRows {
-		playerNames = append(playerNames, row.Name)
-	}
-	displayByName := d.youDisplayNames(playerNames)
 	playerIDs := []int64{}
 	currentByPlayerID := map[int64]*workflowRecentGamePlayer{}
 	for _, row := range playerRows {
 		replayID := row.ReplayID
 		currentPlayer := &workflowRecentGamePlayer{DetectedPatterns: []workflowPatternValue{}}
 		currentPlayer.PlayerID = row.PlayerID
-		currentPlayer.Name = row.Name
-		if displayName, ok := displayByName[row.Name]; ok {
-			currentPlayer.Name = displayName
-		}
+		currentPlayer.Name = d.youDisplayName(row.PlayerKey, row.Name)
 		currentPlayer.Race = row.Race
 		currentPlayer.TeamWon = row.TeamWon
 		currentPlayer.APM = row.APM
 		currentPlayer.EAPM = row.EAPM
-		currentPlayer.PlayerKey = normalizePlayerKey(row.Name)
+		currentPlayer.PlayerKey = row.PlayerKey
 		item := itemByReplayID[replayID]
 		if item == nil {
 			continue
@@ -598,18 +574,10 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 	if err != nil {
 		return result, err
 	}
-	playerNames := make([]string, 0, len(rowsPlayers))
-	for _, row := range rowsPlayers {
-		playerNames = append(playerNames, row.Label)
-	}
-	displayByName := d.youDisplayNames(playerNames)
 	for _, row := range rowsPlayers {
 		var option workflowGamesListFilterOption
 		option.Key = row.Key
-		option.Label = row.Label
-		if displayName, ok := displayByName[row.Label]; ok {
-			option.Label = displayName
-		}
+		option.Label = d.youDisplayName(row.Key, row.Label)
 		option.Games = row.Games
 		result.Players = append(result.Players, option)
 	}

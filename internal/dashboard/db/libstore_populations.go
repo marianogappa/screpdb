@@ -26,6 +26,7 @@ const (
 type libPlayerAggregate struct {
 	Key         string
 	Name        string
+	shown       shownName
 	Games       int64
 	apmSum      float64
 	apmGames    int64
@@ -70,12 +71,11 @@ func (s *LibStore) playerAggregates(scope libPlayerScope) []libPlayerAggregate {
 				}
 				aggregate := byKey[p.Key]
 				if aggregate == nil {
-					aggregate = &libPlayerAggregate{Key: p.Key, Name: p.Name, raceGames: map[library.Race]int64{}}
+					aggregate = &libPlayerAggregate{Key: p.Key, raceGames: map[library.Race]int64{}}
 					byKey[p.Key] = aggregate
 				}
-				if p.Name < aggregate.Name {
-					aggregate.Name = p.Name
-				}
+				aggregate.shown.offer(p.Key, p.Name, r.Date)
+				aggregate.Name = aggregate.shown.name
 				aggregate.Games++
 				if p.APM > 0 {
 					aggregate.apmSum += float64(p.APM)
@@ -155,7 +155,7 @@ func (s *LibStore) playersListRows(query PlayersQuery) []WorkflowPlayersListRow 
 	rows := make([]WorkflowPlayersListRow, 0, len(aggregates))
 	for i := range aggregates {
 		aggregate := &aggregates[i]
-		if nameFilter != "" && !strings.Contains(aggregate.Key, nameFilter) {
+		if nameFilter != "" && !strings.Contains(normalizeKey(aggregate.Name), nameFilter) {
 			continue
 		}
 		if query.OnlyFivePlus && aggregate.Games < 5 {

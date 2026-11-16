@@ -57,14 +57,14 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		return detail, fmt.Errorf("failed to load players: %w", err)
 	}
 	playerNames := make([]string, 0, len(rows))
-	for _, row := range rows {
-		playerNames = append(playerNames, row.Name)
-	}
-	displayByName := d.youDisplayNames(playerNames)
-
+	displayByName := map[string]string{}
 	detailPlayerKeys := make([]string, 0, len(rows))
 	for _, row := range rows {
-		detailPlayerKeys = append(detailPlayerKeys, normalizePlayerKey(row.Name))
+		playerNames = append(playerNames, row.Name)
+		if display := d.youDisplayName(row.PlayerKey, row.Name); display != row.Name {
+			displayByName[row.Name] = display
+		}
+		detailPlayerKeys = append(detailPlayerKeys, row.PlayerKey)
 	}
 	countryCodes, _ := d.countryCodesByPlayerKeys(detailPlayerKeys)
 
@@ -72,10 +72,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	for _, row := range rows {
 		var p workflowGamePlayer
 		p.PlayerID = row.PlayerID
-		p.Name = row.Name
-		if displayName, ok := displayByName[row.Name]; ok {
-			p.Name = displayName
-		}
+		p.Name = d.youDisplayName(row.PlayerKey, row.Name)
 		p.Color = row.Color
 		p.Race = row.Race
 		p.Team = row.Team
@@ -83,7 +80,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		p.APM = row.APM
 		p.EAPM = row.EAPM
 		p.IsBot = row.BotSignals != 0
-		p.PlayerKey = normalizePlayerKey(row.Name)
+		p.PlayerKey = row.PlayerKey
 		p.CountryCode = countryCodes[p.PlayerKey]
 		p.DetectedPatterns = []workflowPatternValue{}
 		if match, _ := d.matchFingerprint(p.PlayerKey, scfingerprint.FeatureVersion()); match != nil {
@@ -251,10 +248,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		return result, fmt.Errorf("failed to load player summary: %w", err)
 	}
 	result.PlayerName = summary.PlayerName
-	displayByName := d.youDisplayNames([]string{summary.PlayerName})
-	if displayName, ok := displayByName[summary.PlayerName]; ok {
-		result.PlayerName = displayName
-	}
+	result.PlayerName = d.youDisplayName(playerKey, summary.PlayerName)
 	if cc, _ := d.countryCodesByPlayerKeys([]string{playerKey}); len(cc) > 0 {
 		result.CountryCode = cc[playerKey]
 	}

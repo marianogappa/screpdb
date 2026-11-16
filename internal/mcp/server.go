@@ -175,7 +175,9 @@ How the corpus is shaped
     markers and game events, its chat, and its map layout. Every join you might
     want inside a game is already done: /api/games/{replayID} returns the whole
     game report in one response.
-  - A player is identified corpus-wide by playerKey, the lower-cased name.
+  - A player is identified corpus-wide by playerKey: the lower-cased name for
+    Battle.net players, and sb:<account id> for ShieldBattery players, whose
+    names can change. The same name on the two servers is two players.
     /api/players lists them with their game counts; the per-player endpoints
     take that key.
   - Markers are one-per-(game, player) verdicts screpdb computed: build-order

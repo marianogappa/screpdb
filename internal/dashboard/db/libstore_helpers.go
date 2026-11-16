@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/patterns/markers"
@@ -136,4 +137,25 @@ func markerLabel(m *library.Marker) (string, bool) {
 		return label, true
 	}
 	return markers.DecodePayloadLabel(m.Payload)
+}
+
+// shownName picks the one name a player is shown under: the alphabetically first spelling of a Battle.net
+// name, whose spellings differ only in case, and the newest name of a ShieldBattery account, which can be
+// renamed.
+type shownName struct {
+	name string
+	at   time.Time
+}
+
+func (n *shownName) offer(key, name string, at time.Time) {
+	switch {
+	case n.name == "":
+	case library.IsSBKey(key):
+		if !at.After(n.at) {
+			return
+		}
+	case name >= n.name:
+		return
+	}
+	n.name, n.at = name, at
 }

@@ -77,6 +77,8 @@ type Dashboard struct {
 	// the enrichment worker fetches the user's own profile against when the
 	// monitor has not learned a gateway.
 	youGateway atomic.Int64
+	// sbYou caches the user's ShieldBattery account per library version (see sbYouKey).
+	sbYou atomic.Pointer[sbYouCache]
 	// featuredExcl caches which built-in progamer profiles are the user (see
 	// excludedProIDs); refreshed after featuredExclusionTTL.
 	featuredExclMu sync.Mutex

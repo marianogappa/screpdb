@@ -21,9 +21,10 @@ type WorkflowGameListRow struct {
 }
 
 type WorkflowGamePlayerRow struct {
-	ReplayID int64
-	PlayerID int64
-	Name     string
+	ReplayID  int64
+	PlayerID  int64
+	PlayerKey string
+	Name      string
 	Race     string
 	Team     int64
 	// TeamWon is the match fact: did this player's side take the game. The
@@ -62,9 +63,10 @@ type WorkflowReplayEventRow struct {
 }
 
 type WorkflowCurrentPlayerRow struct {
-	ReplayID int64
-	PlayerID int64
-	Name     string
+	ReplayID  int64
+	PlayerID  int64
+	PlayerKey string
+	Name      string
 	Race     string
 	TeamWon  bool
 	APM      int64

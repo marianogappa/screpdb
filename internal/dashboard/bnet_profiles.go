@@ -6,11 +6,13 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/bnetfacade"
 	"github.com/marianogappa/screpdb/internal/crashreport"
+	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/persist"
 )
 
@@ -146,6 +148,7 @@ func (d *Dashboard) backfillBnetProfiles(names []string) {
 	if addr == "" {
 		return
 	}
+	names = slices.DeleteFunc(slices.Clone(names), func(n string) bool { return library.IsSBKey(normalizePlayerKey(n)) })
 	playerKeys := make([]string, 0, len(names))
 	for _, n := range names {
 		playerKeys = append(playerKeys, normalizePlayerKey(n))

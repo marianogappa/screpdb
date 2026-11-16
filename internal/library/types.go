@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -391,8 +392,27 @@ func IsAutosavePath(path string) bool {
 	return strings.Contains(strings.ToLower(normalized), "/autosave/")
 }
 
-// PlayerKey is the corpus-wide identity of a player name.
+// PlayerKey is the corpus-wide identity of a Battle.net player name.
 func PlayerKey(name string) string { return strings.ToLower(strings.TrimSpace(name)) }
+
+// SBKeyPrefix marks the key of a ShieldBattery account. A player is either a Battle.net name or a
+// ShieldBattery account, never both: the same name on the two servers is two different people, and a
+// ShieldBattery account keeps its key when it is renamed.
+const SBKeyPrefix = "sb:"
+
+func SBPlayerKey(userID uint32) string { return SBKeyPrefix + strconv.FormatUint(uint64(userID), 10) }
+
+// SBUserIDFromKey returns the ShieldBattery account a key names, if it names one.
+func SBUserIDFromKey(key string) (uint32, bool) {
+	rest, ok := strings.CutPrefix(key, SBKeyPrefix)
+	if !ok {
+		return 0, false
+	}
+	id, err := strconv.ParseUint(rest, 10, 32)
+	return uint32(id), err == nil && id != 0
+}
+
+func IsSBKey(key string) bool { return strings.HasPrefix(key, SBKeyPrefix) }
 
 type Player struct {
 	Name           string
