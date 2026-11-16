@@ -31,3 +31,15 @@ func TestShieldBatteryGameAbsentOutsideShieldBattery(t *testing.T) {
 		t.Fatalf("section without a game id gave %+v", game)
 	}
 }
+
+func TestCleanMapNameDropsColourCodes(t *testing.T) {
+	for raw, want := range map[string]string{
+		"\x03A\x04ttitude \x03S\x04E \x052.1": "Attitude SE 2.1",
+		"\x07Octagon \x06SE \x052.0":          "Octagon SE 2.0",
+		"Fighting Spirit 1.4":                 "Fighting Spirit 1.4",
+	} {
+		if got := cleanMapName(raw); got != want {
+			t.Errorf("cleanMapName(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}
