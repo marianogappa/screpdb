@@ -84,11 +84,11 @@ func (s *LibStore) ListReplayPlayersForDetail(ctx context.Context, replayID int6
 			PlayerKey: p.Key,
 			Name:      p.Name,
 			Color:     library.Strings.Name(p.Color),
-			Race:     p.Race.String(),
-			Team:     int64(p.Team),
-			TeamWon:  p.TeamOutcome() == models.OutcomeWon,
-			APM:      int64(p.APM),
-			EAPM:     int64(p.EAPM),
+			Race:      p.Race.String(),
+			Team:      int64(p.Team),
+			TeamWon:   p.TeamOutcome() == models.OutcomeWon,
+			APM:       int64(p.APM),
+			EAPM:      int64(p.EAPM),
 		}
 		row.BotSignals = p.BotSignals
 		if p.Flags.Has(library.PlayerHasStartLocation) {

@@ -25,8 +25,8 @@ type WorkflowGamePlayerRow struct {
 	PlayerID  int64
 	PlayerKey string
 	Name      string
-	Race     string
-	Team     int64
+	Race      string
+	Team      int64
 	// TeamWon is the match fact: did this player's side take the game. The
 	// roster is styled from this, never from the personal result.
 	TeamWon bool
@@ -67,10 +67,10 @@ type WorkflowCurrentPlayerRow struct {
 	PlayerID  int64
 	PlayerKey string
 	Name      string
-	Race     string
-	TeamWon  bool
-	APM      int64
-	EAPM     int64
+	Race      string
+	TeamWon   bool
+	APM       int64
+	EAPM      int64
 }
 
 type WorkflowCurrentPlayerPatternRow struct {
