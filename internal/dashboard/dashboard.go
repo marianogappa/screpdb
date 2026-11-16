@@ -417,6 +417,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 		d.startBnetMonitor(d.ctx)
 		d.startBnetEnrich(d.ctx)
 		d.startBnetOutcomes(d.ctx)
+		d.startSBOutcomes(d.ctx)
 		d.startBnetCacheMaintenance(d.ctx)
 		d.startFeaturedProSweep(d.ctx)
 		select {

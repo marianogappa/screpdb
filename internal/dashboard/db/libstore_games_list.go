@@ -405,6 +405,7 @@ func (s *LibStore) ListReplayPlayers(ctx context.Context, replayIDs []int64) ([]
 				PlayerOutcomeReason: p.PlayerOutcomeReason,
 				TeamOutcomeReason:   r.TeamOutcomeReason,
 				BnetOutcomeSource:   r.BnetOutcomeSource,
+				ShieldBattery:       r.ShieldBattery != nil,
 				CompleteCopy:        r.Flags.Has(library.FlagIsCompleteCopy),
 				BotSignals:          p.BotSignals,
 			})

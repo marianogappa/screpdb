@@ -103,6 +103,7 @@ func FromReplayData(data *models.ReplayData, file FileMeta) (*library.Replay, er
 	if data.SaverDisconnect != nil {
 		r.Flags |= library.FlagSaverDisconnect
 	}
+	r.ShieldBattery = data.ShieldBattery
 
 	ords := newOrdinals(data.Players)
 	r.Players = compactPlayers(data, ords)

@@ -38,6 +38,8 @@ type WorkflowGamePlayerRow struct {
 	PlayerOutcomeReason string
 	TeamOutcomeReason   string
 	BnetOutcomeSource   string
+	// ShieldBattery marks a game played there, whose BnetOutcomeSource is ShieldBattery's record.
+	ShieldBattery bool
 	// CompleteCopy marks a co-player recording downloaded through Battle.net
 	// because the user's own copy ended before the game did (issue #341).
 	CompleteCopy bool

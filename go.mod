@@ -66,6 +66,6 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 )
 
-replace github.com/icza/screp => github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c
+replace github.com/icza/screp => /Users/marianol/Code/go/src/github.com/marianogappa/screp-sbat
 
 replace github.com/marianogappa/openbw-go => github.com/marianogappa/openbw-go v0.0.0-20261117142041-ce407cb12732

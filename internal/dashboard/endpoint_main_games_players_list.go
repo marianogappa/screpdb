@@ -734,6 +734,8 @@ func outcomeTrace(row dashboarddb.WorkflowGamePlayerRow) []string {
 		lines = append(lines, "", "BATTLE.NET — supplied this recording",
 			"    your own copy ended before the game did, so a co-player's longer",
 			"    recording was downloaded and the result read from that")
+	case row.BnetOutcomeSource != "" && row.ShieldBattery:
+		lines = append(lines, "", "SHIELDBATTERY — "+row.BnetOutcomeSource)
 	case row.BnetOutcomeSource != "":
 		lines = append(lines, "", "BATTLE.NET — "+row.BnetOutcomeSource)
 	}

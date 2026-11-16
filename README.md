@@ -305,6 +305,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 <!-- IO-AUDIT:START -->
 ```
 2026-11-20  OK. GitHub Pages serves a static landing page from site/ instead of the WASM demo, which is removed along with its WASM-only dashboard hooks, and the README links to it first; no paths, network calls or allowlists change.
+2026-11-16  OK. ShieldBattery outcomes: a new sanctioned facade, internal/sbfacade, makes anonymous paced GETs of https://shieldbattery.net/api/1/games/<uuid> (game id format checked, no redirects, 1 MB read cap, no credentials or cookies) for ShieldBattery replays whose winner is undecided, and caches settled records at <app-data>/shieldbattery/games.json through iofacade; the enforcement test skips internal/sbfacade alongside the other facades.
 ```
 
 <details>

@@ -114,6 +114,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 
 	data.Replay.GameSource = deriveGameSource(rep)
 	data.Replay.LobbyKind = deriveLobbyKind(data.Replay.GameSource, data.Replay.Title)
+	data.ShieldBattery = shieldBatteryGame(rep)
 
 	for i, player := range rep.Header.Players {
 		if player == nil {
@@ -482,6 +483,23 @@ func deriveGameSource(r *scraprep.Replay) string {
 		return "PreSCR"
 	}
 	return "AssumedBattleNet"
+}
+
+func shieldBatteryGame(r *scraprep.Replay) *models.ShieldBatteryGame {
+	sb := r.ShieldBattery
+	if sb == nil || sb.GameID == "" {
+		return nil
+	}
+	game := &models.ShieldBatteryGame{GameID: sb.GameID, UserIDs: map[byte]uint32{}}
+	for _, p := range r.Header.Players {
+		if p == nil {
+			continue
+		}
+		if id := sb.UserID(p.ID); id != 0 {
+			game.UserIDs[p.ID] = id
+		}
+	}
+	return game
 }
 
 func deriveLobbyKind(gameSource, title string) string {

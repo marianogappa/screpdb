@@ -231,6 +231,9 @@ type Replay struct {
 	// EngineData is nil until the engine pass upgrades the replay ("engine" mode over "fast").
 	EngineData *EngineData
 
+	// ShieldBattery is set for games played on ShieldBattery.
+	ShieldBattery *models.ShieldBatteryGame
+
 	// parsed keeps the parser's results while the engine's or Battle.net's override them.
 	parsed      *parsedOutcomes
 	bnetResults []BnetResult
