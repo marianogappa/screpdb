@@ -162,3 +162,22 @@ jobs:
       # through the Windows Shell, which only exists on a Windows runner.
       - name: Run selfupdate tests (Windows)
         run: go test ./internal/selfupdate/
+
+  # Fails when internal/propack/data/shieldbattery.json is stale against the
+  # TeamLiquid post it is scraped from; network failures only warn.
+  shieldbattery-pros:
+    name: ShieldBattery pro list
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Check the ShieldBattery pro list is up to date
+        run: go run ./scripts/sb-pros -check

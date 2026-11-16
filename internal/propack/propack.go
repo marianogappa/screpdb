@@ -84,6 +84,16 @@ type Pro struct {
 	// Skill is the pro's average place on the skill tiers over their rated games, measured as the dashboard
 	// measures a local player.
 	Skill *Skill `json:"skill,omitempty"`
+	// ShieldBattery is attached from data/shieldbattery.json at load time,
+	// kept out of pros.json because scripts/sb-pros maintains it separately.
+	ShieldBattery []SBAccount `json:"-"`
+}
+
+// SBAccount is one confirmed ShieldBattery account of a pro.
+type SBAccount struct {
+	ID       uint32   `json:"id"`
+	Name     string   `json:"name"`
+	Formerly []string `json:"formerly,omitempty"`
 }
 
 type Skill struct {
@@ -102,8 +112,9 @@ type Pack struct {
 	Source          string `json:"source,omitempty"`
 	Pros            []Pro  `json:"pros"`
 
-	byID    map[string]*Pro
-	byLabel map[string]*Pro
+	byID     map[string]*Pro
+	byLabel  map[string]*Pro
+	bySBUser map[uint32]*Pro
 }
 
 var (
@@ -143,7 +154,35 @@ func parse() (*Pack, error) {
 		pack.byID[p.ID] = p
 		pack.byLabel[strings.ToLower(strings.TrimSpace(p.Label))] = p
 	}
+	if err := pack.attachShieldBattery(); err != nil {
+		return nil, err
+	}
 	return &pack, nil
+}
+
+func (p *Pack) attachShieldBattery() error {
+	raw, err := dataFS.ReadFile("data/shieldbattery.json")
+	if err != nil {
+		return fmt.Errorf("propack: reading embedded ShieldBattery accounts: %w", err)
+	}
+	var file struct {
+		Pros map[string][]SBAccount `json:"pros"`
+	}
+	if err := json.Unmarshal(raw, &file); err != nil {
+		return fmt.Errorf("propack: parsing embedded ShieldBattery accounts: %w", err)
+	}
+	p.bySBUser = make(map[uint32]*Pro)
+	for id, accounts := range file.Pros {
+		pro := p.byID[strings.ToLower(strings.TrimSpace(id))]
+		if pro == nil {
+			continue
+		}
+		pro.ShieldBattery = accounts
+		for _, a := range accounts {
+			p.bySBUser[a.ID] = pro
+		}
+	}
+	return nil
 }
 
 // ByID returns the pro with this ID, or nil.
@@ -161,6 +200,15 @@ func (p *Pack) ByLabel(label string) *Pro {
 		return nil
 	}
 	return p.byLabel[strings.ToLower(strings.TrimSpace(label))]
+}
+
+// ProBySBUserID returns the pro who owns this ShieldBattery user id.
+func (p *Pack) ProBySBUserID(id uint32) (*Pro, bool) {
+	if p == nil {
+		return nil, false
+	}
+	pro, ok := p.bySBUser[id]
+	return pro, ok
 }
 
 // Photo returns the embedded portrait bytes and their MIME type.
