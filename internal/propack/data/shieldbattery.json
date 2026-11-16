@@ -123,12 +123,16 @@
     ],
     "rich": [
       {
+        "id": 16414,
+        "name": "naughty"
+      },
+      {
+        "id": 17285,
+        "name": "Rich12345"
+      },
+      {
         "id": 19217,
-        "name": "DolphinShorts",
-        "formerly": [
-          "Rich12345",
-          "naughty"
-        ]
+        "name": "DolphinShorts"
       }
     ],
     "rush": [
@@ -169,11 +173,12 @@
     ],
     "shinee": [
       {
+        "id": 17640,
+        "name": "SHinee"
+      },
+      {
         "id": 17981,
-        "name": "SHinee.",
-        "formerly": [
-          "SHinee"
-        ]
+        "name": "SHinee."
       }
     ],
     "snow": [

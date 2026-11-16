@@ -43,9 +43,8 @@ var labelAliases = map[string]string{
 }
 
 type account struct {
-	ID       uint32   `json:"id"`
-	Name     string   `json:"name"`
-	Formerly []string `json:"formerly,omitempty"`
+	ID   uint32 `json:"id"`
+	Name string `json:"name"`
 }
 
 type output struct {
@@ -271,11 +270,10 @@ func build(entries []tlEntry, pack []packPro, names map[uint32]string) (output, 
 			continue
 		}
 		for _, a := range e.Accounts {
-			acc := account{ID: a.ID, Name: name(a)}
+			result.Pros[id] = append(result.Pros[id], account{ID: a.ID, Name: name(a)})
 			for _, f := range a.Formerly {
-				acc.Formerly = append(acc.Formerly, name(f))
+				result.Pros[id] = append(result.Pros[id], account{ID: f.ID, Name: name(f)})
 			}
-			result.Pros[id] = append(result.Pros[id], acc)
 		}
 	}
 	for _, accs := range result.Pros {

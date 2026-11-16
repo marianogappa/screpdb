@@ -91,9 +91,8 @@ type Pro struct {
 
 // SBAccount is one confirmed ShieldBattery account of a pro.
 type SBAccount struct {
-	ID       uint32   `json:"id"`
-	Name     string   `json:"name"`
-	Formerly []string `json:"formerly,omitempty"`
+	ID   uint32 `json:"id"`
+	Name string `json:"name"`
 }
 
 type Skill struct {
