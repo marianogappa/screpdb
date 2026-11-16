@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/marianogappa/screpdb/internal/crashreport"
+	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/persist"
 	"github.com/marianogappa/screpdb/internal/models"
@@ -38,6 +39,8 @@ type sbOutcomes struct {
 	setResults func(checksum [32]byte, results []library.BnetResult, source string)
 	store      *persist.SBGames
 	fetch      func(ctx context.Context, gameID string) (*sbfacade.Game, error)
+	download   func(ctx context.Context, url, sha256Hex string) ([]byte, error)
+	place      func(dest string, data []byte) error
 	now        func() time.Time
 	attempts   map[string]*sbOutcomeAttempt
 }
@@ -52,6 +55,8 @@ func (d *Dashboard) startSBOutcomes(ctx context.Context) {
 		setResults: lib.SetBnetResults,
 		store:      persist.NewSBGames(d.library.root),
 		fetch:      sbfacade.FetchGame,
+		download:   sbfacade.DownloadReplay,
+		place:      placeCompleteReplay,
 		now:        time.Now,
 		attempts:   map[string]*sbOutcomeAttempt{},
 	}
@@ -113,7 +118,8 @@ func (w *sbOutcomes) resolve(ctx context.Context) time.Time {
 				continue
 			}
 			var stop bool
-			game, known, stop = w.ask(ctx, gameID)
+			var fetched *sbfacade.Game
+			game, fetched, known, stop = w.ask(ctx, gameID)
 			if stop {
 				later(w.now().Add(sbOutcomeRetries[0]))
 				return next
@@ -124,6 +130,7 @@ func (w *sbOutcomes) resolve(ctx context.Context) time.Time {
 				}
 				continue
 			}
+			w.placeCompleteCopy(ctx, r, fetched)
 		}
 		if results := sbResultsOf(r, game); len(results) > 0 {
 			w.setResults(r.Checksum, results, "game "+gameID+": results from ShieldBattery's record of the game")
@@ -143,21 +150,21 @@ func (w *sbOutcomes) dueAt(r *library.Replay) time.Time {
 
 // ask fetches a game's record, stores it once settled, and reports stop when nothing more should be asked
 // this round.
-func (w *sbOutcomes) ask(ctx context.Context, gameID string) (game persist.SBGame, settled, stop bool) {
+func (w *sbOutcomes) ask(ctx context.Context, gameID string) (game persist.SBGame, fetched *sbfacade.Game, settled, stop bool) {
 	fetched, err := w.fetch(ctx, gameID)
 	switch {
 	case errors.Is(err, sbfacade.ErrRateLimited) || ctx.Err() != nil:
-		return game, false, true
+		return game, nil, false, true
 	case errors.Is(err, sbfacade.ErrNotFound) || errors.Is(err, sbfacade.ErrBadGameID):
 		w.giveUp(gameID)
-		return game, false, false
+		return game, nil, false, false
 	case err != nil:
 		log.Printf("shieldbattery outcomes: game %s: %v", gameID, err)
 		w.retry(gameID)
-		return game, false, false
+		return game, nil, false, false
 	case fetched.Results == nil && !fetched.Canceled:
 		w.retry(gameID)
-		return game, false, false
+		return game, nil, false, false
 	}
 	game = persist.SBGame{Canceled: fetched.Canceled, FetchedAt: w.now().UTC()}
 	if fetched.Results != nil {
@@ -170,7 +177,35 @@ func (w *sbOutcomes) ask(ctx context.Context, gameID string) (game persist.SBGam
 		log.Printf("shieldbattery outcomes: caching game %s: %v", gameID, err)
 	}
 	delete(w.attempts, gameID)
-	return game, true, false
+	return game, fetched, true, false
+}
+
+// sbCompleteCopyMargin keeps a recording that stopped a moment before the game did from costing a
+// download: only a copy that adds real play is worth fetching.
+const sbCompleteCopyMargin = 20 * time.Second
+
+// placeCompleteCopy drops ShieldBattery's longest recording of an undecided game beside the user's own copy
+// when it holds more of the game, for the watcher to ingest like the Battle.net complete copies.
+func (w *sbOutcomes) placeCompleteCopy(ctx context.Context, r *library.Replay, game *sbfacade.Game) {
+	if game == nil || game.ReplayURL == "" || w.download == nil || w.place == nil || len(r.Paths) == 0 {
+		return
+	}
+	own := r.Path()
+	if library.IsCompletePath(own) || game.GameLength < time.Duration(r.Duration)*time.Second+sbCompleteCopyMargin {
+		return
+	}
+	dest := library.CompletePathFor(own)
+	if _, err := iofacade.Stat(dest); err == nil {
+		return
+	}
+	data, err := w.download(ctx, game.ReplayURL, game.ReplayHash)
+	if err != nil {
+		log.Printf("shieldbattery outcomes: downloading game %s: %v", game.ID, err)
+		return
+	}
+	if err := w.place(dest, data); err != nil {
+		log.Printf("shieldbattery outcomes: placing %s: %v", dest, err)
+	}
 }
 
 func (w *sbOutcomes) retry(gameID string) {
