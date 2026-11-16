@@ -3421,6 +3421,11 @@ function App() {
       ? t('bnet.tip.requestsPaused', { used: bnetRequestsToday, time: bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
       : t('bnet.tip.requests', { used: bnetRequestsToday });
 
+  const sbCooldownUntil = sbStatus?.cooldown_until ? new Date(sbStatus.cooldown_until) : null;
+  const sbTipSuffix = sbCooldownUntil && sbCooldownUntil > new Date()
+    ? t('bnet.tip.requestsPaused', { used: sbStatus.requests_today ?? 0, time: sbCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
+    : t('bnet.tip.requests', { used: sbStatus?.requests_today ?? 0 });
+
   const handleBnetToggle = useCallback(async () => {
     const newDisabled = !bnetDisabled;
     if (newDisabled) {
@@ -5946,10 +5951,10 @@ function App() {
             {sbStatus ? (
               <span
                 className={`bnet-pill sb-pill sb-pill--${sbStatus.recent ? 'recent' : 'idle'} tip-below`}
-                data-tip={t(sbStatus.recent ? 'sb.tip.recent' : 'sb.tip.idle', { time: formatRelativeReplayDate(sbStatus.last_game_at) })}
+                data-tip={t(sbStatus.recent ? 'sb.tip.recent' : 'sb.tip.idle') + sbTipSuffix}
               >
                 <span className="bnet-pill-dot" />
-                ShieldBattery
+                SC:R
               </span>
             ) : null}
             {showBnetPill ? (

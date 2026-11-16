@@ -276,8 +276,11 @@ func millis(ms *int64) time.Duration {
 // pacer spaces requests requestInterval apart and holds them all back after a
 // 429.
 type pacer struct {
-	mu   sync.Mutex
-	next time.Time
+	mu     sync.Mutex
+	next   time.Time
+	day    string
+	used   int
+	paused time.Time
 }
 
 var thePacer = &pacer{}
@@ -290,6 +293,10 @@ func (p *pacer) wait(ctx context.Context) error {
 		at = now
 	}
 	p.next = at.Add(requestInterval)
+	if day := now.Format(time.DateOnly); day != p.day {
+		p.day, p.used = day, 0
+	}
+	p.used++
 	p.mu.Unlock()
 	if delay := at.Sub(now); delay > 0 {
 		timer := time.NewTimer(delay)
@@ -306,7 +313,23 @@ func (p *pacer) wait(ctx context.Context) error {
 func (p *pacer) pause(d time.Duration) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if until := time.Now().Add(d); until.After(p.next) {
+	until := time.Now().Add(d)
+	if until.After(p.next) {
 		p.next = until
 	}
+	p.paused = until
+}
+
+// Usage reports how many requests this process sent to ShieldBattery today, and until when requests are
+// held back after ShieldBattery throttled them, or the zero time when they are not.
+func Usage(now time.Time) (usedToday int, pausedUntil time.Time) {
+	thePacer.mu.Lock()
+	defer thePacer.mu.Unlock()
+	if thePacer.day == now.Format(time.DateOnly) {
+		usedToday = thePacer.used
+	}
+	if thePacer.paused.After(now) {
+		pausedUntil = thePacer.paused
+	}
+	return usedToday, pausedUntil
 }

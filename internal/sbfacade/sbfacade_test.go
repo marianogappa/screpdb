@@ -80,7 +80,7 @@ func TestFetchGameErrors(t *testing.T) {
 
 func TestRateLimitPausesEveryRequest(t *testing.T) {
 	saved := thePacer.next
-	t.Cleanup(func() { thePacer.next = saved })
+	t.Cleanup(func() { thePacer.next, thePacer.paused = saved, time.Time{} })
 	if _, err := fetchGameFrom(context.Background(), serve(t, http.StatusTooManyRequests, "")); !errors.Is(err, ErrRateLimited) {
 		t.Fatalf("429: %v", err)
 	}
@@ -91,6 +91,25 @@ func TestRateLimitPausesEveryRequest(t *testing.T) {
 	cancel()
 	if err := thePacer.wait(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("wait during pause: %v", err)
+	}
+	if _, pausedUntil := Usage(time.Now()); pausedUntil.IsZero() {
+		t.Fatal("usage does not report the pause")
+	}
+}
+
+func TestUsageCountsTodaysRequests(t *testing.T) {
+	next, day, used := thePacer.next, thePacer.day, thePacer.used
+	t.Cleanup(func() { thePacer.next, thePacer.day, thePacer.used = next, day, used })
+	thePacer.next = time.Time{}
+	before, _ := Usage(time.Now())
+	if err := thePacer.wait(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if after, _ := Usage(time.Now()); after != before+1 {
+		t.Fatalf("used %d after one request, %d before", after, before)
+	}
+	if used, _ := Usage(time.Now().AddDate(0, 0, 1)); used != 0 {
+		t.Fatalf("tomorrow starts at %d", used)
 	}
 }
 
