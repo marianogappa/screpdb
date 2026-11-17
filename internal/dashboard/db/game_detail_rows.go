@@ -1,5 +1,7 @@
 package db
 
+import "github.com/marianogappa/screpdb/internal/botdetect"
+
 type ReplaySummaryRow struct {
 	ReplayID           int64
 	ReplayDate         string
@@ -28,6 +30,7 @@ type ReplayPlayerDetailRow struct {
 	StartLocationOclock *int64
 	APM                 int64
 	EAPM                int64
+	BotSignals          botdetect.Signal
 }
 
 type PatternValueRow struct {

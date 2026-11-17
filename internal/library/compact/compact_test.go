@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/botdetect"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/models"
 	"github.com/marianogappa/screpdb/internal/parser"
@@ -708,5 +709,30 @@ func TestFromReplayDataSaverDisconnectInvertsTheDropFlags(t *testing.T) {
 	}
 	if !r.Players[2].Flags.Has(library.PlayerDropped) {
 		t.Errorf("a genuine mid-game drop survives the cluster rule: %+v", r.Players[2])
+	}
+}
+
+func TestFromReplayDataKeepsBotSignalsForPlayingHumansOnly(t *testing.T) {
+	human := &models.Player{PlayerID: 0, Name: "Flash", Race: "Terran", Type: "Human", Team: 1}
+	bot := &models.Player{PlayerID: 1, Name: "ComfyUI", Race: "Protoss", Type: "Human", Team: 2}
+	watcher := &models.Player{PlayerID: 2, Name: "Watcher", Race: "Zerg", Type: "Human", Team: 3, IsObserver: true}
+	data := &models.ReplayData{
+		Replay: &models.Replay{
+			ReplayDate: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), DurationSeconds: 900,
+			GameType: "Melee", MapKind: "Regular", MapName: "Synthetic",
+		},
+		Players:    []*models.Player{human, bot, watcher},
+		BotSignals: map[byte]botdetect.Signal{1: botdetect.SignalFarJumps, 2: botdetect.SignalSameFrame},
+	}
+	meta := FileMeta{Path: "/sc/Maps/Replays/x.rep", Size: 1, ModTime: time.Unix(1, 0), Checksum: sha256.Sum256([]byte("bot"))}
+	r, err := FromReplayData(data, meta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Players[0].IsBot() || !r.Players[1].IsBot() || r.Players[2].IsBot() {
+		t.Fatalf("bot flags = %v %v %v, want only ComfyUI", r.Players[0].BotSignals, r.Players[1].BotSignals, r.Players[2].BotSignals)
+	}
+	if !r.HasBot() {
+		t.Fatal("HasBot is false for a game with a bot")
 	}
 }

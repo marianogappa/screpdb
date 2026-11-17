@@ -11,6 +11,7 @@ import (
 	"github.com/icza/screp/rep/repcmd"
 	"github.com/icza/screp/rep/repcore"
 	"github.com/icza/screp/repparser/repdecoder"
+	"github.com/marianogappa/screpdb/internal/botdetect"
 	"github.com/marianogappa/screpdb/internal/builddedup"
 	"github.com/marianogappa/screpdb/internal/cmddedup"
 	"github.com/marianogappa/screpdb/internal/earlyfilter"
@@ -301,6 +302,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	// discards, so it runs here rather than in storage.
 	if rep.Commands != nil {
 		data.SkillCommands = skill.CommandsOf(rep.Commands.Cmds, int32(rep.Header.Frames))
+		data.BotSignals = botdetect.Detect(rep.Commands.Cmds, int32(rep.Header.Frames))
 	}
 	data.HotkeyStreams = map[byte][]byte{}
 	for pid, events := range hotkeystream.Extract(rep) {

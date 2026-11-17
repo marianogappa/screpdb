@@ -942,6 +942,25 @@ const IdentityBadge = ({ badge, secondaryBadge, compact, variant, showAll, paren
   );
 };
 
+const BotBadge = ({ isBot, games }) => {
+  const t = useT();
+  const gameCount = Number(games || 0);
+  if (!isBot && gameCount <= 0) return null;
+  const tooltip = isBot ? t('bot.tooltip.game') : t('bot.tooltip.player', { count: gameCount });
+  return (
+    <span
+      className="identity-badge identity-badge--compact bot-badge"
+      onMouseEnter={placeIdentityTooltip}
+      onFocus={placeIdentityTooltip}
+      tabIndex={0}
+      aria-label={t('bot.badge.alt')}
+    >
+      <span className="bot-badge-icon" aria-hidden="true">🤖</span>
+      <span className="identity-badge-tooltip">{tooltip}</span>
+    </span>
+  );
+};
+
 const FingerprintBadge = ({ match, compact, badge }) => {
   if (badge) return <IdentityBadge badge={badge} compact={compact} />;
   if (!match) return null;
@@ -3758,6 +3777,7 @@ function App() {
                     return (
                       <>
                         <PlayerDisplayName name={shown.name} />
+                        <BotBadge isBot={player.is_bot} />
                         {player.primary_badge ? (
                           <IdentityBadge
                             badge={player.primary_badge}
@@ -3859,6 +3879,7 @@ function App() {
                             return (
                               <>
                                 {renderName({ ...player, name: shown.name })}
+                                <BotBadge isBot={player.is_bot} />
                                 {player.primary_badge ? (
                                   <IdentityBadge
                                     badge={player.primary_badge}
@@ -5524,7 +5545,10 @@ function App() {
             onPlayerClick={openMainPlayer}
             showSkill={engineEnabled}
             renderBadge={(player) => (
-              player.primary_badge ? <IdentityBadge badge={player.primary_badge} variant="players-list" /> : null
+              <>
+                <BotBadge games={player.bot_games} />
+                {player.primary_badge ? <IdentityBadge badge={player.primary_badge} variant="players-list" /> : null}
+              </>
             )}
             renderName={(opponent) => (
               <button
@@ -5646,7 +5670,7 @@ function App() {
                       <tbody>
                         {mainPlayers.map((player) => (
                           <tr key={player.player_key} className={selectedPlayerKey === player.player_key ? 'workflow-selected-row' : ''} onClick={() => openMainPlayer(player.player_key)}>
-                            <td className="wpl-name-cell"><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} /><PlayerDisplayName name={player.player_name} /></span></td>
+                            <td className="wpl-name-cell"><span className="workflow-name-with-flag"><CountryFlag code={player.country_code} playerKey={player.player_key} /><PlayerDisplayName name={player.player_name} /><BotBadge games={player.bot_games} /></span></td>
                             <td className="wpl-identity-cell">
                               {player.primary_badge ? <IdentityBadge badge={player.primary_badge} variant="players-list" /> : null}
                             </td>
@@ -6003,14 +6027,17 @@ function App() {
                                 </span>
                               </span>
                               <span className="wpt-name-col">
-                                <button
-                                  type="button"
-                                  className="workflow-player-name-link workflow-player-name-link--strong"
-                                  title={t('player.analyze')}
-                                  onClick={() => openMainPlayer(player.player_key)}
-                                >
-                                  <PlayerDisplayName name={rawName(player)} />
-                                </button>
+                                <span className="wpt-name-row">
+                                  <button
+                                    type="button"
+                                    className="workflow-player-name-link workflow-player-name-link--strong"
+                                    title={t('player.analyze')}
+                                    onClick={() => openMainPlayer(player.player_key)}
+                                  >
+                                    <PlayerDisplayName name={rawName(player)} />
+                                  </button>
+                                  <BotBadge isBot={player.is_bot} />
+                                </span>
                                 {player.primary_badge ? (
                                   <IdentityBadge badge={player.primary_badge} secondaryBadge={player.secondary_badge} />
                                 ) : player.fingerprint_match ? (
@@ -6858,7 +6885,7 @@ function App() {
                         <CountryFlag code={mainPlayer?.country_code} playerKey={isFeaturedPlayer ? '' : (mainPlayer?.player_key || selectedPlayerKey)} />
                         <PlayerDisplayName name={mainPlayer?.player_name || (isFeaturedPlayer ? '' : selectedPlayerKey)} />
                       </span>
-                      {isFeaturedPlayer ? <FeaturedBadge /> : null}
+                      {isFeaturedPlayer ? <FeaturedBadge /> : <BotBadge games={mainPlayer?.bot_games} />}
                       {!isFeaturedPlayer && mainPlayer?.primary_badge ? (
                         <IdentityBadge badge={mainPlayer.primary_badge} secondaryBadge={mainPlayer.secondary_badge} showAll />
                       ) : !isFeaturedPlayer && mainPlayer?.fingerprint_match ? (

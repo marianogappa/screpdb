@@ -27,6 +27,7 @@ type libFeatureShape struct {
 	eventTypes     []string
 	label          string
 	teamStacking   bool
+	bot            bool
 }
 
 // libFeatureShapeFor resolves a UI featuring key, using the same aliasing and
@@ -39,6 +40,8 @@ func libFeatureShapeFor(featureKey string) (libFeatureShape, bool) {
 	switch normalized {
 	case "team_stacking":
 		return libFeatureShape{teamStacking: true}, true
+	case "bot":
+		return libFeatureShape{bot: true}, true
 	case "cannon_rush", "bunker_rush", "zergling_rush",
 		"proxy_gate", "proxy_rax", "proxy_factory", "proxy_starport", "manner_pylon":
 		return libFeatureShape{eventTypes: []string{normalized}}, true
@@ -67,6 +70,7 @@ type replayFeatures struct {
 	eventTypes     map[string]struct{}
 	labels         map[string]map[string]struct{}
 	teamStacking   bool
+	bot            bool
 }
 
 func featuresOf(r *library.Replay) replayFeatures {
@@ -74,6 +78,7 @@ func featuresOf(r *library.Replay) replayFeatures {
 		markerFeatures: make(map[string]struct{}, len(r.Markers)),
 		eventTypes:     make(map[string]struct{}, len(r.Events)),
 		teamStacking:   r.Flags.Has(library.FlagTeamStacking),
+		bot:            r.HasBot(),
 	}
 	for i := range r.Markers {
 		m := &r.Markers[i]
@@ -122,6 +127,9 @@ func featuringEventTypes(r *library.Replay) []string {
 func (sh libFeatureShape) matches(f replayFeatures) bool {
 	if sh.teamStacking {
 		return f.teamStacking
+	}
+	if sh.bot {
+		return f.bot
 	}
 	if sh.label != "" {
 		for _, key := range sh.markerFeatures {
@@ -397,6 +405,7 @@ func (s *LibStore) ListReplayPlayers(ctx context.Context, replayIDs []int64) ([]
 				TeamOutcomeReason:   r.TeamOutcomeReason,
 				BnetOutcomeSource:   r.BnetOutcomeSource,
 				CompleteCopy:        r.Flags.Has(library.FlagIsCompleteCopy),
+				BotSignals:          p.BotSignals,
 			})
 		}
 	}

@@ -66,6 +66,7 @@ type workflowGameListPlayer struct {
 	OutcomeTrace []string       `json:"outcome_trace,omitempty"`
 	CountryCode  string         `json:"country_code,omitempty"`
 	PrimaryBadge *IdentityBadge `json:"primary_badge,omitempty"`
+	IsBot        bool           `json:"is_bot,omitempty"`
 }
 
 type workflowRecentGamePlayer struct {
@@ -161,6 +162,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "recalls", Label: "Recalls", Group: "marker", IconKey: "arbiter", IconLabel: "Recall"},
 	{Key: "offensive_nydus", Label: "Offensive Nydus", Group: "marker", IconKey: "nyduscanal", IconLabel: "Nydus"},
 	{Key: "team_stacking", Label: "Team stacking", Group: "marker", Emoji: "😈"},
+	{Key: "bot", Label: "Bot", Group: "marker", Emoji: "🤖"},
 	// Money-map markers, last so regular markers take priority.
 	{Key: "carriers", Label: "Carrier", Group: "marker", IconKey: "carrier"},
 	{Key: "battlecruisers", Label: "Battlecruiser", Group: "marker", IconKey: "battlecruiser"},
@@ -270,6 +272,7 @@ type workflowGamePlayer struct {
 	CountryCode      string                    `json:"country_code,omitempty"`
 	PrimaryBadge     *IdentityBadge            `json:"primary_badge,omitempty"`
 	SecondaryBadge   *IdentityBadge            `json:"secondary_badge,omitempty"`
+	IsBot            bool                      `json:"is_bot,omitempty"`
 	// Skill places this player's game on the skill tiers; null when the game or the player cannot be measured.
 	Skill *workflowPlayerSkill `json:"skill"`
 	// SkillLeftEarly is true when the game is rated but this player is not, for playing less than 8:00.
@@ -729,6 +732,7 @@ type workflowPlayerOverview struct {
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
 	PlayerName          string                        `json:"player_name"`
+	BotGames            int64                         `json:"bot_games,omitempty"`
 	GamesPlayed         int64                         `json:"games_played"`
 	Wins                int64                         `json:"wins"`
 	Undecided           int64                         `json:"undecided"`
@@ -847,6 +851,7 @@ type workflowPlayersListItem struct {
 	CountryCode       string           `json:"country_code,omitempty"`
 	PrimaryBadge      *IdentityBadge   `json:"primary_badge,omitempty"`
 	Skill             *skill.Placement `json:"skill,omitempty"`
+	BotGames          int64            `json:"bot_games,omitempty"`
 }
 
 type workflowPlayersListFilterOption struct {

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/botdetect"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/librarytest"
@@ -236,6 +237,12 @@ func libFeatureFixtures() []featureFixture {
 		{"battlecruisers", marker("battlecruisers")},
 		{"team_stacking", func() *library.Replay {
 			return withPlayers(librarytest.WithFlags(library.FlagTeamStacking))
+		}},
+		{"bot", func() *library.Replay {
+			return librarytest.Replay(
+				librarytest.WithPlayer("Flash"),
+				librarytest.WithPlayer("ComfyUI", librarytest.Bot(botdetect.SignalSameFrame)),
+			)
 		}},
 		{"bo_4_pool", marker("bo_4_pool")},
 		{"bo_z_fuzzy::~10 hatch", func() *library.Replay {

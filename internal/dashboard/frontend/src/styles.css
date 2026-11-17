@@ -7957,3 +7957,13 @@ button.skill-compare-marker:hover { color: #fff; }
 .skill-left-early-mark { font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.4); }
 .skill-players-legend--under { grid-column: 2; margin-top: -14px; }
 @media (max-width: 700px) { .skill-subs { grid-column: 1; grid-template-columns: 1fr; } .skill-compare-axis, .skill-players-legend--under, .skill-submetrics-head--label { grid-column: 1; } }
+
+.bot-badge-icon {
+  font-size: 0.95em;
+  line-height: 1;
+}
+.wpt-name-row {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}

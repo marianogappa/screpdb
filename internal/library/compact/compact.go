@@ -247,6 +247,9 @@ func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 			lp.UsedRecalls, lp.CheckRecalls, lp.ArmyCadence = float32(c.UsedRecalls), float32(c.CheckRecalls), float32(c.ArmyCadence)
 			lp.MicroActions = float32(c.MicroActions)
 		}
+		if !p.IsObserver && lp.IsHuman() {
+			lp.BotSignals = data.BotSignals[p.PlayerID]
+		}
 		if blob, ok := data.HotkeyStreams[p.PlayerID]; ok && len(blob) > 0 && !streamClaimed[p.PlayerID] {
 			streamClaimed[p.PlayerID] = true
 			lp.HotkeyStream = blob

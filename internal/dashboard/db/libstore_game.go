@@ -89,6 +89,7 @@ func (s *LibStore) ListReplayPlayersForDetail(ctx context.Context, replayID int6
 			APM:      int64(p.APM),
 			EAPM:     int64(p.EAPM),
 		}
+		row.BotSignals = p.BotSignals
 		if p.Flags.Has(library.PlayerHasStartLocation) {
 			oclock := int64(p.StartOclock)
 			row.StartLocationOclock = &oclock
