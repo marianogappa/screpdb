@@ -47,8 +47,16 @@
         "target_owner_pid": 1
       },
       {
-        "second": 1066,
-        "count": 2,
+        "second": 1067,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "5",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1132,
+        "count": 1,
         "subtype": "drop",
         "target_label": "5's natural",
         "target_via": "p",
@@ -103,6 +111,14 @@
         "target_owner_pid": 3
       },
       {
+        "second": 682,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "12",
+        "target_via": "p",
+        "target_owner_pid": 6
+      },
+      {
         "second": 711,
         "count": 2,
         "subtype": "drop",
@@ -112,7 +128,7 @@
       },
       {
         "second": 768,
-        "count": 2,
+        "count": 3,
         "subtype": "drop",
         "target_label": "5",
         "target_via": "p",
@@ -120,7 +136,7 @@
       },
       {
         "second": 1010,
-        "count": 1,
+        "count": 5,
         "subtype": "drop",
         "target_label": "6",
         "target_via": "p",
@@ -140,14 +156,14 @@
     "records": [
       {
         "second": 1145,
-        "count": 2,
+        "count": 3,
         "subtype": "drop",
         "target_label": "12",
         "target_via": "p"
       },
       {
-        "second": 1147,
-        "count": 1,
+        "second": 1184,
+        "count": 15,
         "subtype": "drop",
         "target_label": "expansion at 12",
         "target_via": "p"
@@ -160,22 +176,8 @@
         "target_via": "p"
       },
       {
-        "second": 1292,
-        "count": 2,
-        "subtype": "drop",
-        "target_label": "expansion at 12",
-        "target_via": "p"
-      },
-      {
         "second": 1514,
-        "count": 2,
-        "subtype": "drop",
-        "target_label": "expansion at 12",
-        "target_via": "a"
-      },
-      {
-        "second": 1514,
-        "count": 16,
+        "count": 18,
         "subtype": "drop",
         "target_label": "12",
         "target_via": "a"
@@ -185,7 +187,14 @@
         "count": 5,
         "subtype": "drop",
         "target_label": "12",
-        "target_via": "p"
+        "target_via": "a"
+      },
+      {
+        "second": 1786,
+        "count": 11,
+        "subtype": "drop",
+        "target_label": "expansion at 12",
+        "target_via": "a"
       },
       {
         "second": 1826,
@@ -199,6 +208,22 @@
   "drops_notdt_wwwboo_14m03.rep": {
     "records": [
       {
+        "second": 375,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "7",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 612,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "expansion at 7",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
         "second": 843,
         "count": 1,
         "subtype": "drop",
@@ -211,6 +236,22 @@
         "count": 5,
         "subtype": "drop",
         "target_label": "expansion at 9",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1624,
+        "count": 1,
+        "subtype": "drop",
+        "target_label": "expansion at 11",
+        "target_via": "p",
+        "target_owner_pid": 1
+      },
+      {
+        "second": 1957,
+        "count": 2,
+        "subtype": "drop",
+        "target_label": "expansion at 11",
         "target_via": "p",
         "target_owner_pid": 1
       }
@@ -267,8 +308,8 @@
   "drops_reg_ilil_11m36.rep": {
     "records": [
       {
-        "second": 696,
-        "count": 4,
+        "second": 695,
+        "count": 7,
         "subtype": "drop",
         "target_label": "5",
         "target_via": "a",
@@ -280,7 +321,7 @@
     "records": [
       {
         "second": 530,
-        "count": 2,
+        "count": 7,
         "subtype": "drop",
         "target_label": "7",
         "target_via": "p",
