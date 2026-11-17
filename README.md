@@ -312,18 +312,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-17  OK. Bot detection reads the in-memory screp command stream the parser already holds and adds response fields and a games-list filter; no new file or network I/O, paths, allowlists or dependencies.
+2026-11-17  OK. Tests only for bot detection, plus dropping an unreachable error branch in the dashboard's bot games lookup; no I/O, paths, network calls or allowlists change.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-17  OK. Bot detection reads the in-memory screp command stream the parser already holds and adds response fields and a games-list filter; no new file or network I/O, paths, allowlists or dependencies.
 2026-11-17  OK. Bumps scmapanalyzer for watershed base shapes and base chokes; pure map geometry plus embedded tileset elevation data, no new os/net calls, allowlist changes or outbound network calls.
 2026-11-14  OK. CI fixes and docs only: the takeover test fake replies before closing, the README figures workflow force pushes its bot branch, and the READMEs stop linking the browser preview; no runtime code, paths, network calls or allowlists change.
 2026-11-14  OK. Skill display: players who left a rated game before 8:00 show <8:00, profile averages read the three months before the latest game with that stretch shaded, 1v1 submetrics draw tug bars, and the player Skill tab becomes a summary card your own profile can save as a PNG drawn in the browser (race icons fetched from the local dashboard only), and the Battle.net play habits summary is deleted along with its time zone data; dashboard JSON and frontend only, no new paths, network calls or allowlist changes.
 2026-11-10  OK. The engine pass and Skill views are always on: the Labs engine_pass switch is retired, so the engine starts after the library loads for everyone, and the README credits OpenBW and links the YouTube tour; no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
-2026-11-08  OK. A newer screpdb launched while an older one is running asks it to quit through its loopback Quit endpoint, waits for the port and takes over instead of reopening the old version; the new request goes through netfacade and only ever targets a loopback address.
 ```
 
 </details>

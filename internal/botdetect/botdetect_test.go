@@ -103,3 +103,9 @@ func TestSignalHas(t *testing.T) {
 		t.Fatalf("Has misreports %04b", s)
 	}
 }
+
+func TestJumpMedianWithoutCoordinateCommands(t *testing.T) {
+	if median, pairs := jumpMedian(nil); median != 0 || pairs != 0 {
+		t.Fatalf("got %v over %d pairs", median, pairs)
+	}
+}
