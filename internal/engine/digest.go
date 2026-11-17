@@ -8,7 +8,7 @@ package engine
 // that needs newer data checks for it (UnitOrdersKnown) and is simply missing on older games. Raise
 // OldestReadableEngineVersion only when older digests would mislead the features that read them.
 const (
-	EngineVersion               = 10
+	EngineVersion               = 11
 	OldestReadableEngineVersion = 7
 )
 

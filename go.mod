@@ -68,4 +68,4 @@ require (
 
 replace github.com/icza/screp => github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c
 
-replace github.com/marianogappa/openbw-go => github.com/marianogappa/openbw-go v0.0.0-20261018092732-6886509d1c67
+replace github.com/marianogappa/openbw-go => github.com/marianogappa/openbw-go v0.0.0-20261117142041-ce407cb12732
