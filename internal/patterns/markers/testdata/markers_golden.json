@@ -201,7 +201,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
-        "value": "469"
+        "value": "387"
       },
       {
         "replay_player_id": 0,
@@ -830,7 +830,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
-        "value": "602"
+        "value": "600"
       },
       {
         "replay_player_id": 0,
@@ -1861,6 +1861,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "458"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Viewport Multitasking",
         "value": "{\"switches_per_minute\":15.445544554455445}"
       },
@@ -2075,6 +2080,11 @@
       },
       {
         "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "549"
+      },
+      {
+        "replay_player_id": 0,
         "pattern_name": "Sair/Speedlot",
         "value": "405"
       },
@@ -2222,6 +2232,11 @@
         "replay_player_id": 0,
         "pattern_name": "Guardians",
         "value": "3112"
+      },
+      {
+        "replay_player_id": 0,
+        "pattern_name": "Made drops",
+        "value": "4026"
       },
       {
         "replay_player_id": 0,
@@ -3731,7 +3746,7 @@
       {
         "replay_player_id": 4,
         "pattern_name": "Threw Nukes",
-        "value": "1753"
+        "value": "1632"
       },
       {
         "replay_player_id": 4,
@@ -4534,7 +4549,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Made drops",
-        "value": "612"
+        "value": "557"
       },
       {
         "replay_player_id": 1,
@@ -4919,7 +4934,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
-        "value": "942"
+        "value": "709"
       },
       {
         "replay_player_id": 0,
@@ -5620,7 +5635,7 @@
       {
         "replay_player_id": 1,
         "pattern_name": "Made drops",
-        "value": "541"
+        "value": "383"
       },
       {
         "replay_player_id": 1,
@@ -6098,7 +6113,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
-        "value": "586"
+        "value": "321"
       },
       {
         "replay_player_id": 0,
@@ -6504,7 +6519,7 @@
       {
         "replay_player_id": 4,
         "pattern_name": "Made drops",
-        "value": "444"
+        "value": "407"
       },
       {
         "replay_player_id": 4,
@@ -6650,7 +6665,7 @@
       {
         "replay_player_id": 0,
         "pattern_name": "Made drops",
-        "value": "942"
+        "value": "709"
       },
       {
         "replay_player_id": 0,
