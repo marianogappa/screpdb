@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/botdetect"
 	"github.com/marianogappa/screpdb/internal/library"
 )
 
@@ -136,6 +137,9 @@ func LostButTeamWon() PlayerOption {
 	return func(p *library.Player) { p.Flags |= library.PlayerResultLost | library.TeamResultWon }
 }
 func Computer() PlayerOption { return func(p *library.Player) { p.Type = library.PlayerTypeComputer } }
+func Bot(signals botdetect.Signal) PlayerOption {
+	return func(p *library.Player) { p.BotSignals = signals }
+}
 func Type(t library.PlayerType) PlayerOption {
 	return func(p *library.Player) { p.Type = t }
 }

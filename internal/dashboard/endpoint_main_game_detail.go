@@ -82,6 +82,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 		p.TeamWon = row.TeamWon
 		p.APM = row.APM
 		p.EAPM = row.EAPM
+		p.IsBot = row.BotSignals != 0
 		p.PlayerKey = normalizePlayerKey(row.Name)
 		p.CountryCode = countryCodes[p.PlayerKey]
 		p.DetectedPatterns = []workflowPatternValue{}
@@ -299,6 +300,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 	result.FingerprintMatch = outcome.match
 	result.FingerprintCoverage.NoMatchReason = outcome.reason
 	result.PrimaryBadge, result.SecondaryBadge = d.resolvePlayerIdentityBadges(playerKey, result.FingerprintMatch)
+	result.BotGames = d.botGamesByPlayerKey()[playerKey]
 
 	if err := d.populateAdvancedPlayerOverview(playerKey, &result); err != nil {
 		return result, fmt.Errorf("failed to populate advanced player overview: %w", err)

@@ -54,6 +54,7 @@ type gamingSessionPlayer struct {
 	PrimaryBadge *IdentityBadge     `json:"primary_badge,omitempty"`
 	Profile      *bnetProfileDetail `json:"profile,omitempty"`
 	Skill        *skill.Placement   `json:"skill,omitempty"`
+	BotGames     int64              `json:"bot_games,omitempty"`
 }
 
 type gamingSessionStats struct {
@@ -468,8 +469,10 @@ func (d *Dashboard) withBnetProfiles(ctx context.Context, players []gamingSessio
 	}
 	details := d.bnetProfileDetailsByPlayerKeys(ctx, keys)
 	skillByPlayer := d.skillByPlayer(ctx)
+	botGames := d.botGamesByPlayerKey()
 	for i := range players {
 		players[i].PrimaryBadge = d.primaryIdentityBadge(players[i].PlayerKey)
+		players[i].BotGames = botGames[players[i].PlayerKey]
 		if s, ok := skillByPlayer[players[i].PlayerKey]; ok {
 			players[i].Skill = &s
 		}

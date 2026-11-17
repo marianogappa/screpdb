@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/botdetect"
 	"github.com/marianogappa/screpdb/internal/skill"
 )
 
@@ -226,6 +227,7 @@ type ReplayData struct {
 	FingerprintVectors  []PlayerFingerprintVector `json:"-"`
 	HotkeyStreams       map[byte][]byte           `json:"-"` // Encoded players.hotkey_stream blobs keyed by replay player ID
 	SkillCommands       map[byte]skill.Commands   `json:"-"` // Skill metrics from each player's commands, keyed by replay player ID
+	BotSignals          map[byte]botdetect.Signal `json:"-"` // Players whose commands no human can produce, keyed by replay player ID
 	AllianceSnapshots   []AllianceSnapshot        `json:"-"` // Alliance topology timeline for multi-player melee; empty otherwise. Not persisted.
 	MapContext          *ReplayMapContext         `json:"-"` // Runtime-only map context (not persisted)
 	PatternOrchestrator any                       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized

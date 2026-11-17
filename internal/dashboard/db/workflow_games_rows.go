@@ -1,6 +1,7 @@
 package db
 
 import (
+	"github.com/marianogappa/screpdb/internal/botdetect"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
@@ -40,6 +41,7 @@ type WorkflowGamePlayerRow struct {
 	// CompleteCopy marks a co-player recording downloaded through Battle.net
 	// because the user's own copy ended before the game did (issue #341).
 	CompleteCopy bool
+	BotSignals   botdetect.Signal
 }
 
 type WorkflowPlayerPatternRow struct {

@@ -34,6 +34,7 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 	}
 	countryCodes, _ := d.countryCodesByPlayerKeys(playerKeys)
 	skillByPlayer := d.skillByPlayer(d.ctx)
+	botGames := d.botGamesByPlayerKey()
 
 	items := []workflowPlayersListItem{}
 	for _, row := range listRows {
@@ -53,6 +54,7 @@ func (d *Dashboard) listWorkflowPlayers(limit, offset int, filters workflowPlaye
 		}
 		item.CountryCode = countryCodes[item.PlayerKey]
 		item.PrimaryBadge = d.primaryIdentityBadge(item.PlayerKey)
+		item.BotGames = botGames[item.PlayerKey]
 		if s, ok := skillByPlayer[item.PlayerKey]; ok {
 			item.Skill = &s
 		}
@@ -337,6 +339,7 @@ func (d *Dashboard) populateWorkflowGameListPlayers(items []workflowGameListItem
 		player.TeamWon = row.TeamWon
 		player.PlayerOutcome = row.PlayerOutcome.String()
 		player.Dropped = row.Dropped
+		player.IsBot = row.BotSignals != 0
 		if d.debug {
 			player.OutcomeTrace = outcomeTrace(row)
 		}

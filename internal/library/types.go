@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/marianogappa/screpdb/internal/botdetect"
 	"github.com/marianogappa/screpdb/internal/models"
 )
 
@@ -342,6 +343,15 @@ func (r *Replay) FingerprintEligible() bool {
 	return r.MapKind != MapKindMoney && r.Flags.Has(FlagIsOneOnOne)
 }
 
+func (r *Replay) HasBot() bool {
+	for i := range r.Players {
+		if r.Players[i].IsBot() {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *Replay) HasNonObserverComputer() bool {
 	for i := range r.Players {
 		if !r.Players[i].IsObserver() && r.Players[i].Type.IsComputer() {
@@ -401,9 +411,12 @@ type Player struct {
 	HotkeyStream []byte
 	Fingerprint  *Fingerprint
 	Cadence      *Cadence
+	BotSignals   botdetect.Signal
 }
 
 func (p *Player) IsObserver() bool { return p.Flags.Has(PlayerObserver) }
+
+func (p *Player) IsBot() bool { return p.BotSignals != 0 }
 
 // Outcome is what happened to this player; TeamOutcome is what happened to
 // their side. They differ whenever someone leaves a game their team then wins

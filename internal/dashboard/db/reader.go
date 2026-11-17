@@ -120,6 +120,7 @@ type Reader interface {
 	GetPlayerFingerprintCoverage(ctx context.Context, playerKey string, featureVersion int64) (int64, error)
 	ListPlayerFingerprintVectors(ctx context.Context, playerKey string, featureVersion int64) ([]PlayerFingerprintVectorRow, error)
 	CountPlayerBnetGames(ctx context.Context, playerKey string) (int64, error)
+	BotGamesByPlayerKey(ctx context.Context) (map[string]int64, error)
 
 	// Populations: corpus-wide aggregates the players list and the percentile
 	// bands are built from.
