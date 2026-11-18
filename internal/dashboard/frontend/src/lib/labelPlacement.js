@@ -16,7 +16,7 @@ export const pointInPolygon = (poly, x, y) => {
   return inside;
 };
 
-class Occupancy {
+export class Occupancy {
   constructor(width, height) {
     this.cols = Math.ceil(width / CELL);
     this.rows = Math.ceil(height / CELL);

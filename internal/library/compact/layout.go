@@ -34,6 +34,10 @@ func internLayout(mapName string, l *models.MapContextLayout) *library.MapLayout
 		HeightTiles: library.ClampU16(l.HeightTiles),
 		Bases:       make([]library.MapBase, 0, len(l.Bases)),
 	}
+	index := map[string]int{}
+	for i, b := range l.Bases {
+		index[b.Name] = i
+	}
 	for _, b := range l.Bases {
 		base := library.MapBase{
 			Name:             b.Name,
@@ -47,6 +51,13 @@ func internLayout(mapName string, l *models.MapContextLayout) *library.MapLayout
 		}
 		for _, pt := range b.Polygon {
 			base.Polygon = append(base.Polygon, library.MapPoint{X: int32(pt.X), Y: int32(pt.Y)})
+		}
+		for _, c := range b.Chokes {
+			to, ok := index[c.ConnectsTo]
+			if !ok || c.ConnectsTo == "" {
+				to = -1
+			}
+			base.Chokes = append(base.Chokes, library.MapChoke{X: int32(c.X), Y: int32(c.Y), To: to})
 		}
 		built.Bases = append(built.Bases, base)
 	}
@@ -81,6 +92,12 @@ func hashBases(bases []models.MapContextBase) [32]byte {
 		for _, pt := range b.Polygon {
 			writeInt(pt.X)
 			writeInt(pt.Y)
+		}
+		writeInt(len(b.Chokes))
+		for _, c := range b.Chokes {
+			writeInt(c.X)
+			writeInt(c.Y)
+			writeString(c.ConnectsTo)
 		}
 	}
 	var sum [32]byte

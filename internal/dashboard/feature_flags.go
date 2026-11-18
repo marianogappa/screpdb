@@ -27,6 +27,16 @@ const featureFlagDisableCompleteReplays = "disable_complete_replays"
 // featureFlagEnginePassAllCores lets the engine pass use every core while StarCraft: Remastered is closed.
 const featureFlagEnginePassAllCores = "engine_pass_all_cores"
 
+// featureFlagGameInsights shows what the engine says decided a game: technique and mistake events, the
+// line on the summary saying why the loser left, and their pills and filters.
+const featureFlagGameInsights = "game_insights"
+
+// insightFeatures are the game_insights event types the games list lights a chip for and filters on.
+var insightFeatures = map[string]bool{
+	"elevator": true, "eraser": true, "defilers_irradiated": true, "nydus_denied": true,
+	"overlord_hunt": true, "undetected_cloak": true, "undefended_air_harass": true, "lurker_contain": true,
+}
+
 // knownFeatureFlags is the allowlist. Writes to anything outside it are
 // rejected, so a stale client cannot litter the settings row with keys nothing
 // reads, and a flag that is retired stops being settable the moment it leaves
@@ -34,6 +44,7 @@ const featureFlagEnginePassAllCores = "engine_pass_all_cores"
 var knownFeatureFlags = map[string]struct{}{
 	featureFlagDisableCompleteReplays: {},
 	featureFlagEnginePassAllCores:     {},
+	featureFlagGameInsights:           {},
 }
 
 func (d *Dashboard) featureFlags(ctx context.Context) (map[string]bool, error) {

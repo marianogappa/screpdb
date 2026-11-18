@@ -1,6 +1,7 @@
 package moments
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/marianogappa/openbw-go"
@@ -105,6 +106,18 @@ func TestDropsAreNamedByCargo(t *testing.T) {
 	}
 }
 
+func TestDropsCountTheirTransports(t *testing.T) {
+	d := digest()
+	zealots := []uint16{ut(bwgame.UnitTypesProtossZealot), ut(bwgame.UnitTypesProtossZealot), ut(bwgame.UnitTypesProtossZealot), ut(bwgame.UnitTypesProtossZealot)}
+	for i := range 3 {
+		d.Unloads = append(d.Unloads, engine.Unload{Frame: f(600 + i), Transport: uint32(70 + i), TransportType: ut(bwgame.UnitTypesProtossShuttle), Owner: 1, X: 350, Y: 350, Cargo: zealots})
+	}
+	d.Unloads = append(d.Unloads, engine.Unload{Frame: f(604), Transport: 70, TransportType: ut(bwgame.UnitTypesProtossShuttle), Owner: 1, X: 350, Y: 350, Cargo: zealots})
+	if got := Detect(d, testBases, zvp); len(got) != 1 || got[0].Type != "drop" || got[0].Count != 3 {
+		t.Fatalf("three Shuttles unloading together are one drop of three: %+v", got)
+	}
+}
+
 func TestRecallNeedsTheCast(t *testing.T) {
 	d := digest()
 	d.Teleports = []engine.Teleport{{Frame: f(700), Owner: 1, FromX: 3600, FromY: 3600, ToX: 400, ToY: 400, Units: []uint16{65, 65, 66}}}
@@ -164,5 +177,18 @@ func TestEventsStopAtTheTrustedFrame(t *testing.T) {
 	d.Productions = []engine.Production{{Owner: 0, Type: ut(bwgame.UnitTypesZergHatchery), From: ut(bwgame.UnitTypesZergDrone), X: 900, Y: 400, Start: f(120), Complete: f(190), Cancel: engine.NoFrame}}
 	if got := Detect(d, testBases, zvp); len(got) != 0 {
 		t.Fatalf("events after the desync: %v", types(got))
+	}
+}
+
+func TestZealotSpeedIsShownAtTheCitadel(t *testing.T) {
+	d := digest()
+	d.Productions = []engine.Production{{Owner: 1, Type: ut(bwgame.UnitTypesProtossCitadelOfAdun), Unit: 40, X: 3600, Y: 3500, Start: f(200), Complete: f(260), Cancel: engine.NoFrame}}
+	d.Research = []engine.Research{{Owner: 1, Upgrade: true, ID: uint8(bwgame.UpgradeTypesLegEnhancements), Producer: 40, Start: f(270), Complete: f(400), Cancel: engine.NoFrame}}
+	i := slices.IndexFunc(Detect(d, testBases, zvp), func(e Event) bool { return e.Type == "speedlot" })
+	if i < 0 {
+		t.Fatal("no speedlot event")
+	}
+	if e := Detect(d, testBases, zvp)[i]; e.X != 3600 || e.Y != 3500 || e.Base != 2 {
+		t.Fatalf("speedlot at %d,%d base %d, want the Citadel in the main", e.X, e.Y, e.Base)
 	}
 }

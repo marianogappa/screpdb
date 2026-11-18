@@ -139,6 +139,8 @@ var workflowFeaturingFilters = []struct {
 	Emoji     string
 	// Race groups the "bo" chips under per-race disclosures. Empty for "marker".
 	Race string
+	// Labs chips show only while the game_insights flag is on.
+	Labs bool
 }{
 	// The former Terran style markers (mech / sk_terran / one_one_one /
 	// mech_transition) are now first-class composition BOs in the "bo" group
@@ -171,6 +173,14 @@ var workflowFeaturingFilters = []struct {
 	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
 	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
 	{Key: "muta_hitnrun", Label: "Muta hit-n-run", Group: "marker", IconKey: "mutalisk", IconLabel: "Muta hit-n-run"},
+	{Key: "elevator", Label: "Elevator", Group: "marker", IconKey: "dropship", IconLabel: "Elevator", Labs: true},
+	{Key: "eraser", Label: "Eraser", Group: "marker", IconKey: "sciencevessel", IconLabel: "Eraser", Labs: true},
+	{Key: "defilers_irradiated", Label: "Irradiated Defilers", Group: "marker", IconKey: "defiler", IconLabel: "Irradiated", Labs: true},
+	{Key: "nydus_denied", Label: "Nydus denied", Group: "marker", IconKey: "nyduscanal", IconLabel: "Denied", Labs: true},
+	{Key: "overlord_hunt", Label: "Overlord hunt", Group: "marker", IconKey: "overlord", IconLabel: "Hunt", Labs: true},
+	{Key: "undetected_cloak", Label: "No detection", Group: "marker", IconKey: "darktemplar", IconLabel: "No detection", Labs: true},
+	{Key: "undefended_air_harass", Label: "No anti-air", Group: "marker", IconKey: "mutalisk", IconLabel: "No anti-air", Labs: true},
+	{Key: "lurker_contain", Label: "Lurker contain", Group: "marker", IconKey: "lurker", IconLabel: "Contain", Labs: true},
 	// Keys and labels are kept in sync with internal/markers. Suppressed in render
 	// for Money maps on the featuring strips; the BO tab and per-player summary
 	// pills still show them.
@@ -485,6 +495,8 @@ type workflowGameEvent struct {
 	Engine *workflowEngineEvent `json:"engine,omitempty"`
 	// Outcome is what an engine attack, drop or harass did.
 	Outcome *workflowGameEventOutcome `json:"outcome,omitempty"`
+	// Parts are the events folded into this one (moments.Combine): the kills a drop's Lurkers made undetected.
+	Parts []workflowGameEvent `json:"parts,omitempty"`
 	// DurationSeconds is how long a span event (a long supply block) lasted.
 	DurationSeconds int64 `json:"duration_seconds,omitempty"`
 	// Result is how an engine nuke or recall ended (moments.Nuke*, moments.Recall*).
@@ -494,6 +506,12 @@ type workflowGameEvent struct {
 	Hallucinated int64 `json:"hallucinated,omitempty"`
 	// Key events are the few the tab shows by default; the rest show on request.
 	Key bool `json:"key"`
+	// Why marks the insight that explains why the loser left (Labs: game_insights).
+	Why bool `json:"why,omitempty"`
+	// Path draws an insight on the map, in map pixels: an elevator's unloads, an Eraser's kills.
+	Path []workflowGameEventPoint `json:"path,omitempty"`
+	// Defenders is how many anti-air units stood in a base an undefended air harass hit.
+	Defenders int64 `json:"defenders,omitempty"`
 }
 
 type workflowGameEventOutcome struct {

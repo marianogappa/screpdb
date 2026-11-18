@@ -312,18 +312,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-17  OK. Engine dependency bump: openbw-go moves to ce407cb (desync fixes under SC:R rules) and EngineVersion goes to 11 so cached digests are recomputed; the engine still reads replay bytes it is handed, with no new paths, network calls or allowlist changes.
+2026-11-18  OK. Game events: Zealot speed research is placed at its Citadel, event maps draw base outlines along the real polygon, engine drops carry their transport count (the separate Drop insight is folded into drops), summary pills keep to one row by priority and share one height, the event title sits in an empty patch of the map with a game progress bar, the turning point sits with the staging buttons, length and date sit under the map name with the file in a footer row, things that open a tab light it on hover, and 1v1 rows use player colours, events proven to be one happening by shared unit IDs (engine version 13 records killers and unloaded units; that bump re-runs only a game someone opens, never the whole library) fold into one, and the events list splits phases like the composition bars; engine digest, detectors and dashboard only, no new paths, network calls or allowlist changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-17  OK. Labs game_insights: engine digests record each spell's caster type and target unit and where each unload's cargo boarded (EngineVersion 12), and new detectors (Elevator, Eraser, Drop, Irradiated Defilers, Nydus denied, no detection, no anti-air, Overlord hunt, Lurker contain) feed Game Events, summary pills, a why line and games-list filters behind a Labs flag; map layouts keep scmapanalyzer's base chokes from the analysis already run; reads digests already in memory, no new os/net calls, no iofacade/netfacade allowlist widening, no enforcement-test changes.
+2026-11-17  OK. Engine dependency bump: openbw-go moves to ce407cb (desync fixes under SC:R rules) and EngineVersion goes to 11 so cached digests are recomputed; the engine still reads replay bytes it is handed, with no new paths, network calls or allowlist changes.
 2026-11-17  OK. Tests only for bot detection, plus dropping an unreachable error branch in the dashboard's bot games lookup; no I/O, paths, network calls or allowlists change.
 2026-11-17  OK. Bot detection reads the in-memory screp command stream the parser already holds and adds response fields and a games-list filter; no new file or network I/O, paths, allowlists or dependencies.
 2026-11-17  OK. Bumps scmapanalyzer for watershed base shapes and base chokes; pure map geometry plus embedded tileset elevation data, no new os/net calls, allowlist changes or outbound network calls.
-2026-11-14  OK. CI fixes and docs only: the takeover test fake replies before closing, the README figures workflow force pushes its bot branch, and the READMEs stop linking the browser preview; no runtime code, paths, network calls or allowlists change.
-2026-11-14  OK. Skill display: players who left a rated game before 8:00 show <8:00, profile averages read the three months before the latest game with that stretch shaded, 1v1 submetrics draw tug bars, and the player Skill tab becomes a summary card your own profile can save as a PNG drawn in the browser (race icons fetched from the local dashboard only), and the Battle.net play habits summary is deleted along with its time zone data; dashboard JSON and frontend only, no new paths, network calls or allowlist changes.
 ```
 
 </details>

@@ -9,6 +9,7 @@ import EngineProgressNote from './components/EngineProgressNote';
 import SkillTab, { PlayersSkillTab, LEFT_EARLY_MARK, SkillCard, SkillTierChip, TIER_KEYS, tierLabel } from './components/SkillTab';
 import { cardRaces, skillCardFileName } from './lib/skillCard';
 import { downloadSvgAsPng } from './lib/svgPng';
+import { gamePhaseFor, gamePhaseStarts } from './lib/gamePhase';
 import { bnetFreshness } from './lib/bnetFreshness';
 import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
@@ -23,6 +24,7 @@ import SupplyTimeline from './components/charts/SupplyTimeline';
 import HotkeyTimeline from './components/charts/HotkeyTimeline';
 import HotkeyMaps from './components/charts/HotkeyMaps';
 import HotkeySignature from './components/charts/HotkeySignature';
+import OneRowPills from './components/OneRowPills';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
@@ -145,7 +147,8 @@ const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
   const pid = Number(playerID);
   const wanted = new Set((wantedTypes || []).map((t) => normalizeEventType(t)));
   return (events || []).some((ev) => {
-    if (!wanted.has(normalizeEventType(ev?.type))) return false;
+    const types = [ev?.type, ...(Array.isArray(ev?.parts) ? ev.parts.map((p) => p?.type) : [])];
+    if (!types.some((type) => wanted.has(normalizeEventType(type)))) return false;
     const aid = ev?.actor?.player_id;
     return aid != null && Number(aid) === pid;
   });
@@ -261,8 +264,33 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     });
   }
 
+  const transport = { terran: 'dropship', protoss: 'shuttle', zerg: 'overlord' }[String(player?.race || '').toLowerCase()] || 'dropship';
+  for (const [type, icon] of [
+    ['elevator', transport], ['eraser', 'sciencevessel'], ['defilers_irradiated', 'sciencevessel'],
+    ['nydus_denied', 'nyduscanal'], ['overlord_hunt', 'overlord'], ['lurker_contain', 'lurker'],
+  ]) {
+    if (playerIsActorForGameEventTypes(events, pid, [type])) {
+      positive.push({
+        key: `ge-${type}-${pid}`,
+        icon: getUnitIcon(icon),
+        label: t(`insight.${type}`),
+        className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+      });
+    }
+  }
+
   return { positive: elideGenericDropPill(positive), noScout: null };
 };
+
+// GameProgress is how far into the game an event is, drawn as StarCraft draws progress.
+const GameProgress = ({ progress }) => (
+  <div className="workflow-event-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
+    <div className="workflow-event-progress-fill" style={{ width: `${progress * 100}%` }} />
+  </div>
+);
+
+// Strong pills are the Labs insights: they outrank the other game event pills for the one row there is room for.
+const isStrongPill = (pill) => String(pill?.className || '').includes('workflow-pattern-pill-strong');
 
 const renderGameSummarySignalPill = (pill) => {
   // Backwards-compat: older entries use { icon }, drop pills use { icons: [] }.
@@ -354,6 +382,97 @@ const fightSentence = (event, eventType, hasActor, hasTarget, location) => {
       : { fallback: 'events.longSupplyBlock' };
   }
   return null;
+};
+
+// INSIGHT_TYPES are the Labs game_insights events: techniques and mistakes the engine proved, each with
+// the sentence that says what happened. insightSentence returns null for any other type.
+const INSIGHT_TYPES = new Set([
+  'elevator', 'eraser', 'defilers_irradiated', 'nydus_denied',
+  'undetected_cloak', 'undefended_air_harass', 'overlord_hunt', 'lurker_contain',
+]);
+
+const insightUnitName = (event) => {
+  const raw = String(event?.attack_unit_types?.[0] || '').trim();
+  return raw ? t.server(`server.name.${slugKey(raw)}`, raw) : '';
+};
+
+const insightSentence = (event, eventType, hasActor, location) => {
+  if (!INSIGHT_TYPES.has(eventType)) return null;
+  const fallback = `insight.${eventType}`;
+  if (!hasActor) return { fallback };
+  const o = event?.outcome || {};
+  const count = Number(event?.unit_count || 0);
+  const locationClause = location ? attackLocationClause(event, location) : '';
+  const unit = insightUnitName(event);
+  switch (eventType) {
+    case 'elevator':
+      return locationClause ? { key: 'insight.sentence.elevator', params: { count, locationClause } } : { fallback };
+    case 'eraser':
+      return { key: 'insight.sentence.eraser', params: { count: Number(o.workers || 0), icon: '' }, iconUnit: { sprite: 'sciencevessel', name: 'science_vessel', fallback: 'Science Vessel' } };
+    case 'defilers_irradiated':
+      return { key: 'insight.sentence.defilersIrradiated', params: { count } };
+    case 'nydus_denied':
+      return { key: o.town_hall ? 'insight.sentence.nydusDeniedBase' : 'insight.sentence.nydusDenied', params: {} };
+    case 'undetected_cloak': {
+      const how = ['none', 'elsewhere', 'scan'].includes(event?.result) ? event.result : 'none';
+      return locationClause ? { key: `insight.sentence.cloak.${how}`, params: { unit, count, locationClause } } : { fallback };
+    }
+    case 'undefended_air_harass': {
+      if (!locationClause) return { fallback };
+      const defenders = Number(event?.defenders || 0);
+      return defenders > 0
+        ? { key: 'insight.sentence.airHarassFew', params: { unit, count: Number(o.workers || count), locationClause, defenders } }
+        : { key: 'insight.sentence.airHarass', params: { unit, count: Number(o.workers || count), locationClause } };
+    }
+    case 'overlord_hunt': {
+      const blocked = Number(event?.duration_seconds || 0);
+      return blocked >= 15
+        ? { key: 'insight.sentence.overlordHuntBlocked', params: { count, duration: formatDuration(blocked) } }
+        : { key: 'insight.sentence.overlordHunt', params: { count } };
+    }
+    case 'lurker_contain':
+      return { key: 'insight.sentence.lurkerContain', params: { count, duration: formatDuration(Number(event?.duration_seconds || 0)) } };
+    default:
+      return { fallback };
+  }
+};
+
+// COMBINED_CLAUSES are how an event folded into another (moments.Combinations) reads after the lead's sentence,
+// by the part's type and then the lead's: a pair missing here folds in silently, as a drop into its elevator.
+const COMBINED_CLAUSES = {
+  undetected_cloak: {
+    drop: 'after', reaver_drop: 'after', dt_drop: 'after', elevator: 'after', lurker_contain: 'during',
+  },
+};
+
+const combinedClauses = (event) => {
+  const leadType = normalizeEventType(event?.type);
+  return (Array.isArray(event?.parts) ? event.parts : []).map((part) => {
+    const partType = normalizeEventType(part?.type);
+    const when = COMBINED_CLAUSES[partType]?.[leadType];
+    if (!when || partType !== 'undetected_cloak') return null;
+    const how = ['none', 'elsewhere', 'scan'].includes(part?.result) ? part.result : 'none';
+    return { key: `insight.clause.cloak.${when}.${how}`, params: { unit: insightUnitName(part), count: Number(part?.unit_count || 0) } };
+  }).filter(Boolean);
+};
+
+const gameEventDescription = (event, registry) => {
+  const lead = gameEventLeadDescription(event, registry);
+  const target = String(event?.target?.name || '').trim();
+  return combinedClauses(event).reduce((text, c) => text + t(c.key, { target, ...c.params }), String(lead));
+};
+
+const renderGameEventDescription = (event, registry, playerRaceByID) => {
+  const lead = renderGameEventLeadDescription(event, registry, playerRaceByID);
+  const clauses = combinedClauses(event);
+  if (clauses.length === 0) return lead;
+  const targetSpan = gamePlayerNameSpan(event?.target, 'ct');
+  return (
+    <>
+      {lead}
+      {clauses.map((c, i) => <React.Fragment key={`clause-${i}`}>{fillTemplate(t(c.key), { target: targetSpan, ...c.params })}</React.Fragment>)}
+    </>
+  );
 };
 
 // openFieldLabel says where a place away from bases is, in the reader's language.
@@ -493,7 +612,7 @@ const recallOutcomeSuffix = (event) => {
   return hallucination + (key ? t(key, { count: Number(event?.outcome?.buildings) || 0 }) : '');
 };
 
-const gameEventDescription = (event, registry) => {
+const gameEventLeadDescription = (event, registry) => {
   const eventType = normalizeEventType(event?.type);
   const actor = String(event?.actor?.name || '').trim();
   const target = String(event?.target?.name || '').trim();
@@ -545,6 +664,8 @@ const gameEventDescription = (event, registry) => {
   }
   const fight = fightSentence(event, eventType, Boolean(actor), Boolean(target), location);
   if (fight) return fight.key ? t(fight.key, { actor, target, ...fight.params }) : t(fight.fallback);
+  const insight = insightSentence(event, eventType, Boolean(actor), location);
+  if (insight) return insight.key ? t(insight.key, { actor, target, ...insight.params }) : t(insight.fallback);
   if (eventType === 'scout') return actor && target && location ? t('events.sentence.scouts', { actor, target, location }) : t('events.scout');
   if (DROP_TEXT[eventType]) {
     const fallback = t(DROP_TEXT[eventType].label);
@@ -553,7 +674,7 @@ const gameEventDescription = (event, registry) => {
     // DstPolyID there). Source, when worldstate could resolve it, lives on
     // payload.sb → event.source_base.
     const sourceLabel = String(event?.source_base?.name || '').trim();
-    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
+    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.transports', { count: event.drop_count }) : '';
     const from = sourceLabel ? t('events.fragment.from', { location: sourceLabel }) : '';
     const params = { actor, target, location, icon: '', count, from };
     return t(DROP_TEXT[eventType].sentence, params);
@@ -1010,7 +1131,7 @@ const gamePlayerNameSpan = (player, key) => {
 // colored spans for the event-row body; the string variant remains for search
 // and dedup keys. playerRaceByID inlines race-correct icons without requiring
 // the backend to embed race on every event row.
-const renderGameEventDescription = (event, registry, playerRaceByID) => {
+const renderGameEventLeadDescription = (event, registry, playerRaceByID) => {
   const eventType = normalizeEventType(event?.type);
   const actorName = String(event?.actor?.name || '').trim();
   const targetName = String(event?.target?.name || '').trim();
@@ -1109,6 +1230,14 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   }
   const fight = fightSentence(event, eventType, Boolean(actorName), Boolean(targetName), location);
   if (fight) return fight.key ? fill(fight.key, { actor: actorSpan, target: targetSpan, ...fight.params }) : t(fight.fallback);
+  const insight = insightSentence(event, eventType, Boolean(actorName), location);
+  if (insight) {
+    if (!insight.key) return t(insight.fallback);
+    const iconURL = insight.iconUnit ? getUnitIcon(insight.iconUnit.sprite) : null;
+    const iconName = insight.iconUnit ? t.server(`server.name.${insight.iconUnit.name}`, insight.iconUnit.fallback) : '';
+    const icon = iconURL ? <img src={iconURL} alt={iconName} title={iconName} className="workflow-event-row-recall-arbiter" /> : '';
+    return fill(insight.key, { actor: actorSpan, target: targetSpan, ...insight.params, icon });
+  }
   if (eventType === 'scout') {
     return actorName && targetName && location
       ? fill('events.sentence.scouts', { actor: actorSpan, target: targetSpan, location })
@@ -1127,7 +1256,7 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
     const fallback = t(DROP_TEXT[eventType].label);
     if (!actorName || !targetName || !location) return fallback;
     const sourceLabel = String(event?.source_base?.name || '').trim();
-    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
+    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.transports', { count: event.drop_count }) : '';
     const from = sourceLabel ? t('events.fragment.from', { location: sourceLabel }) : '';
     // Inline vessel icon right after the verb — race-correct transport. Mirrors
     // the Arbiter-icon-after-"recalls" pattern. The trailing row-icon strip
@@ -1979,10 +2108,8 @@ const DEFAULT_SUMMARY_FILTERS = {
   scout: false,
 };
 
-// Engine event views are 4:3 (regionAspect on the server); the title under the map is EVENTS_TITLE_PX tall,
-// so map and title fill the viewport together.
+// Engine event views are 4:3 (regionAspect on the server) and fill the viewport's height; the title sits on the map.
 const ENGINE_EVENT_ASPECT = 4 / 3;
-const EVENTS_TITLE_PX = 72;
 
 const SUMMARY_TOPIC_PATTERNS = {
   attack: /\battacks?\b|\bworker kills\b/i,
@@ -2073,6 +2200,7 @@ const renderPatternPill = (pattern, keyPrefix, team, registry, link) => {
         className={`${className} workflow-pill-link`}
         title={rendered.title || undefined}
         href={link.href}
+        data-opens-tab={link.tab}
         onClick={(event) => {
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
           event.preventDefault();
@@ -3103,7 +3231,7 @@ function App() {
     const bo = (mainGame?.build_orders || []).find((b) => b.player_id === player.player_id && b.feature_key === pattern?.event_type);
     if (!bo) return undefined;
     const key = buildOrderKey(bo);
-    return { href: buildOrderHref(key), onOpen: () => openBuildOrder(key) };
+    return { href: buildOrderHref(key), onOpen: () => openBuildOrder(key), tab: 'build-orders' };
   };
 
   useEffect(() => {
@@ -4090,13 +4218,9 @@ function App() {
     const midEnd = Number(mainGame?.mid_game_ends_at_second) || 0;
     const trustedUntil = Number(mainGame?.engine_trusted_until_seconds) || Infinity;
     const out = {};
-    const add = (phase, second) => {
-      if (second > 0 && second < trustedUntil) out[phase] = { type: 'phase_snapshot', phase, second, engine: { snapshot_second: second, end_second: second } };
-    };
-    if (midEnd > 0) {
-      add('mid', earlyEnd);
-      add('late', midEnd);
-    }
+    Object.entries(gamePhaseStarts(earlyEnd, midEnd)).forEach(([phase, second]) => {
+      if (second < trustedUntil) out[phase] = { type: 'phase_snapshot', phase, second, engine: { snapshot_second: second, end_second: second } };
+    });
     return out;
   }, [mainGame]);
   const selectedMainGameEvent = useMemo(() => {
@@ -4127,6 +4251,12 @@ function App() {
       setMainGameTab('supply-timeline');
     }
   }, [mainGame, selectedReplayId, mainGameTab, mainTimingCategory, mainSupplyFromEngine]);
+  const mainGameWhyEvent = useMemo(() => (mainGame?.game_events || []).find((e) => e?.why) || null, [mainGame]);
+  const openMainGameWhyEvent = () => {
+    setMainGameTab('events');
+    const idx = topicFilteredGameEvents.indexOf(mainGameWhyEvent);
+    if (idx >= 0) setMainSelectedGameEventKey(gameEventTopicKey(idx));
+  };
   const selectedMainGameEventKeyResolved = useMemo(() => {
     if (!selectedMainGameEvent) return '';
     if (selectedMainGameEvent.type === 'phase_snapshot') return gamePhaseKey(selectedMainGameEvent.phase);
@@ -4158,20 +4288,14 @@ function App() {
   const mainEventRows = useMemo(() => {
     const earlyEnd = Number(mainGame?.early_game_ends_at_second) || 0;
     const midEnd = Number(mainGame?.mid_game_ends_at_second) || 0;
-    const phaseFor = (sec) => {
-      if (earlyEnd > 0 && sec < earlyEnd) return 'early';
-      if (midEnd > 0 && sec < midEnd) return 'mid';
-      return 'late';
-    };
+    const starts = gamePhaseStarts(earlyEnd, midEnd);
     const rows = [];
     let lastPhase = null;
     filteredGameEvents.forEach((event) => {
-      const phase = phaseFor(Number(event?.second) || 0);
+      const phase = gamePhaseFor(Number(event?.second) || 0, earlyEnd, midEnd);
       const isLeaveGame = ['leave_game', 'player_dropped', 'mass_disconnect'].includes(normalizeEventType(event?.type));
       if (!isLeaveGame && phase !== lastPhase) {
-        // Only show "Mid game" / "Late game" when mid game actually ended; otherwise the game never
-        // reached those phases.
-        if (phase === 'early' ? earlyEnd > 0 : midEnd > 0) {
+        if (phase === 'early' ? earlyEnd > 0 || midEnd > 0 : starts[phase] != null) {
           rows.push({ kind: 'phase', phase, key: gamePhaseKey(phase), snapshot: mainPhaseSnapshots[phase] || null });
         }
         lastPhase = phase;
@@ -4727,7 +4851,7 @@ function App() {
       const layoutW = el.clientWidth;
       const widthBound = 0.7 * layoutW;
       const stageAspect = mainEngineEventSeconds.length ? ENGINE_EVENT_ASPECT : mainEventMapAspect;
-      const heightBound = stageAspect * (window.innerHeight - EVENTS_TITLE_PX);
+      const heightBound = stageAspect * window.innerHeight;
       setMainEventsMapColPx(Math.max(0, Math.round(Math.min(widthBound, heightBound))));
     };
     compute();
@@ -5044,6 +5168,19 @@ function App() {
     () => new Map(mainGamePlayers.map((player) => [Number(player?.player_id || 0), String(player?.race || '').trim()])),
     [mainGamePlayers],
   );
+  // The event's title sits on its map; an event with no place of its own (a game phase, the openers) has it
+  // in the middle. Game time is the progress bar along the stage, not part of the title.
+  const stageEventType = normalizeEventType(selectedMainGameEvent?.type);
+  const stageTitle = !selectedMainGameEvent ? null
+    : stageEventType === 'bo_openers' ? t('events.stageTitle.openers')
+      : renderGameEventDescription(selectedMainGameEvent, markerRegistry, mainEventRaceByPlayerID);
+  const stageTitleText = !selectedMainGameEvent ? ''
+    : stageEventType === 'bo_openers' ? t('events.stageTitle.openers')
+      : String(gameEventDescription(selectedMainGameEvent, markerRegistry) || '');
+  const stageTitleCentered = stageEventType === 'bo_openers' || stageEventType === 'phase_snapshot' || !selectedMainGameEvent?.engine?.region;
+  const stageProgress = selectedMainGameEvent && Number(mainGame?.duration_seconds) > 0
+    ? Math.min(1, Math.max(0, Number(selectedMainGameEvent.second || 0) / Number(mainGame.duration_seconds)))
+    : null;
   const hasTeamInfo = useMemo(() => {
     const uniqueTeams = new Set(mainGamePlayers.map((player) => player.team));
     return uniqueTeams.size > 1;
@@ -5746,6 +5883,7 @@ function App() {
                       role="tab"
                       aria-selected={mainGameTab === 'summary'}
                       className={`workflow-production-tab ${mainGameTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
+                      data-tab="summary"
                       onClick={() => setMainGameTab('summary')}
                     >
                       {t('tabs.summary')}
@@ -5755,6 +5893,7 @@ function App() {
                       role="tab"
                       aria-selected={mainGameTab === 'events'}
                       className={`workflow-production-tab ${mainGameTab === 'events' ? 'workflow-production-tab-active' : ''}`}
+                      data-tab="events"
                       onClick={() => setMainGameTab('events')}
                     >
                       {t('game.tabs.events')}
@@ -5765,6 +5904,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'skill'}
                         className={`workflow-production-tab ${mainGameTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="skill"
                         onClick={() => setMainGameTab('skill')}
                       >
                         {t('game.tabs.skill')}
@@ -5788,6 +5928,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'build-orders'}
                         className={`workflow-production-tab ${mainGameTab === 'build-orders' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="build-orders"
                         onClick={() => { setMainGameBuildOrder(''); setMainGameTab('build-orders'); }}
                       >
                         {t('game.tabs.buildOrders')}
@@ -5799,6 +5940,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'mutalisk-timing'}
                         className={`workflow-production-tab ${mainGameTab === 'mutalisk-timing' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="mutalisk-timing"
                         onClick={() => setMainGameTab('mutalisk-timing')}
                       >
                         {t('game.tabs.mutaTiming')}
@@ -5809,6 +5951,7 @@ function App() {
                       role="tab"
                       aria-selected={mainGameTab === 'timings'}
                       className={`workflow-production-tab ${mainGameTab === 'timings' ? 'workflow-production-tab-active' : ''}`}
+                      data-tab="timings"
                       onClick={() => setMainGameTab('timings')}
                     >
                       {t('game.tabs.timings')}
@@ -5819,6 +5962,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'alliances'}
                         className={`workflow-production-tab ${mainGameTab === 'alliances' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="alliances"
                         onClick={() => setMainGameTab('alliances')}
                       >
                         {t('game.tabs.alliances')}{mainGame?.team_stacking ? ' 😈' : ''}
@@ -5830,6 +5974,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'supply-timeline'}
                         className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="supply-timeline"
                         onClick={() => setMainGameTab('supply-timeline')}
                       >
                         {t('game.tabs.supply')}
@@ -5840,6 +5985,7 @@ function App() {
                       role="tab"
                       aria-selected={mainGameTab === 'hotkeys'}
                       className={`workflow-production-tab ${mainGameTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
+                      data-tab="hotkeys"
                       onClick={() => setMainGameTab('hotkeys')}
                     >
                       {t('tabs.hotkeys')}
@@ -5872,6 +6018,7 @@ function App() {
                           <button
                             type="button"
                             className="workflow-map-thumb-btn workflow-map-thumb-btn--events-link"
+                            data-opens-tab="events"
                             onClick={() => setMainGameTab('events')}
                             title={t('game.summary.openEvents')}
                           >
@@ -5901,85 +6048,65 @@ function App() {
                             buttons in the column alongside. */}
                         <div className="workflow-map-caption">
                           {formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}
+                          <div className="workflow-map-caption-when">
+                            {formatDuration(mainGame.duration_seconds)} · {formatRelativeReplayDate(mainGame.replay_date)}
+                          </div>
                         </div>
                       </div>
-                      {/* Beside the map sits what identifies this game: when it was
-                          played, how long it ran, which file it is, and the buttons
-                          that act on it. This space used to hold a Featuring row and
-                          aggregate composition and spellcast blocks, all three of
-                          which were unions of the per-player table below. Captions
-                          reuse labels the app already has (the games list calls this
-                          column Played, the omnibar calls duration Length) so a layout
-                          change does not become a translation change. */}
+                      {/* Beside the map sits the turning point and the buttons that stage the
+                          replay to watch it. */}
                       <div className="workflow-summary-features-col">
-                        <dl className="workflow-game-facts">
-                          <dt>{t('games.table.played')}</dt>
-                          <dd>{formatRelativeReplayDate(mainGame.replay_date)}</dd>
-                          <dt>{t('omnibar.axis.length')}</dt>
-                          <dd>{formatDuration(mainGame.duration_seconds)}</dd>
-                        </dl>
-
-                        {mainGame.file_path ? (
-                          <div className="workflow-game-file-row">
-                            <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
-                              {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
-                            </code>
-                            <button
-                              type="button"
-                              className="btn-switch workflow-meta-filepath-copy"
-                              data-tip={t('game.copyPathTip')}
-                              onClick={() => {
-                                if (navigator.clipboard && navigator.clipboard.writeText) {
-                                  navigator.clipboard.writeText(mainGame.file_path);
-                                }
-                              }}
-                            >
-                              {t('game.copyPath')}
-                            </button>
-                          </div>
-                        ) : null}
-
                         {/* Two buttons share one caption so neither has to repeat
                             "Stage watch replay" to say which recording it stages. A
                             lone button keeps its full label: a heading over a single
                             control is just a longer way of writing the control. */}
-                        {mainGame?.own_copy_file_name ? (
-                          <div className="workflow-game-stage">
-                            <div className="workflow-game-stage-title">{t('game.stage.button')}</div>
+                        <div className={mainGameWhyEvent ? 'insight-why-watch' : undefined}>
+                          {mainGameWhyEvent ? (
+                            <>
+                              <span className="insight-why-label">{t('insight.why')} · {formatDuration(mainGameWhyEvent.second)}</span>
+                              <button type="button" className="insight-why-watch-text" data-opens-tab="events" onClick={openMainGameWhyEvent}>
+                                {renderGameEventDescription(mainGameWhyEvent, markerRegistry, mainEventRaceByPlayerID)}
+                              </button>
+                            </>
+                          ) : null}
+                          {mainGame?.own_copy_file_name ? (
+                            <div className="workflow-game-stage">
+                              <div className="workflow-game-stage-title">{t('game.stage.button')}</div>
+                              <div className="workflow-game-stage-buttons">
+                                <button
+                                  type="button"
+                                  className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                                  disabled={mainGameSeeLoading}
+                                  data-tip={t('game.stage.tipOwn')}
+                                  onClick={() => copyMainGameToWatchMe('own')}
+                                >
+                                  {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.own')}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+                                  disabled={mainGameSeeLoading}
+                                  data-tip={t('game.stage.tipComplete')}
+                                  onClick={() => copyMainGameToWatchMe('complete')}
+                                >
+                                  {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.complete')}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
                             <div className="workflow-game-stage-buttons">
                               <button
                                 type="button"
                                 className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
                                 disabled={mainGameSeeLoading}
-                                data-tip={t('game.stage.tipOwn')}
-                                onClick={() => copyMainGameToWatchMe('own')}
+                                data-tip={t('game.stage.tip')}
+                                onClick={() => copyMainGameToWatchMe()}
                               >
-                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.own')}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                                disabled={mainGameSeeLoading}
-                                data-tip={t('game.stage.tipComplete')}
-                                onClick={() => copyMainGameToWatchMe('complete')}
-                              >
-                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.complete')}
+                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
                               </button>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="workflow-game-stage-buttons">
-                            <button
-                              type="button"
-                              className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                              disabled={mainGameSeeLoading}
-                              data-tip={t('game.stage.tip')}
-                              onClick={() => copyMainGameToWatchMe()}
-                            >
-                              {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className={`workflow-player-table${mainGameShowsSkill ? ' workflow-player-table--skill' : ''}`} style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
@@ -6008,7 +6135,7 @@ function App() {
                           <React.Fragment key={player.player_id}>
                             <div
                               className={`wpt-cell wpt-name${hoveredRow ? ' is-hovered' : ''}`}
-                              style={{ borderLeftColor: getTeamColor(player.team) }}
+                              style={{ borderLeftColor: isTeamGame ? getTeamColor(player.team) : playerColorToCss(player.color) }}
                               onMouseEnter={() => setMainGameHoverPlayerID(player.player_id)}
                               onMouseLeave={() => setMainGameHoverPlayerID(null)}
                             >
@@ -6049,7 +6176,7 @@ function App() {
                             {mainGameShowsSkill ? (
                               <div className="wpt-cell wpt-skill">
                                 {player.skill?.combined ? (
-                                  <button type="button" className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[player.skill.combined.tier]}`} onClick={() => setMainGameTab('skill')}>
+                                  <button type="button" className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[player.skill.combined.tier]}`} data-opens-tab="skill" onClick={() => setMainGameTab('skill')}>
                                     {tierLabel(t, player.skill)}
                                   </button>
                                 ) : player.skill_left_early ? (
@@ -6058,12 +6185,13 @@ function App() {
                               </div>
                             ) : null}
                             <div className="wpt-cell wpt-featuring">
-                              <div className="workflow-pattern-pills">
+                              <OneRowPills className="workflow-pattern-pills">
                                 {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry, buildOrderLinkFor(player, pattern)))}
-                                {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
+                                {gameSummaryParts.positive.filter(isStrongPill).map(renderGameSummarySignalPill)}
+                                {gameSummaryParts.positive.filter((p) => !isStrongPill(p)).map(renderGameSummarySignalPill)}
                                 {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
                                 <SpellcastsPill spells={collectPlayerSpells(playerPhases)} />
-                              </div>
+                              </OneRowPills>
                             </div>
                             <div className="wpt-cell wpt-comp">
                               {playerPhases.length > 0 ? (
@@ -6074,6 +6202,27 @@ function App() {
                         );
                       })}
                     </div>
+                    {mainGame.file_path ? (
+                      <div className="workflow-game-footer">
+                        <div className="workflow-game-file-row">
+                          <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
+                            {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
+                          </code>
+                          <button
+                            type="button"
+                            className="btn-switch workflow-meta-filepath-copy"
+                            data-tip={t('game.copyPathTip')}
+                            onClick={() => {
+                              if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(mainGame.file_path);
+                              }
+                            }}
+                          >
+                            {t('game.copyPath')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </>
                 )}
 
@@ -6099,6 +6248,10 @@ function App() {
                               leaveMarker={selectedLeaveMarker}
                               teamColorByPlayerId={isTeamGame ? new Map(mainGamePlayers.map((p) => [p.player_id, getTeamColor(p.team)])) : null}
                               mapAlt={t('events.mapAlt', { map: mainGame.map_name })}
+                              title={stageTitle}
+                              titleText={stageTitleText}
+                              centerTitle={stageTitleCentered}
+                              progress={stageProgress != null ? <GameProgress progress={stageProgress} /> : null}
                             />
                           ) : mainMapVisualAvailable ? (
                             <>
@@ -6107,7 +6260,7 @@ function App() {
                                 mapUrl={mainMapVisualURL}
                                 mapWidth={mainGame.map_width_pixels}
                                 mapHeight={mainGame.map_height_pixels}
-                                maxHeight="100vh - var(--events-title-h)"
+                                maxHeight="100vh"
                                 alt={t('events.mapAlt', { map: mainGame.map_name })}
                               >
                                 {selectedMainGameEvent ? (
@@ -6455,16 +6608,12 @@ function App() {
                             </div>
                           )}
                           </div>
-                          <div className="workflow-event-stage-title">
-                            {selectedMainGameEvent && normalizeEventType(selectedMainGameEvent.type) === 'bo_openers' ? (
-                              <span>{t('events.stageTitle.openers')}</span>
-                            ) : selectedMainGameEvent ? (
-                              <>
-                                <span className="workflow-event-stage-time">{formatDuration(selectedMainGameEvent.second)}</span>
-                                <span>{renderGameEventDescription(selectedMainGameEvent, markerRegistry, mainEventRaceByPlayerID)}</span>
-                              </>
-                            ) : null}
-                          </div>
+                          {stageTitle && !(mainMapVisualAvailable && selectedMainGameEvent?.engine && mainGame?.map_width_pixels) ? (
+                            <div className={`workflow-event-stage-title${stageTitleCentered ? ' workflow-event-stage-title--center' : ''}`}>{stageTitle}</div>
+                          ) : null}
+                          {stageProgress != null && !(mainMapVisualAvailable && selectedMainGameEvent?.engine && mainGame?.map_width_pixels) ? (
+                            <GameProgress progress={stageProgress} />
+                          ) : null}
                           {mainEventMapHover ? (
                             <div
                               className="workflow-event-map-tooltip"

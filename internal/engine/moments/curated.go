@@ -80,6 +80,13 @@ type Base struct {
 	Kind    BaseKind
 	X, Y    int32
 	Polygon [][2]int32
+	Chokes  []Choke
+}
+
+// Choke is a narrow passage out of a base's terrain, and the base it leads to, or NoBase.
+type Choke struct {
+	X, Y int32
+	To   int
 }
 
 type Player struct {
@@ -109,6 +116,17 @@ type Event struct {
 	Count int
 	// Hallucinated is how many hallucinated Arbiters went in with a recall.
 	Hallucinated int
+	// Path is the points that draw an insight on the map, in order: the hops of an elevator, the kills of an Eraser.
+	Path [][2]int32 `json:",omitempty"`
+	// Defenders is how many anti-air units of the victim's stood in the base an undefended air harass hit.
+	Defenders int `json:",omitempty"`
+	// Insight marks an event from DetectInsights.
+	Insight bool `json:",omitempty"`
+	// Members are the unit IDs the event is about: what a drop or an elevator set down, the units that made an
+	// insight's kills, the Lurkers holding a contain. Combine reads them to prove two events are one.
+	Members []uint32 `json:",omitempty"`
+	// Parts are the events Combine folded into this one.
+	Parts []Event `json:",omitempty"`
 }
 
 const (
@@ -149,6 +167,7 @@ type game struct {
 	ownership [][]ownedSpan
 	deaths    []engine.Death
 	mains     map[int8]int
+	diedSec   map[uint32]int
 }
 
 type ownedSpan struct {
@@ -156,7 +175,7 @@ type ownedSpan struct {
 	from, to int
 }
 
-func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
+func newGame(d *engine.Digest, bases []Base, players []Player) *game {
 	g := &game{d: d, bases: bases, players: map[int8]Player{}, trusted: second(d.TrustedUntil()), mains: map[int8]int{}}
 	for _, p := range players {
 		g.players[p.Slot] = p
@@ -167,6 +186,11 @@ func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
 			g.deaths = append(g.deaths, x)
 		}
 	}
+	return g
+}
+
+func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
+	g := newGame(d, bases, players)
 	var out []Event
 	out = append(out, g.expansions()...)
 	out = append(out, g.zerglingRushes()...)
@@ -682,7 +706,15 @@ func (g *game) firstTech() []Event {
 			first("first_corsair", bwgame.UnitTypesProtossCorsair)
 			for _, r := range g.d.Research {
 				if r.Owner == p.Slot && r.Upgrade && r.ID == uint8(bwgame.UpgradeTypesLegEnhancements) && second(r.Start) < firstTechBefore {
-					out = append(out, g.event("speedlot", second(r.Start), p.Slot, NoPlayer, NoBase, 0, 0, []uint16{ut(bwgame.UnitTypesProtossZealot)}))
+					x, y, b := int32(0), int32(0), NoBase
+					if px, py, ok := g.placeOf(r.Producer); ok {
+						x, y, b = px, py, g.baseOf(px, py)
+					}
+					e := g.event("speedlot", second(r.Start), p.Slot, NoPlayer, b, x, y, []uint16{ut(bwgame.UnitTypesProtossZealot)})
+					if b == NoBase {
+						e.Region = around(x, y, buildingFocus)
+					}
+					out = append(out, e)
 					break
 				}
 			}
@@ -691,6 +723,21 @@ func (g *game) firstTech() []Event {
 		}
 	}
 	return out
+}
+
+// placeOf is where a building or unit was made, or where it stood at the start.
+func (g *game) placeOf(unit uint32) (int32, int32, bool) {
+	for _, pr := range g.d.Productions {
+		if pr.Unit == unit {
+			return pr.X, pr.Y, true
+		}
+	}
+	for _, u := range g.d.Initial {
+		if u.Unit == unit {
+			return u.X, u.Y, true
+		}
+	}
+	return 0, 0, false
 }
 
 // becameRace marks a Protoss player's first building of another race, raised with a mind-controlled worker.
@@ -767,6 +814,8 @@ func (g *game) drops() []Event {
 		x, y          int32
 		cargo         []uint16
 		transport     uint16
+		transports    map[uint32]bool
+		members       []uint32
 	}
 	var clusters []*cluster
 	for _, u := range g.d.Unloads {
@@ -792,11 +841,13 @@ func (g *game) drops() []Event {
 			}
 		}
 		if c == nil {
-			c = &cluster{actor: u.Owner, target: target, base: b, first: sec, x: u.X, y: u.Y, transport: u.TransportType}
+			c = &cluster{actor: u.Owner, target: target, base: b, first: sec, x: u.X, y: u.Y, transport: u.TransportType, transports: map[uint32]bool{}}
 			clusters = append(clusters, c)
 		}
 		c.last = sec
 		c.cargo = append(c.cargo, combat...)
+		c.transports[u.Transport] = true
+		c.members = append(c.members, u.Units...)
 	}
 	var out []Event
 	for _, c := range clusters {
@@ -809,6 +860,8 @@ func (g *game) drops() []Event {
 		deaths := g.fight(c.actor, c.target, c.base, c.first, c.last+dropFollowUp)
 		e.Outcome = g.outcome(c.actor, deaths)
 		e.Region = fightRegion(deaths, around(c.x, c.y, buildingFocus+2*tile), c.x, c.y)
+		e.Count = len(c.transports)
+		e.Members = c.members
 		out = append(out, e)
 	}
 	return out

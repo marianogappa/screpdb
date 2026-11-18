@@ -66,9 +66,14 @@ type passState struct {
 	carriedBy    map[openbw.UnitID]openbw.UnitID
 	lastSeen     map[openbw.UnitID]seenAt
 	carriedNext  map[openbw.UnitID]openbw.UnitID
+	boardedAt    map[openbw.UnitID]boarding
 	seenNext     map[openbw.UnitID]seenAt
 	hotkeyGroups map[hotkeyGroupKey][]openbw.UnitID
 	commanded    map[openbw.UnitID]int32
+}
+
+type boarding struct {
+	frame, x, y int32
 }
 
 type seenAt struct {
@@ -88,6 +93,7 @@ func newPassState(g *screpsim.Game) *passState {
 		carriedBy:    map[openbw.UnitID]openbw.UnitID{},
 		lastSeen:     map[openbw.UnitID]seenAt{},
 		carriedNext:  map[openbw.UnitID]openbw.UnitID{},
+		boardedAt:    map[openbw.UnitID]boarding{},
 		seenNext:     map[openbw.UnitID]seenAt{},
 		hotkeyGroups: map[hotkeyGroupKey][]openbw.UnitID{},
 		commanded:    map[openbw.UnitID]int32{},
@@ -256,7 +262,7 @@ func (p *passState) unitDestroyed(e *openbw.UnitDestroyed) {
 	}
 	p.d.Deaths = append(p.d.Deaths, Death{
 		Frame: e.Frame, Unit: uint32(e.Unit), Type: uint16(e.Type), Owner: e.Owner, Class: uint8(e.Class),
-		X: e.X, Y: e.Y, Reason: uint8(e.Reason), KillerType: uint16(e.KillerType), KillerOwner: e.KillerOwner,
+		X: e.X, Y: e.Y, Reason: uint8(e.Reason), KillerType: uint16(e.KillerType), KillerOwner: e.KillerOwner, Killer: uint32(e.Killer),
 	})
 }
 
@@ -312,6 +318,14 @@ func (p *passState) tick(frame int32) {
 // Shuttle or Overlord and are alive on the map were unloaded. A Bunker is not a transport.
 func (p *passState) trackUnloads(frame int32, carried map[openbw.UnitID]openbw.UnitID) {
 	e := p.g.Engine()
+	for unit, transport := range carried {
+		if p.carriedBy[unit] == transport {
+			continue
+		}
+		if t, ok := e.Unit(transport); ok {
+			p.boardedAt[unit] = boarding{frame: frame, x: t.X, y: t.Y}
+		}
+	}
 	byTransport := map[openbw.UnitID]*Unload{}
 	var order []openbw.UnitID
 	for unit, transport := range p.carriedBy {
@@ -325,15 +339,21 @@ func (p *passState) trackUnloads(frame int32, carried map[openbw.UnitID]openbw.U
 		}
 		u, ok := byTransport[transport]
 		if !ok {
-			u = &Unload{Frame: frame, Transport: uint32(transport), TransportType: uint16(t.Type), Owner: t.Owner, X: t.X, Y: t.Y}
+			u = &Unload{Frame: frame, Transport: uint32(transport), TransportType: uint16(t.Type), Owner: t.Owner, X: t.X, Y: t.Y, LoadFrame: NoFrame}
 			byTransport[transport] = u
 			order = append(order, transport)
 		}
 		u.Cargo = append(u.Cargo, uint16(cargo.Type))
+		u.Units = append(u.Units, uint32(unit))
+		if b, ok := p.boardedAt[unit]; ok && b.frame > u.LoadFrame {
+			u.LoadFrame, u.LoadX, u.LoadY = b.frame, b.x, b.y
+		}
+		delete(p.boardedAt, unit)
 	}
 	slices.Sort(order)
 	for _, id := range order {
 		slices.Sort(byTransport[id].Cargo)
+		slices.Sort(byTransport[id].Units)
 		p.d.Unloads = append(p.d.Unloads, *byTransport[id])
 	}
 	p.carriedBy, p.carriedNext = carried, p.carriedBy

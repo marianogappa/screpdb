@@ -177,5 +177,6 @@
   "skill.player.none": "엔진 데이터가 있는 게임이 5개 이상이면 실력이 표시됩니다.",
   "skill.trend.up": "상승 중",
   "skill.trend.down": "하락 중",
-  "skill.trend.flat": "유지 중"
+  "skill.trend.flat": "유지 중",
+  "labs.feature.gameInsights": "게임 인사이트: 패배 이유와 엘리베이터, 이레이저 같은 기술 표시"
 }

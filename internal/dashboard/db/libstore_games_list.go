@@ -47,7 +47,8 @@ func libFeatureShapeFor(featureKey string) (libFeatureShape, bool) {
 		return libFeatureShape{eventTypes: []string{normalized}}, true
 	case "drop":
 		return libFeatureShape{eventTypes: []string{"drop", "cliff_drop", "reaver_drop", "dt_drop"}}, true
-	case "reaver_drop", "dt_drop":
+	case "reaver_drop", "dt_drop",
+		"elevator", "eraser", "defilers_irradiated", "nydus_denied", "overlord_hunt", "undetected_cloak", "undefended_air_harass", "lurker_contain":
 		return libFeatureShape{eventTypes: []string{normalized}}, true
 	case "mind_control":
 		return libFeatureShape{markerFeatures: []string{"became_terran", "became_zerg"}}, true
@@ -469,6 +470,8 @@ var libFeaturingEventTypes = map[string]struct{}{
 	"zergling_rush": {}, "cannon_rush": {}, "bunker_rush": {},
 	"proxy_gate": {}, "proxy_rax": {}, "proxy_factory": {}, "proxy_starport": {},
 	"drop": {}, "cliff_drop": {}, "reaver_drop": {}, "dt_drop": {},
+	"elevator": {}, "eraser": {}, "defilers_irradiated": {}, "nydus_denied": {}, "overlord_hunt": {},
+	"undetected_cloak": {}, "undefended_air_harass": {}, "lurker_contain": {},
 }
 
 func (s *LibStore) ListFeaturingReplayEventRows(ctx context.Context, replayIDs []int64) ([]WorkflowReplayEventRow, error) {

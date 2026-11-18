@@ -17,7 +17,7 @@ func sampleDigest() *Digest {
 			{Owner: 3, Type: 131, From: 41, Unit: 3, Producer: 3, X: 64, Y: 4000, Start: 900, Complete: NoFrame, Cancel: 1000, Cmd: NoCmd},
 		},
 		Research:     []Research{{Owner: 3, Upgrade: true, ID: 10, Level: 2, Producer: 77, Start: 5000, Complete: 9000, Cancel: NoFrame}},
-		Deaths:       []Death{{Frame: 7000, Unit: 2049, Type: 7, Owner: 0, X: 1300, Y: 310, Reason: 1, KillerType: 37, KillerOwner: 3}},
+		Deaths:       []Death{{Frame: 7000, Unit: 2049, Type: 7, Owner: 0, X: 1300, Y: 310, Reason: 1, KillerType: 37, KillerOwner: 3, Killer: 70000}},
 		OwnerChanges: []OwnerChange{{Frame: 8000, Unit: 4097, Type: 0, From: 0, To: 3, Reason: 1}},
 		Outcomes:     []Outcome{{Frame: 19990, Owner: 0, Kind: OutcomeLeft}, {Frame: 19998, Owner: 3, Kind: OutcomeWon}},
 		Economy: []EconomySample{
@@ -91,10 +91,11 @@ func TestOlderDigestsStayReadableWithoutUnitOrders(t *testing.T) {
 	want.EngineVersion = OldestReadableEngineVersion
 	u := &want.Army[1].Units[0]
 	u.ID, u.Order, u.Energy, u.Commanded = 0, 0, 0, 0
+	want.Deaths[0].Killer = 0
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("older digest differs:\n got %+v\nwant %+v", got, want)
 	}
-	if got.UnitOrdersKnown() || !Readable(got.EngineVersion) || Readable(OldestReadableEngineVersion-1) {
+	if got.UnitOrdersKnown() || got.UnitIDsKnown() || !Readable(got.EngineVersion) || Readable(OldestReadableEngineVersion-1) {
 		t.Fatal("an older digest is readable but has no unit orders")
 	}
 }

@@ -39,7 +39,10 @@ func curateGameEvents(detail *workflowGameDetail) {
 	humans := len(detail.Players)
 	cands := make([]gameevents.Candidate, len(detail.GameEvents))
 	for i, e := range detail.GameEvents {
-		c := gameevents.Candidate{Type: strings.ToLower(e.Type), Second: int(e.Second)}
+		c := gameevents.Candidate{Type: strings.ToLower(e.Type), Second: int(e.Second), Pinned: e.Why}
+		for _, p := range e.Parts {
+			c.Folded = append(c.Folded, strings.ToLower(p.Type))
+		}
 		if e.Actor != nil {
 			c.Actor = e.Actor.PlayerID
 		}

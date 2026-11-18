@@ -2807,30 +2807,6 @@ button.workflow-nav-update-available:disabled {
   text-align: center;
 }
 
-/* Beside the map: two labelled facts, the file, and the staging buttons. The
-   labels sit in a fixed first column so the two values line up with each other
-   instead of each starting wherever its own label happens to end. */
-.workflow-game-facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 14px;
-  margin: 0;
-  align-items: baseline;
-}
-
-.workflow-game-facts dt {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--e-quiet);
-}
-
-.workflow-game-facts dd {
-  margin: 0;
-  color: var(--e-base);
-}
-
 /* The file name earns no caption: it is visibly a file name, and the button
    beside it says what it does. */
 .workflow-game-file-row {
@@ -2843,6 +2819,24 @@ button.workflow-nav-update-available:disabled {
 .workflow-game-file-row .workflow-meta-filepath-text {
   min-width: 0;
   flex: 0 1 auto;
+}
+
+.workflow-map-caption-when {
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: var(--e-quiet);
+}
+
+.workflow-game-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+  color: var(--e-quiet);
+}
+
+.workflow-game-footer .workflow-meta-filepath-text,
+.workflow-game-footer .workflow-meta-filepath-copy {
+  font-size: 0.72rem;
 }
 
 .workflow-game-stage-title {
@@ -3053,6 +3047,17 @@ button.workflow-nav-update-available:disabled {
 .wpt-comp .workflow-pattern-pills {
   flex: 1 1 0;
   min-width: 0;
+}
+
+/* Pills keep their own height instead of stretching to the row, so captioned and plain pills match. */
+.wpt-featuring .workflow-pattern-pills {
+  align-items: center;
+  align-content: center;
+}
+
+.wpt-featuring .workflow-pattern-pills > * {
+  box-sizing: border-box;
+  min-height: 50px;
 }
 
 .workflow-player-name-link {
@@ -3987,7 +3992,6 @@ button.workflow-nav-update-available:disabled {
 }
 
 .workflow-events-layout {
-  --events-title-h: 72px;
   display: grid;
   grid-template-columns: 70% minmax(0, 1fr);
   gap: 10px;
@@ -4008,7 +4012,7 @@ html.events-snap .workflow-nav-app {
 
 /* The map sits in a stage of fixed height, letterboxed, so its size never changes between events. */
 .workflow-event-stage {
-  height: calc(100vh - var(--events-title-h));
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4017,23 +4021,98 @@ html.events-snap .workflow-nav-app {
   border-radius: 8px;
 }
 
+/* Maps without an engine snapshot keep the title on their top edge, over a scrim. */
 .workflow-event-stage-title {
-  height: var(--events-title-h);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 6px;
-  font-size: 1.2rem;
-  font-weight: 600;
-  line-height: 1.3;
-  color: rgba(255, 255, 255, 0.95);
-  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  padding: 18px 22px 48px;
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1.25;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  background: linear-gradient(to bottom, rgba(5, 7, 10, 0.9) 0%, rgba(5, 7, 10, 0.65) 55%, rgba(5, 7, 10, 0) 100%);
+  border-radius: 8px 8px 0 0;
+  pointer-events: none;
 }
 
-.workflow-event-stage-time {
-  flex: 0 0 auto;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.55);
+.workflow-event-stage-title--center {
+  top: 50%;
+  left: 50%;
+  right: auto;
+  max-width: 70%;
+  transform: translate(-50%, -50%);
+  padding: 16px 24px;
+  text-align: center;
+  background: rgba(5, 7, 10, 0.55);
+  border-radius: 10px;
+}
+
+/* On an engine snapshot the title takes the emptiest patch of map, wrapped to its shape. */
+.engine-title {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 35px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.6);
+  background: rgba(5, 7, 10, 0.55);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.engine-title--center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 70%;
+  padding: 16px 24px;
+  text-align: center;
+}
+
+.engine-title img,
+.workflow-event-stage-title img {
+  height: 1.4em;
+  vertical-align: -0.3em;
+}
+
+/* Titles drop the colour square before names: the overlay already shows each player's colour. */
+.engine-title .rd-swatch,
+.workflow-event-stage-title .rd-swatch {
+  display: none;
+}
+
+/* Game time as StarCraft draws progress: a green bar of short segments, lit along its top edge. */
+.workflow-event-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  height: 9px;
+  overflow: hidden;
+  background: #081208;
+  border-radius: 0 0 8px 8px;
+  pointer-events: none;
+}
+
+.workflow-event-progress-fill {
+  position: relative;
+  height: 100%;
+  background: linear-gradient(to bottom, #9cf59a 0 2px, #38d13c 2px);
+  transition: width 0.3s ease;
+}
+
+.workflow-event-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(to right, transparent 0 5px, #081208 5px 7px);
 }
 
 .workflow-events-column {
@@ -5043,6 +5122,15 @@ html.events-snap .workflow-nav-app {
   background: rgba(100, 150, 255, 0.2);
   color: #e6efff;
   border-color: rgba(100, 150, 255, 0.55);
+}
+
+/* Something that opens a tab lights that tab while the pointer is on it. */
+.workflow-panel:has([data-opens-tab="events"]:hover) .workflow-production-tab[data-tab="events"],
+.workflow-panel:has([data-opens-tab="skill"]:hover) .workflow-production-tab[data-tab="skill"],
+.workflow-panel:has([data-opens-tab="build-orders"]:hover) .workflow-production-tab[data-tab="build-orders"] {
+  background: rgba(100, 150, 255, 0.14);
+  color: #e6efff;
+  border-color: rgba(100, 150, 255, 0.45);
 }
 
 .workflow-production-tab-disabled {
@@ -7648,6 +7736,8 @@ h2 .featured-badge { font-size: 0.42em; vertical-align: middle; margin-left: 10p
 .skill-explainer-link:hover { color: #bfdbfe; }
 .skill-explainer-link:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; border-radius: 3px; }
 .skill-explainer-link--compact { text-decoration: none; font-size: 0.85rem; margin-left: 4px; vertical-align: 0; }
+/* In a table header the info mark must not make the header taller than its neighbours. */
+.wpt-head .skill-explainer-link--compact { font-size: inherit; line-height: 1; }
 .skill-explainer-link--corner { align-self: flex-end; margin-bottom: -10px; }
 .skill-player-summary { gap: 12px; }
 .skill-player-summary-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
@@ -7966,4 +8056,53 @@ button.skill-compare-marker:hover { color: #fff; }
   display: inline-flex;
   align-items: center;
   min-width: 0;
+}
+
+/* Labs game_insights: one line under the player table saying what decided the game. */
+
+.insight-why-label {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 700;
+}
+
+
+
+
+/* The turning point, joined to the staging buttons: the moment, then the way to watch it. */
+.insight-why-watch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 44ch;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-left: 3px solid #38d13c;
+  border-radius: 0 8px 8px 0;
+  background: rgba(56, 209, 60, 0.06);
+}
+
+.insight-why-watch-text {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.92);
+  text-align: left;
+  cursor: pointer;
+}
+
+.insight-why-watch-text:hover {
+  color: #fff;
+}
+
+.engine-insight-path text {
+  font-weight: 700;
+  fill: #fff;
+  text-anchor: middle;
+  dominant-baseline: central;
 }

@@ -225,3 +225,47 @@ func TestSummarizeNamesResultsByReplayPlayerAndTrustsOnlyAPassInStep(t *testing.
 		t.Fatal("a desynced pass settled the winner")
 	}
 }
+
+func TestOnlyDigestsTooOldForTheLibraryAreRedoneInTheBackground(t *testing.T) {
+	lib := library.New(library.Options{})
+	defer lib.Close()
+	cache, err := digestcache.Open(filepath.Join(t.TempDir(), "digests.bin"), func(digestcache.Key) bool { return true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := New(Options{Library: lib, CachePath: filepath.Join(t.TempDir(), "unused.bin")})
+	r.cache = cache
+	dir := t.TempDir()
+	put := func(name string, version int32) *library.Replay {
+		rec := librarytest.Replay(librarytest.WithPath(filepath.Join(dir, name), time.Now()))
+		encoded, err := engine.Encode(&engine.Digest{EngineVersion: version, Drift: engine.Drift{ErrorFrame: engine.NoFrame, FirstMissing: engine.NoFrame, DesyncFrame: engine.NoFrame}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		k := r.key(rec.Checksum)
+		k.EngineVersion = version
+		if err := cache.Put(k, digestcache.Entry{Digest: encoded}); err != nil {
+			t.Fatal(err)
+		}
+		return rec
+	}
+	recent := put("recent.rep", engine.BackgroundUpgradeBelow)
+	stale := put("stale.rep", engine.BackgroundUpgradeBelow-1)
+	lib.Add(0, recent, stale)
+	lib.Flush()
+	r.enqueue(lib.Snapshot().Replays)
+	if _, queued := r.queue.byChecksum[recent.Checksum]; queued {
+		t.Fatal("a digest the library can still use was queued for a background pass")
+	}
+	if j, queued := r.queue.byChecksum[stale.Checksum]; !queued || !j.upgrade {
+		t.Fatal("a digest too old for the library was not queued for an upgrade")
+	}
+	lib.Flush()
+	got, _ := lib.Snapshot().ByChecksum(recent.Checksum)
+	if got.EngineData == nil || got.EngineData.EngineVersion != engine.BackgroundUpgradeBelow {
+		t.Fatalf("the older digest is not shown meanwhile: %+v", got.EngineData)
+	}
+	if r.Pending(got.ID) {
+		t.Fatal("a game showing an older digest is not pending")
+	}
+}

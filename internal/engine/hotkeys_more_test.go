@@ -112,7 +112,7 @@ func TestRecordCast(t *testing.T) {
 	} {
 		p.recordCast(e)
 	}
-	want := []Cast{{Frame: 500, Owner: 3, Order: 0x8e, X: 1000, Y: 2000}, {Frame: 550, Owner: 0, Order: 0x89, X: 64, Y: 96}}
+	want := []Cast{{Frame: 500, Owner: 3, Order: 0x8e, X: 1000, Y: 2000, TargetOwner: NoOwner}, {Frame: 550, Owner: 0, Order: 0x89, X: 64, Y: 96, TargetOwner: NoOwner}}
 	if !reflect.DeepEqual(p.d.Casts, want) {
 		t.Fatalf("casts %+v, want %+v", p.d.Casts, want)
 	}

@@ -93,10 +93,31 @@ var castOrders = map[byte]bool{
 	0xb8: true, 0xb9: true, 0xba: true,
 }
 
+// screp keeps the low 16 bits of a 1.21 unit tag, dropping the generation bit that openbw's wide layout reads.
+const screpDroppedGenerationBit = 1 << 16
+
 func (p *passState) recordCast(e *screpsim.CommandResult) {
 	order, ok := e.Cmd.(*repcmd.TargetedOrderCmd)
 	if !ok || order.Order == nil || !castOrders[order.Order.ID] || e.Outcome != openbw.Accepted {
 		return
 	}
-	p.d.Casts = append(p.d.Casts, Cast{Frame: e.Frame, Owner: e.Owner, Order: order.Order.ID, X: int32(order.Pos.X), Y: int32(order.Pos.Y)})
+	c := Cast{Frame: e.Frame, Owner: e.Owner, Order: order.Order.ID, X: int32(order.Pos.X), Y: int32(order.Pos.Y), TargetOwner: NoOwner}
+	if p.g != nil {
+		eng := p.g.Engine()
+		if len(e.Selection) > 0 {
+			if caster, ok := eng.Unit(e.Selection[0]); ok {
+				c.CasterType = uint16(caster.Type)
+			}
+		}
+		if order.UnitTag.Valid() && order.UnitTag != 0 {
+			tag := uint32(order.UnitTag)
+			for u := range eng.Units() {
+				if eng.MatchesSCRTag(u.ID, tag) || eng.MatchesSCRTag(u.ID, tag|screpDroppedGenerationBit) {
+					c.Target, c.TargetType, c.TargetOwner = uint32(u.ID), uint16(u.Type), u.Owner
+					break
+				}
+			}
+		}
+	}
+	p.d.Casts = append(p.d.Casts, c)
 }

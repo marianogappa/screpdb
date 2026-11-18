@@ -148,7 +148,7 @@ func (r *Runner) Digest(checksum [32]byte) (*engine.Digest, bool) {
 	if cache == nil {
 		return nil, false
 	}
-	entry, ok, err := r.cached(cache, checksum)
+	entry, _, ok, err := r.cached(cache, checksum)
 	if err != nil || !ok || entry.Failed != "" {
 		return nil, false
 	}
@@ -223,6 +223,9 @@ func (r *Runner) Snapshots(ctx context.Context, checksum [32]byte, path string, 
 // Focus runs the replay the user has open now, on a worker of its own, instead of after the passes already
 // running: a long team game on every worker would otherwise keep the open game waiting for minutes. It
 // ignores the worker limit, which is for the background queue, not for the game someone just opened.
+//
+// A game whose digest is from an older engine version the background pass leaves alone is redone now, while
+// its page keeps showing that digest until the new one lands.
 func (r *Runner) Focus(replayID int64) {
 	rec, ok := r.lib.Snapshot().ByID(replayID)
 	if !ok {
@@ -230,6 +233,9 @@ func (r *Runner) Focus(replayID int64) {
 	}
 	r.mu.Lock()
 	j, queued := r.queue.byChecksum[rec.Checksum]
+	if !queued && rec.EngineData != nil && rec.EngineData.EngineVersion < engine.EngineVersion && !r.running[rec.Checksum] {
+		j, queued = &job{checksum: rec.Checksum, id: rec.ID, date: rec.Date, path: rec.Path(), upgrade: true}, true
+	}
 	if queued && r.status.State == StateRunning {
 		r.queue.remove(rec.Checksum)
 		r.mu.Unlock()
@@ -241,10 +247,11 @@ func (r *Runner) Focus(replayID int64) {
 	r.signal()
 }
 
-// Pending reports whether the replay is waiting for, or in, an engine pass.
+// Pending reports whether the replay is waiting for, or in, its first engine pass. A game redone on a newer
+// engine version is not pending: its page shows the older digest meanwhile.
 func (r *Runner) Pending(replayID int64) bool {
 	rec, ok := r.lib.Snapshot().ByID(replayID)
-	if !ok {
+	if !ok || rec.EngineData != nil {
 		return false
 	}
 	r.mu.Lock()
@@ -269,7 +276,7 @@ func (r *Runner) Unavailable(replayID int64) bool {
 	if !running || cache == nil {
 		return false
 	}
-	entry, ok, err := r.cached(cache, rec.Checksum)
+	entry, _, ok, err := r.cached(cache, rec.Checksum)
 	return err == nil && ok && entry.Failed != ""
 }
 
@@ -395,7 +402,7 @@ func (r *Runner) onEvent(ev library.Event) {
 func (r *Runner) enqueue(records []*library.Replay) {
 	queued := 0
 	for _, rec := range records {
-		if rec.EngineData != nil && rec.EngineData.EngineVersion == engine.EngineVersion {
+		if rec.EngineData != nil && !engine.UpgradeInBackground(rec.EngineData.EngineVersion) {
 			continue
 		}
 		// The user's own copy of a game whose complete copy is in the library is hidden: its pass would be
@@ -404,9 +411,12 @@ func (r *Runner) enqueue(records []*library.Replay) {
 			continue
 		}
 		upgrade := rec.EngineData != nil
-		if !upgrade && r.applyCached(rec.Checksum) {
-			if upgrade = !r.cache.Has(r.key(rec.Checksum)); !upgrade {
-				continue
+		if !upgrade {
+			if settled, version := r.applyCached(rec.Checksum); settled {
+				if version == engine.EngineVersion || !engine.UpgradeInBackground(version) {
+					continue
+				}
+				upgrade = true
 			}
 		}
 		r.mu.Lock()
@@ -423,33 +433,34 @@ func (r *Runner) key(checksum [32]byte) digestcache.Key {
 	return digestcache.Key{Checksum: checksum, EngineVersion: engine.EngineVersion, DataHash: r.dataHash}
 }
 
-// cached is a replay's newest readable cache record.
-func (r *Runner) cached(cache *digestcache.Cache, checksum [32]byte) (digestcache.Entry, bool, error) {
+// cached is a replay's newest readable cache record and its engine version.
+func (r *Runner) cached(cache *digestcache.Cache, checksum [32]byte) (digestcache.Entry, int32, bool, error) {
 	for v := int32(engine.EngineVersion); v >= engine.OldestReadableEngineVersion; v-- {
 		k := r.key(checksum)
 		k.EngineVersion = v
 		if entry, ok, err := cache.Get(k); err != nil || ok {
-			return entry, ok, err
+			return entry, v, ok, err
 		}
 	}
-	return digestcache.Entry{}, false, nil
+	return digestcache.Entry{}, 0, false, nil
 }
 
-// applyCached reports whether the cache settled this replay: a digest to apply, or a failed pass not to retry.
-func (r *Runner) applyCached(checksum [32]byte) bool {
-	entry, ok, err := r.cached(r.cache, checksum)
+// applyCached reports whether the cache settled this replay, a digest to apply or a failed pass not to retry,
+// and the engine version that settled it.
+func (r *Runner) applyCached(checksum [32]byte) (bool, int32) {
+	entry, version, ok, err := r.cached(r.cache, checksum)
 	if err != nil || !ok {
-		return false
+		return false, 0
 	}
 	if entry.Failed != "" {
-		return true
+		return true, version
 	}
 	d, err := engine.Decode(entry.Digest)
 	if err != nil {
-		return false
+		return false, 0
 	}
 	r.lib.SetEngineData(checksum, r.summarize(checksum, d))
-	return true
+	return true, version
 }
 
 func (r *Runner) signal() {
@@ -536,7 +547,11 @@ func (r *Runner) process(j *job) {
 		delete(r.running, j.checksum)
 		r.mu.Unlock()
 	}()
-	if j.upgrade && r.cache.Has(r.key(j.checksum)) || !j.upgrade && r.applyCached(j.checksum) {
+	if j.upgrade {
+		if r.cache.Has(r.key(j.checksum)) {
+			return
+		}
+	} else if settled, _ := r.applyCached(j.checksum); settled {
 		return
 	}
 	b, err := iofacade.ReadFile(j.path)
