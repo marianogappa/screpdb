@@ -127,6 +127,9 @@ type Event struct {
 	Members []uint32 `json:",omitempty"`
 	// Parts are the events Combine folded into this one.
 	Parts []Event `json:",omitempty"`
+	// RebuiltAfter is the second the target's town hall at the event's base last fell, when the target built
+	// another there before the event: a hit on a rebuilt base, not on ruins. Zero otherwise.
+	RebuiltAfter int `json:",omitempty"`
 }
 
 const (
@@ -210,6 +213,7 @@ func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
 	for _, e := range out {
 		if e.Second < g.trusted {
 			e.SnapshotSecond = max(e.Second, min(e.SnapshotSecond, lastShown))
+			e.RebuiltAfter = g.rebuiltAfter(e)
 			kept = append(kept, e)
 		}
 	}
@@ -1610,4 +1614,32 @@ func fighter(t uint16) uint16 {
 		return ut(bwgame.UnitTypesProtossReaver)
 	}
 	return t
+}
+
+var hitsBase = map[string]bool{"attack": true, "worker_kills": true, "drop": true, "reaver_drop": true, "dt_drop": true, "cliff_drop": true}
+
+// rebuiltAfter is when the target's town hall at the event's base last fell, if the target started another
+// there afterwards that still stood when the event began; 0 when the event hits a base that never fell.
+func (g *game) rebuiltAfter(e Event) int {
+	if !hitsBase[e.Type] || e.Base == NoBase {
+		return 0
+	}
+	fell := 0
+	for _, d := range g.d.Deaths {
+		if s := second(d.Frame); s < e.Second && d.Owner == e.Target && IsTownHall(d.Type) && g.baseOf(d.X, d.Y) == e.Base {
+			fell = max(fell, s)
+		}
+	}
+	if fell == 0 {
+		return 0
+	}
+	for _, p := range g.d.Productions {
+		if p.Owner != e.Target || !IsTownHall(p.Type) || second(p.Start) < fell || second(p.Start) >= e.Second || g.baseOf(p.X, p.Y) != e.Base {
+			continue
+		}
+		if p.Cancel == engine.NoFrame || second(p.Cancel) >= e.Second {
+			return fell
+		}
+	}
+	return 0
 }

@@ -3055,9 +3055,17 @@ button.workflow-nav-update-available:disabled {
   align-content: center;
 }
 
+/* Every pill keeps room for a top-border legend, so pills with and without one line up. */
 .wpt-featuring .workflow-pattern-pills > * {
   box-sizing: border-box;
   min-height: 50px;
+  margin-top: 9px;
+}
+
+button.workflow-pill-link {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
 }
 
 .workflow-player-name-link {

@@ -497,6 +497,8 @@ type workflowGameEvent struct {
 	Outcome *workflowGameEventOutcome `json:"outcome,omitempty"`
 	// Parts are the events folded into this one (moments.Combine): the kills a drop's Lurkers made undetected.
 	Parts []workflowGameEvent `json:"parts,omitempty"`
+	// RebuiltAfterSecond is when the base an attack or drop hit last fell before the target rebuilt it.
+	RebuiltAfterSecond int64 `json:"rebuilt_after_second,omitempty"`
 	// DurationSeconds is how long a span event (a long supply block) lasted.
 	DurationSeconds int64 `json:"duration_seconds,omitempty"`
 	// Result is how an engine nuke or recall ended (moments.Nuke*, moments.Recall*).

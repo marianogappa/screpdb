@@ -143,15 +143,24 @@ const DROP_TEXT = {
   dt_drop: { label: 'events.dtDrop', sentence: 'events.sentence.dtDrops' },
 };
 
-const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
+// playerEventsOfTypes are the events a player did of any of the types, counting events folded into others.
+const playerEventsOfTypes = (events, playerID, wantedTypes) => {
   const pid = Number(playerID);
   const wanted = new Set((wantedTypes || []).map((t) => normalizeEventType(t)));
-  return (events || []).some((ev) => {
+  return (events || []).filter((ev) => {
     const types = [ev?.type, ...(Array.isArray(ev?.parts) ? ev.parts.map((p) => p?.type) : [])];
     if (!types.some((type) => wanted.has(normalizeEventType(type)))) return false;
     const aid = ev?.actor?.player_id;
     return aid != null && Number(aid) === pid;
   });
+};
+
+const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => playerEventsOfTypes(events, playerID, wantedTypes).length > 0;
+
+// A pill stands for the player's first key event of its kind, else their first: the one the events list shows.
+const pillEvent = (events, playerID, wantedTypes) => {
+  const mine = playerEventsOfTypes(events, playerID, wantedTypes);
+  return mine.find((ev) => ev?.key !== false) || mine[0] || null;
 };
 
 const dropTransportIconForRace = (race, opts) => {
@@ -179,6 +188,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   const transportIcon = dropTransportIconForRace(player?.race);
   if (playerIsActorForGameEventTypes(events, pid, ['drop'])) {
     positive.push({
+      event: pillEvent(events, pid, ['drop']),
       key: 'drop',
       domKey: `ge-drop-${pid}`,
       icons: [transportIcon].filter(Boolean),
@@ -188,6 +198,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['cliff_drop'])) {
     positive.push({
+      event: pillEvent(events, pid, ['cliff_drop']),
       key: 'cliff_drop',
       domKey: `ge-cliff-drop-${pid}`,
       icons: [getUnitIcon('dropship')].filter(Boolean),
@@ -198,6 +209,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   for (const [key, unit] of [['reaver_drop', 'reaver'], ['dt_drop', 'darktemplar']]) {
     if (playerIsActorForGameEventTypes(events, pid, [key])) {
       positive.push({
+        event: pillEvent(events, pid, [key]),
         key,
         domKey: `ge-${key}-${pid}`,
         icons: [getUnitIcon('shuttle'), getUnitIcon(unit)].filter(Boolean),
@@ -208,6 +220,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['cannon_rush'])) {
     positive.push({
+      event: pillEvent(events, pid, ['cannon_rush']),
       key: `ge-cannon-${pid}`,
       icon: getUnitIcon('photoncannon'),
       label: t('events.cannonRush'),
@@ -216,6 +229,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['bunker_rush'])) {
     positive.push({
+      event: pillEvent(events, pid, ['bunker_rush']),
       key: `ge-bunker-${pid}`,
       icon: getUnitIcon('bunker'),
       label: t('events.bunkerRush'),
@@ -224,6 +238,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['proxy_gate'])) {
     positive.push({
+      event: pillEvent(events, pid, ['proxy_gate']),
       key: `ge-proxy-gate-${pid}`,
       icon: getUnitIcon('gateway'),
       label: t('events.proxyGateway'),
@@ -232,6 +247,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['proxy_rax'])) {
     positive.push({
+      event: pillEvent(events, pid, ['proxy_rax']),
       key: `ge-proxy-rax-${pid}`,
       icon: getUnitIcon('barracks'),
       label: t('events.proxyBarracks'),
@@ -240,6 +256,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['proxy_factory'])) {
     positive.push({
+      event: pillEvent(events, pid, ['proxy_factory']),
       key: `ge-proxy-factory-${pid}`,
       icon: getUnitIcon('factory'),
       label: t('events.proxyFactory'),
@@ -248,6 +265,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['proxy_starport'])) {
     positive.push({
+      event: pillEvent(events, pid, ['proxy_starport']),
       key: `ge-proxy-starport-${pid}`,
       icon: getUnitIcon('starport'),
       label: t('events.proxyStarport'),
@@ -257,6 +275,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   if (playerIsActorForGameEventTypes(events, pid, ['long_supply_block'])) {
     const supply = { terran: 'supplydepot', protoss: 'pylon', zerg: 'overlord' }[String(player?.race || '').toLowerCase()];
     positive.push({
+      event: pillEvent(events, pid, ['long_supply_block']),
       key: `ge-long-supply-block-${pid}`,
       icon: supply ? getUnitIcon(supply) : null,
       label: t('events.longSupplyBlock'),
@@ -271,6 +290,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   ]) {
     if (playerIsActorForGameEventTypes(events, pid, [type])) {
       positive.push({
+        event: pillEvent(events, pid, [type]),
         key: `ge-${type}-${pid}`,
         icon: getUnitIcon(icon),
         label: t(`insight.${type}`),
@@ -292,16 +312,34 @@ const GameProgress = ({ progress }) => (
 // Strong pills are the Labs insights: they outrank the other game event pills for the one row there is room for.
 const isStrongPill = (pill) => String(pill?.className || '').includes('workflow-pattern-pill-strong');
 
-const renderGameSummarySignalPill = (pill) => {
+// A pill drawn from a game event carries the event's time on its top border and opens it in Game Events.
+const renderGameSummarySignalPill = (pill, openEvent) => {
   // Backwards-compat: older entries use { icon }, drop pills use { icons: [] }.
   const icons = Array.isArray(pill.icons) ? pill.icons : (pill.icon ? [pill.icon] : []);
-  return (
-    <span key={pill.domKey || pill.key} className={pill.className} title={pill.title}>
+  const event = openEvent && pill.event ? pill.event : null;
+  const content = (
+    <>
+      {event ? <span className="workflow-pill-legend">{formatDuration(Number(event.second) || 0)}</span> : null}
       {icons.map((url, i) => (
         <img key={`${pill.key || pill.domKey}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
       ))}
       <span>{pill.label}</span>
-    </span>
+    </>
+  );
+  if (!event) {
+    return <span key={pill.domKey || pill.key} className={pill.className} title={pill.title}>{content}</span>;
+  }
+  return (
+    <button
+      type="button"
+      key={pill.domKey || pill.key}
+      className={`${pill.className} workflow-pill-legended workflow-pill-link`}
+      title={pill.title}
+      data-opens-tab="events"
+      onClick={() => openEvent(event)}
+    >
+      {content}
+    </button>
   );
 };
 
@@ -456,15 +494,21 @@ const combinedClauses = (event) => {
   }).filter(Boolean);
 };
 
+// A hit on a base that fell before and was rebuilt says so, or it reads as an attack on ruins.
+const rebuiltClause = (event) => {
+  const fell = Number(event?.rebuilt_after_second || 0);
+  return fell > 0 ? [{ key: 'events.fragment.rebuilt', params: { time: formatDuration(fell) } }] : [];
+};
+
 const gameEventDescription = (event, registry) => {
   const lead = gameEventLeadDescription(event, registry);
   const target = String(event?.target?.name || '').trim();
-  return combinedClauses(event).reduce((text, c) => text + t(c.key, { target, ...c.params }), String(lead));
+  return [...rebuiltClause(event), ...combinedClauses(event)].reduce((text, c) => text + t(c.key, { target, ...c.params }), String(lead));
 };
 
 const renderGameEventDescription = (event, registry, playerRaceByID) => {
   const lead = renderGameEventLeadDescription(event, registry, playerRaceByID);
-  const clauses = combinedClauses(event);
+  const clauses = [...rebuiltClause(event), ...combinedClauses(event)];
   if (clauses.length === 0) return lead;
   const targetSpan = gamePlayerNameSpan(event?.target, 'ct');
   return (
@@ -4252,11 +4296,12 @@ function App() {
     }
   }, [mainGame, selectedReplayId, mainGameTab, mainTimingCategory, mainSupplyFromEngine]);
   const mainGameWhyEvent = useMemo(() => (mainGame?.game_events || []).find((e) => e?.why) || null, [mainGame]);
-  const openMainGameWhyEvent = () => {
+  const openMainGameEvent = (event) => {
     setMainGameTab('events');
-    const idx = topicFilteredGameEvents.indexOf(mainGameWhyEvent);
+    const idx = topicFilteredGameEvents.indexOf(event);
     if (idx >= 0) setMainSelectedGameEventKey(gameEventTopicKey(idx));
   };
+  const openMainGameWhyEvent = () => openMainGameEvent(mainGameWhyEvent);
   const selectedMainGameEventKeyResolved = useMemo(() => {
     if (!selectedMainGameEvent) return '';
     if (selectedMainGameEvent.type === 'phase_snapshot') return gamePhaseKey(selectedMainGameEvent.phase);
@@ -6187,8 +6232,8 @@ function App() {
                             <div className="wpt-cell wpt-featuring">
                               <OneRowPills className="workflow-pattern-pills">
                                 {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry, buildOrderLinkFor(player, pattern)))}
-                                {gameSummaryParts.positive.filter(isStrongPill).map(renderGameSummarySignalPill)}
-                                {gameSummaryParts.positive.filter((p) => !isStrongPill(p)).map(renderGameSummarySignalPill)}
+                                {gameSummaryParts.positive.filter(isStrongPill).map((pill) => renderGameSummarySignalPill(pill, openMainGameEvent))}
+                                {gameSummaryParts.positive.filter((p) => !isStrongPill(p)).map((pill) => renderGameSummarySignalPill(pill, openMainGameEvent))}
                                 {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
                                 <SpellcastsPill spells={collectPlayerSpells(playerPhases)} />
                               </OneRowPills>

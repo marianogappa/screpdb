@@ -207,6 +207,7 @@
   "events.fragment.count": " (×{count})",
   "events.fragment.transports": " {count}",
   "events.fragment.from": " from {location}",
+  "events.fragment.rebuilt": ", a base rebuilt since it fell at {time}",
   "events.icon.leftGame.alt": "left the game",
   "events.icon.leftGame.title": "Player left the game",
   "events.icon.dropped.alt": "dropped",

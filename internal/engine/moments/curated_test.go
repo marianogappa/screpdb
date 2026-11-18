@@ -192,3 +192,23 @@ func TestZealotSpeedIsShownAtTheCitadel(t *testing.T) {
 		t.Fatalf("speedlot at %d,%d base %d, want the Citadel in the main", e.X, e.Y, e.Base)
 	}
 }
+
+func TestAHitOnARebuiltBaseSaysWhenItFell(t *testing.T) {
+	d := digest()
+	hatch := ut(bwgame.UnitTypesZergHatchery)
+	d.Deaths = []engine.Death{{Frame: f(300), Unit: 50, Type: hatch, Owner: 0, X: 2000, Y: 400, Reason: 1}}
+	d.Productions = []engine.Production{{Owner: 0, Type: hatch, Unit: 60, X: 2010, Y: 400, Start: f(400), Complete: f(475), Cancel: engine.NoFrame}}
+	g := newGame(d, testBases, zvp)
+	drop := Event{Type: "drop", Second: 500, Actor: 1, Target: 0, Base: 4}
+	if got := g.rebuiltAfter(drop); got != 300 {
+		t.Fatalf("rebuilt after %d, want 300", got)
+	}
+	d.Productions[0].Cancel = f(450)
+	if got := newGame(d, testBases, zvp).rebuiltAfter(drop); got != 0 {
+		t.Fatal("a cancelled Hatchery is not a rebuilt base")
+	}
+	d.Productions[0].Cancel = engine.NoFrame
+	if got := newGame(d, testBases, zvp).rebuiltAfter(Event{Type: "expansion", Second: 500, Actor: 0, Base: 4}); got != 0 {
+		t.Fatal("only hits on a base say it was rebuilt")
+	}
+}

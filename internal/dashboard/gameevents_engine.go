@@ -141,6 +141,7 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 			}
 		}
 		e.Defenders = int64(m.Defenders)
+		e.RebuiltAfterSecond = int64(m.RebuiltAfter)
 		for _, p := range m.Parts {
 			if part, ok := toEvent(p); ok {
 				part.Base, part.Engine = nil, nil

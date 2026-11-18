@@ -207,6 +207,7 @@
   "events.fragment.count": " (×{count})",
   "events.fragment.transports": " {count}기",
   "events.fragment.from": " ({location}에서 출발)",
+  "events.fragment.rebuilt": ", {time}에 무너진 뒤 재건된 기지",
   "events.icon.leftGame.alt": "게임을 나감",
   "events.icon.leftGame.title": "플레이어가 게임을 나갔습니다",
   "events.icon.dropped.alt": "튕김",
