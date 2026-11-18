@@ -4008,9 +4008,10 @@ button.workflow-pill-link {
 }
 
 /* Snap points while the events tab is open: the page top and the map with its title, which holds the
-   view while the reader browses events. */
+   view while the reader browses events. Proximity, not mandatory: a mandatory snap re-snaps the moment it
+   switches on, jumping the page on every tab change. */
 html.events-snap {
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: y proximity;
 }
 
 html.events-snap .workflow-nav-app {
@@ -8074,6 +8075,11 @@ button.skill-compare-marker:hover { color: #fff; }
   letter-spacing: 0.07em;
   color: rgba(255, 255, 255, 0.5);
   font-weight: 700;
+}
+
+.workflow-event-row-why {
+  display: block;
+  color: #7ddc6a;
 }
 
 

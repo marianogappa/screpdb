@@ -17,12 +17,6 @@ type Insights struct {
 	Why    *Why
 }
 
-// Why points at the event in Events that explains the loss.
-type Why struct {
-	Loser int8
-	Event int
-}
-
 const (
 	InsightUndetectedCloak   = "undetected_cloak"
 	InsightUndefendedAir     = "undefended_air_harass"
@@ -92,7 +86,6 @@ const (
 	nydusUseReach    = 8 * tile
 	nydusBaseReach   = 20 * tile
 	nydusBaseAfter   = 120
-	whyLookBack      = 240
 	// A contain is Lurkers burrowed outside an enemy base's choke with an army beside them, held for a minute.
 	containReach        = 14 * tile
 	containSupportReach = 18 * tile
@@ -152,6 +145,7 @@ func DetectInsights(d *engine.Digest, bases []Base, players []Player) Insights {
 	out = append(out, g.defilersIrradiated()...)
 	out = append(out, g.nydusDenied()...)
 	out = append(out, g.lurkerContains()...)
+	out = append(out, g.overruns()...)
 	kept := out[:0]
 	for _, e := range out {
 		if e.Second < g.trusted {
@@ -160,7 +154,11 @@ func DetectInsights(d *engine.Digest, bases []Base, players []Player) Insights {
 		}
 	}
 	sort.SliceStable(kept, func(i, j int) bool { return kept[i].Second < kept[j].Second })
-	return Insights{Events: kept, Why: g.why(kept)}
+	in := Insights{Events: kept}
+	if whys := g.whys(kept); len(whys) > 0 {
+		in.Why = &whys[len(whys)-1]
+	}
+	return in
 }
 
 // leftAt is the second a player left, dropped or was defeated, or -1.
@@ -973,50 +971,10 @@ func (g *game) fightNear(a, b int8, from, to int, x, y, reach int32) []engine.De
 	return out
 }
 
-// why picks, in a 1v1, the insight against the loser in their last four minutes that cost them the most, if
-// any cost them enough to explain the loss.
-func (g *game) why(events []Event) *Why {
-	var humans []int8
-	for slot, p := range g.players {
-		if p.Human {
-			humans = append(humans, slot)
-		}
-	}
-	if len(humans) != 2 {
-		return nil
-	}
-	loser, left := NoPlayer, 1<<30
-	for _, s := range humans {
-		if at := g.leftAt(s); at >= 0 && at < left {
-			loser, left = s, at
-		}
-	}
-	if loser == NoPlayer || left > g.trusted {
-		return nil
-	}
-	best, bestScore := -1, int32(0)
-	for i, e := range events {
-		if e.Target != loser || e.Second+e.Seconds < left-whyLookBack || e.Second > left || !decisive(e) {
-			continue
-		}
-		score := e.Outcome.Killed + 100*int32(e.Outcome.Workers)
-		if e.Outcome.TownHall {
-			score += 2000
-		}
-		if score > bestScore {
-			best, bestScore = i, score
-		}
-	}
-	if best < 0 {
-		return nil
-	}
-	return &Why{Loser: loser, Event: best}
-}
-
 func decisive(e Event) bool {
 	o := e.Outcome
 	switch e.Type {
-	case InsightUndetectedCloak, InsightUndefendedAir:
+	case InsightUndetectedCloak, InsightUndefendedAir, InsightOverrun:
 		return true
 	case InsightElevator:
 		return o.TownHall || o.Workers >= 8 || o.Killed >= 1500

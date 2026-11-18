@@ -93,7 +93,19 @@ type Player struct {
 	Slot  int8
 	Race  openbw.Race
 	Human bool
+	// Team groups allies: players sharing a non-zero Team are on one side. Zero is a team of one.
+	Team int
+	// Result is how the player's side did, as the library decided it from the engine, the commands and
+	// Battle.net: ResultWon, ResultLost or zero when unknown.
+	Result int8
+	// LeftAt is the second the player left by the commands, or zero.
+	LeftAt int
 }
+
+const (
+	ResultWon  int8 = 1
+	ResultLost int8 = -1
+)
 
 // Event is one curated moment. Base is an index into the bases given to Detect, or NoBase.
 // Region is what the map should show: the fight, the new base, the drop, not the whole base area.
@@ -307,7 +319,14 @@ func (g *game) holder(base, sec int) int8 {
 }
 
 func (g *game) enemies(a, b int8) bool {
-	return a != b && a != NoPlayer && b != NoPlayer && g.players[a].Human && g.players[b].Human
+	return a != b && a != NoPlayer && b != NoPlayer && g.players[a].Human && g.players[b].Human && g.teamOf(a) != g.teamOf(b)
+}
+
+func (g *game) teamOf(slot int8) int {
+	if t := g.players[slot].Team; t != 0 {
+		return t
+	}
+	return -1 - int(slot)
 }
 
 // enemyHomeBase is the main or natural an enemy of actor holds at the point, for rushes that only

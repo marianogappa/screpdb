@@ -100,9 +100,12 @@ export const renderPillText = (definition, surface, row) => {
 
   const label   = interpolatePlaceholders(pillText(definition, surface, 'label'), { subject, minute, timestamp });
   const iconKey = interpolatePlaceholders(pill.icon_key, { subject, minute, timestamp });
+  const timeless = interpolatePlaceholders(stripTemporalPlaceholders(pillText(definition, surface, 'label')), { subject });
 
   return {
     label,
+    timeless,
+    timestamp: Number(row?.detected_second) > 0 ? timestamp : null,
     iconKey,
     icon: iconKey ? getUnitIcon(iconKey) : null,
     style: pill.style || '',

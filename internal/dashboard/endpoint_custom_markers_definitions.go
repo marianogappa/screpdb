@@ -26,6 +26,13 @@ type markerDefinition struct {
 	// hotkey usage that can't be human-checked). When false the frontend flags
 	// the detection as "beta".
 	Curated bool `json:"curated"`
+	// WholeGame marks a measurement over the whole game, like never upgrading, which has no moment to show.
+	WholeGame bool `json:"whole_game,omitempty"`
+}
+
+// wholeGameMarkers are the markers that measure a whole game rather than spot a moment in it.
+var wholeGameMarkers = map[string]bool{
+	"never_researched": true, "never_upgraded": true, "never_used_hotkeys": true, "viewport_multitasking": true,
 }
 
 // gameEventFeature covers the game-event-only featuring chips (cannon_rush,
@@ -218,6 +225,7 @@ func (d *Dashboard) handlerMarkersDefinitions(w http.ResponseWriter, _ *http.Req
 			GamesList:     m.GamesList,
 			EventsList:    m.EventsList,
 			Curated:       markers.IsCurated(m.FeatureKey) || markers.IsBetaExempt(m.FeatureKey),
+			WholeGame:     wholeGameMarkers[m.FeatureKey],
 		}
 	}
 

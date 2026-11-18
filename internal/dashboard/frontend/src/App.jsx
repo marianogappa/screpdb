@@ -136,6 +136,12 @@ const DROP_EVENT_TYPES = ['drop', 'cliff_drop', 'reaver_drop', 'dt_drop'];
 const DROP_ACTOR_EVENT_TYPES = DROP_EVENT_TYPES;
 
 // DROP_TEXT names each drop variant: its short label and its event sentence.
+// PATTERN_EVENT_TYPES are the game event types a marker pill stands for when their names differ.
+const PATTERN_EVENT_TYPES = {
+  made_recalls: ['recall'],
+  made_drops: DROP_EVENT_TYPES,
+};
+
 const DROP_TEXT = {
   drop: { label: 'events.drop', sentence: 'events.sentence.drops' },
   cliff_drop: { label: 'events.cliffDrop', sentence: 'events.sentence.cliffDrops' },
@@ -299,6 +305,18 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     }
   }
 
+  if (playerIsActorForGameEventTypes(events, pid, ['overrun'])) {
+    const ev = pillEvent(events, pid, ['overrun']);
+    const unit = String(ev?.attack_unit_types?.[0] || '').toLowerCase().replace(/[^a-z]/g, '');
+    positive.push({
+      event: ev,
+      key: `ge-overrun-${pid}`,
+      icon: unit ? getUnitIcon(unit) : null,
+      label: t('insight.overrun'),
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+
   return { positive: elideGenericDropPill(positive), noScout: null };
 };
 
@@ -426,7 +444,7 @@ const fightSentence = (event, eventType, hasActor, hasTarget, location) => {
 // the sentence that says what happened. insightSentence returns null for any other type.
 const INSIGHT_TYPES = new Set([
   'elevator', 'eraser', 'defilers_irradiated', 'nydus_denied',
-  'undetected_cloak', 'undefended_air_harass', 'overlord_hunt', 'lurker_contain',
+  'undetected_cloak', 'undefended_air_harass', 'overlord_hunt', 'lurker_contain', 'overrun',
 ]);
 
 const insightUnitName = (event) => {
@@ -470,6 +488,13 @@ const insightSentence = (event, eventType, hasActor, location) => {
     }
     case 'lurker_contain':
       return { key: 'insight.sentence.lurkerContain', params: { count, duration: formatDuration(Number(event?.duration_seconds || 0)) } };
+    case 'overrun': {
+      if (!locationClause) return { fallback };
+      const raw = String(event?.attack_unit_types?.[0] || '').trim();
+      const iconUnit = raw ? { sprite: raw.toLowerCase().replace(/[^a-z]/g, ''), name: slugKey(raw), fallback: raw } : null;
+      const key = Number(event?.defenders || 0) > 0 ? 'insight.sentence.overrun' : 'insight.sentence.overrunUnopposed';
+      return { key, params: { count, locationClause, icon: '' }, iconUnit };
+    }
     default:
       return { fallback };
   }
@@ -2213,7 +2238,8 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
   return indexed.map((entry) => entry.pattern);
 };
 
-const renderPatternPill = (pattern, keyPrefix, team, registry, link) => {
+// timed puts a pill's time on its top border, the label without it, as the summary does for every pill.
+const renderPatternPill = (pattern, keyPrefix, team, registry, link, timed = false) => {
   if (!registry) return null;
   const def = lookupDefinitionForPattern(registry, pattern);
   if (!def) return null;
@@ -2225,15 +2251,16 @@ const renderPatternPill = (pattern, keyPrefix, team, registry, link) => {
   const isOpener = isOpenerEventType(pattern?.event_type);
   // A top-border legend names the pill type (opener); the Spellcasts pill
   // carries its own legend (see SpellcastsPill).
-  const legendText = isOpener ? 'pill.buildOrderLegend' : null;
-  const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legendText ? 'workflow-pill-legended' : ''}`.trim();
+  const legend = isOpener ? t('pill.buildOrderLegend') : (timed && !def.whole_game ? rendered.timestamp : null);
+  const label = timed && !isOpener ? rendered.timeless : rendered.label;
+  const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legend ? 'workflow-pill-legended' : ''}`.trim();
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
   const content = (
     <>
-      {legendText ? <span className="workflow-pill-legend">{t(legendText)}</span> : null}
+      {legend ? <span className="workflow-pill-legend">{legend}</span> : null}
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
       {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
-      {rendered.label ? <span>{rendered.label}</span> : null}
+      {label ? <span>{label}</span> : null}
       {featureIsBeta(def) ? <BetaTag /> : null}
     </>
   );
@@ -4295,13 +4322,25 @@ function App() {
       setMainGameTab('supply-timeline');
     }
   }, [mainGame, selectedReplayId, mainGameTab, mainTimingCategory, mainSupplyFromEngine]);
-  const mainGameWhyEvent = useMemo(() => (mainGame?.game_events || []).find((e) => e?.why) || null, [mainGame]);
+  // A team game has a turning point per losing team; the summary shows the last, the one that ended it.
+  const mainGameWhyEvent = useMemo(() => (mainGame?.game_events || []).findLast((e) => e?.why) || null, [mainGame]);
   const openMainGameEvent = (event) => {
     setMainGameTab('events');
     const idx = topicFilteredGameEvents.indexOf(event);
     if (idx >= 0) setMainSelectedGameEventKey(gameEventTopicKey(idx));
   };
   const openMainGameWhyEvent = () => openMainGameEvent(mainGameWhyEvent);
+  // A marker pill opens the game event it matches, the same kind by the same player near its time, when the
+  // events list shows one.
+  const patternEventLink = (player, pattern) => {
+    const kinds = PATTERN_EVENT_TYPES[pattern?.event_type] || [normalizeEventType(pattern?.event_type)];
+    const at = Number(pattern?.detected_second);
+    const event = topicFilteredGameEvents.find((e) => kinds.includes(normalizeEventType(e?.type))
+      && Number(e?.actor?.player_id) === Number(player?.player_id)
+      && Math.abs(Number(e?.second) - at) <= 30);
+    if (!event || !mainGame?.replay_id) return undefined;
+    return { href: `?view=game&replay=${mainGame.replay_id}&gameTab=events`, tab: 'events', onOpen: () => openMainGameEvent(event) };
+  };
   const selectedMainGameEventKeyResolved = useMemo(() => {
     if (!selectedMainGameEvent) return '';
     if (selectedMainGameEvent.type === 'phase_snapshot') return gamePhaseKey(selectedMainGameEvent.phase);
@@ -4905,9 +4944,9 @@ function App() {
     window.addEventListener('resize', compute);
     return () => { ro.disconnect(); window.removeEventListener('resize', compute); };
   }, [mainGameTab, mainEventsLayoutEl, mainEventMapAspect, mainEngineEventSeconds.length]);
-  // The events tab snaps the map and its title to the viewport once scrolled to, and holds there while
-  // the reader browses events.
-  useEffect(() => {
+  // The events tab snaps the map and its title to the viewport once scrolled near, and holds there while the
+  // reader browses events. It is set before paint, so no other tab ever renders with it and snaps.
+  useLayoutEffect(() => {
     if (mainGameTab !== 'events') return undefined;
     document.documentElement.classList.add('events-snap');
     return () => document.documentElement.classList.remove('events-snap');
@@ -6235,7 +6274,7 @@ function App() {
                                 {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry, buildOrderLinkFor(player, pattern)))}
                                 {gameSummaryParts.positive.filter(isStrongPill).map((pill) => renderGameSummarySignalPill(pill, openMainGameEvent))}
                                 {gameSummaryParts.positive.filter((p) => !isStrongPill(p)).map((pill) => renderGameSummarySignalPill(pill, openMainGameEvent))}
-                                {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
+                                {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry, patternEventLink(player, pattern), true))}
                                 <SpellcastsPill spells={collectPlayerSpells(playerPhases)} />
                               </OneRowPills>
                             </div>
@@ -6806,6 +6845,7 @@ function App() {
                                   >
                                     <span className="workflow-event-row-time">{formatDuration(event.second)}</span>
                                     <span className="workflow-event-row-body">
+                                      {event?.why ? <span className="insight-why-label workflow-event-row-why">{t('insight.why')}</span> : null}
                                       <span>{renderGameEventDescription(event, markerRegistry, mainEventRaceByPlayerID)}</span>
                                       {(iconEntries.length > 0 || castEntries.length > 0) ? (
                                         <span className="workflow-event-row-units">

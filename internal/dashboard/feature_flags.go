@@ -35,6 +35,7 @@ const featureFlagGameInsights = "game_insights"
 var insightFeatures = map[string]bool{
 	"elevator": true, "eraser": true, "defilers_irradiated": true, "nydus_denied": true,
 	"overlord_hunt": true, "undetected_cloak": true, "undefended_air_harass": true, "lurker_contain": true,
+	"overrun": true,
 }
 
 // knownFeatureFlags is the allowlist. Writes to anything outside it are

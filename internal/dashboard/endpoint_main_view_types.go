@@ -181,6 +181,7 @@ var workflowFeaturingFilters = []struct {
 	{Key: "undetected_cloak", Label: "No detection", Group: "marker", IconKey: "darktemplar", IconLabel: "No detection", Labs: true},
 	{Key: "undefended_air_harass", Label: "No anti-air", Group: "marker", IconKey: "mutalisk", IconLabel: "No anti-air", Labs: true},
 	{Key: "lurker_contain", Label: "Lurker contain", Group: "marker", IconKey: "lurker", IconLabel: "Contain", Labs: true},
+	{Key: "overrun", Label: "Overrun", Group: "marker", IconKey: "zergling", IconLabel: "Overrun", Labs: true},
 	// Keys and labels are kept in sync with internal/markers. Suppressed in render
 	// for Money maps on the featuring strips; the BO tab and per-player summary
 	// pills still show them.

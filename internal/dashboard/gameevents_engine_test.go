@@ -3,6 +3,7 @@
 package dashboard
 
 import (
+	"slices"
 	"testing"
 
 	openbw "github.com/marianogappa/openbw-go"
@@ -205,5 +206,19 @@ func TestEventsToldByAFoldedPartKeepTheCombinedEvent(t *testing.T) {
 	got := eventsTold([]workflowGameEvent{drop, ev("worker_kills", 690), ev("attack", 900)}, told, drop.Type)
 	if len(got) != 2 || got[0].Type != "dt_drop" || got[1].Type != "attack" {
 		t.Fatalf("the kills are told, the drop and a later attack are not: %+v", got)
+	}
+}
+
+func TestPlayersTakeTheirSideFromTheLastAllianceElseTheLobby(t *testing.T) {
+	rec := &library.Replay{Players: []library.Player{{Team: 1}, {Team: 1}, {Team: 2}}}
+	if got := playerTeams(rec); !slices.Equal(got, []int{2, 2, 3}) {
+		t.Fatalf("lobby teams %v", got)
+	}
+	rec.Alliance = &library.AllianceTimeline{Snapshots: []library.AllianceSnapshot{{Teams: [][]uint8{{0, 1, 2}}}, {Teams: [][]uint8{{0, 2}, {1}}}}}
+	if got := playerTeams(rec); !slices.Equal(got, []int{1, 2, 1}) {
+		t.Fatalf("last alliance %v", got)
+	}
+	if got := playerTeams(&library.Replay{Players: []library.Player{{Team: 0}, {Team: 0}}}); !slices.Equal(got, []int{0, 0}) {
+		t.Fatalf("a 1v1 has no sides beyond each player: %v", got)
 	}
 }

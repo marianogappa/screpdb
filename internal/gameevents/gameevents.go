@@ -64,7 +64,7 @@ var baseWeight = map[string]float64{
 	"takeover":          0.35,
 	"long_supply_block": 0.2,
 	"eraser":            0.9, "elevator": 0.85, "undetected_cloak": 0.8, "nydus_denied": 0.75,
-	"undefended_air_harass": 0.7, "defilers_irradiated": 0.7, "overlord_hunt": 0.55, "lurker_contain": 0.7,
+	"undefended_air_harass": 0.7, "defilers_irradiated": 0.7, "overlord_hunt": 0.55, "lurker_contain": 0.7, "overrun": 0.8,
 	"scout":             0.1,
 	"location_inactive": 0.05,
 }

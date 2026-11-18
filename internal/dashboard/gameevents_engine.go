@@ -150,13 +150,12 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		}
 		return e, e.Actor != nil
 	}
-	events, why := moments.Detect(dg, bases, players), -1
+	events, why := moments.Detect(dg, bases, players), map[int]bool{}
 	if d.featureFlagEnabled(d.ctx, featureFlagGameInsights) {
-		in := moments.DetectInsights(dg, bases, players)
-		if in.Why != nil {
-			why = len(events) + in.Why.Event
+		events, _ = moments.Combine(append(events, moments.DetectInsights(dg, bases, players).Events...), -1)
+		for _, w := range moments.Whys(dg, bases, players, events) {
+			why[w.Event] = true
 		}
-		events, why = moments.Combine(append(events, in.Events...), why)
 	}
 	type teller struct {
 		told workflowGameEvent
@@ -168,8 +167,8 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		if !ok {
 			continue
 		}
+		e.Why = why[i]
 		if m.Insight {
-			e.Why = i == why
 			e.Engine.EndSecond = int64(m.Second + m.Seconds)
 			tellers = append(tellers, teller{told: e})
 			for _, p := range e.Parts {
@@ -254,11 +253,49 @@ func heldBase(dg *engine.Digest, bases []moments.Base, sec int, slot int8) int {
 }
 
 func momentPlayers(rec *library.Replay) []moments.Player {
+	teams := playerTeams(rec)
 	var players []moments.Player
-	for _, p := range rec.Players {
-		players = append(players, moments.Player{Slot: int8(p.Slot), Race: engineRace(p.Race), Human: p.IsHuman() && !p.IsObserver()})
+	for i, p := range rec.Players {
+		result := int8(0)
+		switch p.TeamOutcome() {
+		case models.OutcomeWon:
+			result = moments.ResultWon
+		case models.OutcomeLost:
+			result = moments.ResultLost
+		}
+		players = append(players, moments.Player{Slot: int8(p.Slot), Race: engineRace(p.Race), Human: p.IsHuman() && !p.IsObserver(), Team: teams[i], Result: result, LeftAt: int(p.LeaveSec)})
 	}
 	return players
+}
+
+// playerTeams gives each player, by ordinal, the side it ended the game on: the last alliance the replay
+// observed, else the lobby teams when they group players, else none (0, every player on its own).
+func playerTeams(rec *library.Replay) []int {
+	teams := make([]int, len(rec.Players))
+	if a := rec.Alliance; a != nil && len(a.Snapshots) > 0 {
+		for t, members := range a.Snapshots[len(a.Snapshots)-1].Teams {
+			for _, ordinal := range members {
+				if int(ordinal) < len(teams) {
+					teams[ordinal] = t + 1
+				}
+			}
+		}
+		return teams
+	}
+	distinct, shared := map[uint8]int{}, false
+	for _, p := range rec.Players {
+		if !p.IsObserver() {
+			distinct[p.Team]++
+			shared = shared || distinct[p.Team] > 1
+		}
+	}
+	if len(distinct) < 2 || !shared {
+		return teams
+	}
+	for i, p := range rec.Players {
+		teams[i] = int(p.Team) + 1
+	}
+	return teams
 }
 
 func momentBases(metas []overlayBaseMeta) []moments.Base {
