@@ -5216,11 +5216,12 @@ function App() {
   // The event's title sits on its map; an event with no place of its own (a game phase, the openers) has it
   // in the middle. Game time is the progress bar along the stage, not part of the title.
   const stageEventType = normalizeEventType(selectedMainGameEvent?.type);
+  const openersTitle = t(isTeamGame ? 'events.stageTitle.openers' : 'events.stageTitle.openersNoTeams');
   const stageTitle = !selectedMainGameEvent ? null
-    : stageEventType === 'bo_openers' ? t('events.stageTitle.openers')
+    : stageEventType === 'bo_openers' ? openersTitle
       : renderGameEventDescription(selectedMainGameEvent, markerRegistry, mainEventRaceByPlayerID);
   const stageTitleText = !selectedMainGameEvent ? ''
-    : stageEventType === 'bo_openers' ? t('events.stageTitle.openers')
+    : stageEventType === 'bo_openers' ? openersTitle
       : String(gameEventDescription(selectedMainGameEvent, markerRegistry) || '');
   const stageTitleCentered = stageEventType === 'bo_openers' || stageEventType === 'phase_snapshot' || !selectedMainGameEvent?.engine?.region;
   const stageProgress = selectedMainGameEvent && Number(mainGame?.duration_seconds) > 0

@@ -262,6 +262,7 @@
   "events.base.naturalOf": "{player}의 앞마당",
   "events.base.since": "{time}에 확보",
   "events.stageTitle.openers": "팀과 시작 빌드 오더",
+  "events.stageTitle.openersNoTeams": "시작 위치와 빌드 오더",
   "events.sentence.attacks": "{actor}, {locationClause} {target} 공격",
   "events.sentence.attacksNoLocation": "{actor}, {target} 공격",
   "events.sentence.attacksAt": "{actor}, {location} 공격",

@@ -262,6 +262,7 @@
   "events.base.naturalOf": "{player}'s natural",
   "events.base.since": "Taken at {time}",
   "events.stageTitle.openers": "Player teams and starting build orders",
+  "events.stageTitle.openersNoTeams": "Players' starting locations and build orders",
   "events.sentence.attacks": "{actor} attacks {target} {locationClause}",
   "events.sentence.attacksNoLocation": "{actor} attacks {target}",
   "events.sentence.attacksAt": "{actor} attacks {location}",
