@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/marianogappa/screpdb/compare/v2.2.1...v2.3.0) (2026-11-19)
+
+
+### Features
+
+* game insights for everyone, out of Labs ([#519](https://github.com/marianogappa/screpdb/issues/519)) ([48c203b](https://github.com/marianogappa/screpdb/commit/48c203b73f823674f7fff3299ab5ed1eaa7d4374))
+
 ## [2.2.1](https://github.com/marianogappa/screpdb/compare/v2.2.0...v2.2.1) (2026-11-19)
 
 
