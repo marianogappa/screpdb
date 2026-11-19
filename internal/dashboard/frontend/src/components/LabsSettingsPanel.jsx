@@ -6,7 +6,9 @@ import { useT } from '../lib/i18nContext';
 // explanation for something half-built reads worse than a hint.
 //
 // The Settings modal hides the tab while this list is empty.
-export const LABS_FEATURES = [];
+export const LABS_FEATURES = [
+  { key: 'game_insights', labelKey: 'labs.feature.gameInsights' },
+];
 
 function LabsSettingsPanel({ flags, saving, message, messageIsError, onToggle }) {
   const t = useT();

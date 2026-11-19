@@ -4,6 +4,9 @@ import { api } from '../api';
 import { getUnitIcon, normalizeUnitName, spriteKeyOf } from '../lib/gameAssets';
 import { formatDuration } from '../lib/formatters';
 import { placeLabels } from '../lib/labelPlacement';
+import { baseOutline } from '../lib/baseOutline';
+import { GOOD_ENOUGH, placeTitle, titleAnchor } from '../lib/titlePlacement';
+import { highlightedItems } from '../lib/eventHighlight';
 import GameMap from './GameMap';
 
 const TILE = 32;
@@ -86,10 +89,10 @@ function ProgressBar({ cx, top, width, progress, scale, segmentsId }) {
   );
 }
 
-function Sprite({ href, x, y, w, h, opacity = 1, filter, title }) {
+function Sprite({ href, x, y, w, h, opacity = 1, filter, title, className }) {
   if (!href) return null;
   return (
-    <g opacity={opacity}>
+    <g opacity={opacity} className={className}>
       <image href={href} x={x} y={y} width={w} height={h} preserveAspectRatio="none" filter={filter} />
       <title>{title}</title>
     </g>
@@ -198,6 +201,29 @@ const clampRegion = (region, width, height) => {
   return { x, y, w: Math.min(region.w, width - x), h: Math.min(region.h, height - y) };
 };
 
+// zoomOut grows a view about its centre, kept inside the map, so a title can find room beside the event.
+const zoomOut = (view, factor, width, height) => {
+  const w = Math.min(width, view.w * factor);
+  const h = Math.min(height, view.h * factor);
+  const x = Math.max(0, Math.min(width - w, view.x + view.w / 2 - w / 2));
+  const y = Math.max(0, Math.min(height - h, view.y + view.h / 2 - h / 2));
+  return { x, y, w, h };
+};
+
+const ZOOM_OUT_STEPS = [1, 1.35, 1.7];
+const TITLE_FONT_PX = 28;
+const TITLE_LINE_PX = 35;
+const TITLE_PAD_PX = 12;
+
+let measureCanvas = null;
+const textWidth = (text) => {
+  if (typeof document === 'undefined') return text.length * TITLE_FONT_PX * 0.55;
+  measureCanvas = measureCanvas || document.createElement('canvas');
+  const ctx = measureCanvas.getContext('2d');
+  ctx.font = `650 ${TITLE_FONT_PX}px ${getComputedStyle(document.body).fontFamily}`;
+  return ctx.measureText(text).width;
+};
+
 // The Ghost painting a nuke stands within its sight range of the target: 11 tiles with Ocular Implants.
 const NUKE_GHOST_REACH = 14 * TILE;
 
@@ -224,43 +250,7 @@ const polygonCentroid = (polygon) => {
   };
 };
 
-// simplify drops the small cliff-hugging steps of a base outline.
-const simplify = (points, tolerance) => {
-  if (points.length < 3) return points;
-  const [a, b] = [points[0], points[points.length - 1]];
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  let far = 0;
-  let farIdx = 0;
-  for (let i = 1; i < points.length - 1; i += 1) {
-    const d = Math.abs(dy * points[i].x - dx * points[i].y + b.x * a.y - b.y * a.x) / len;
-    if (d > far) {
-      far = d;
-      farIdx = i;
-    }
-  }
-  if (far <= tolerance) return [a, b];
-  return [...simplify(points.slice(0, farIdx + 1), tolerance).slice(0, -1), ...simplify(points.slice(farIdx), tolerance)];
-};
-
-// The layout's base outlines interleave their vertices in places, which draws as hatching once zoomed
-// in. Keeping the farthest vertex in each direction from the centre gives a clean outline.
-const OUTLINE_DIRECTIONS = 96;
-
-const polygonOutline = (polygon) => {
-  const c = polygonCentroid(polygon);
-  const farthest = new Map();
-  for (const p of polygon) {
-    const angle = Math.atan2(p.y - c.y, p.x - c.x);
-    const dir = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * OUTLINE_DIRECTIONS) % OUTLINE_DIRECTIONS;
-    const r = Math.hypot(p.x - c.x, p.y - c.y);
-    if (!farthest.has(dir) || farthest.get(dir).r < r) farthest.set(dir, { ...p, r });
-  }
-  const ring = [...farthest.keys()].sort((a, b) => a - b).map((dir) => farthest.get(dir));
-  const half = Math.floor(ring.length / 2);
-  return [...simplify(ring.slice(0, half + 1), TILE / 2).slice(0, -1), ...simplify([...ring.slice(half), ring[0]], TILE / 2).slice(0, -1)];
-};
+const polygonOutline = (polygon) => baseOutline(polygon, TILE);
 
 const polygonPoints = (polygon) => polygonOutline(polygon).map((p) => `${p.x},${p.y}`).join(' ');
 
@@ -307,7 +297,7 @@ function BaseTooltip({ hover, color, nameOf }) {
 // bar with a wrench while it is being built), every unit at its real size and place. It opens zoomed to the event.
 // eventSeconds are the snapshot seconds of every event of this game: the first exact request computes
 // them all in one engine pass, so moving between events afterwards is instant.
-export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUrl, mapWidth, mapHeight, colorByPlayerId, nameByPlayerId, teamColorByPlayerId, leaveMarker, mapAlt }) {
+export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUrl, mapWidth, mapHeight, colorByPlayerId, nameByPlayerId, teamColorByPlayerId, leaveMarker, mapAlt, title, titleText, centerTitle, progress }) {
   const t = useT();
   const [hover, setHover] = useState(null);
   const rootRef = useRef(null);
@@ -323,10 +313,12 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const engine = event?.engine;
   const second = engine?.snapshot_second ?? event?.second ?? 0;
   const [snapshot, setSnapshot] = useState(null);
+  const [loadingExact, setLoadingExact] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     let exactArrived = false;
+    setLoadingExact(true);
     api.getEngineSnapshot(replayId, second)
       .then((data) => { if (!cancelled && !exactArrived) setSnapshot(data); })
       .catch(() => {});
@@ -335,8 +327,9 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
         if (cancelled) return;
         exactArrived = true;
         setSnapshot(data);
+        setLoadingExact(false);
       })
-      .catch(() => {});
+      .catch(() => { if (!cancelled) setLoadingExact(false); });
     return () => { cancelled = true; };
   }, [replayId, second, eventSeconds]);
 
@@ -353,41 +346,70 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   ])].filter(Boolean).sort(), [snapshot]);
   const metricOf = useSpriteMetrics(metricKeys);
   // Owner labels go where they cover the least of the map; placed once per snapshot and frame size, so
-  // they hold still while the event is on screen.
-  const labelSpots = useMemo(() => {
-    if (!width || !height || !frameWidth) return new Map();
-    const view = region || { x: 0, y: 0, w: width, h: height };
-    const mapPerCss = view.w / frameWidth;
-    const labels = (snapshot?.bases || [])
-      .filter((b) => (b.polygon || []).length >= 3 && nameByPlayerId?.get(b.player_id))
-      .map((b) => {
-        const size = labelCssSize(nameByPlayerId.get(b.player_id));
-        return { key: baseKey(b), outline: polygonOutline(b.polygon), w: size.w * mapPerCss, h: size.h * mapPerCss };
-      });
+  // they hold still while the event is on screen. The title then takes the emptiest patch left, wrapping
+  // to fit it, and the view zooms out a step at a time while no patch is empty enough.
+  const layout = useMemo(() => {
+    const whole = { x: 0, y: 0, w: width, h: height };
+    if (!width || !height || !frameWidth) return { view: region, labelSpots: new Map(), title: null };
     const obstacles = [
       ...(snapshot?.buildings || []).map((b) => ({ x: b.x - b.w / 2, y: b.y - b.h / 2, w: b.w, h: b.h })),
       ...(snapshot?.units || []).map((u) => ({ x: u.x - 14, y: u.y - 14, w: 28, h: 28 })),
     ];
-    return placeLabels({ labels, obstacles, avoid: focus ? [focus] : [], view, width, height });
-  }, [snapshot, region, focus, width, height, frameWidth, nameByPlayerId]);
+    const marks = [
+      ...(Array.isArray(event?.path) ? event.path : []),
+      ...(event?.type === 'nuke' && engine?.point ? [engine.point] : []),
+    ].map((p) => ({ x: p.x - 3 * TILE, y: p.y - 3 * TILE, w: 6 * TILE, h: 6 * TILE }));
+    const owned = (snapshot?.bases || []).filter((b) => (b.polygon || []).length >= 3 && b.player_id != null).map((b) => polygonOutline(b.polygon));
+    const lineWidth = titleText ? textWidth(titleText) : 0;
+    let chosen = null;
+    for (const factor of region && titleText && !centerTitle ? ZOOM_OUT_STEPS : [1]) {
+      const view = region ? zoomOut(region, factor, width, height) : whole;
+      const mapPerCss = view.w / frameWidth;
+      const labels = (snapshot?.bases || [])
+        .filter((b) => (b.polygon || []).length >= 3 && nameByPlayerId?.get(b.player_id))
+        .map((b) => {
+          const size = labelCssSize(nameByPlayerId.get(b.player_id));
+          return { key: baseKey(b), outline: polygonOutline(b.polygon), w: size.w * mapPerCss, h: size.h * mapPerCss };
+        });
+      const labelSpots = placeLabels({ labels, obstacles, avoid: focus ? [focus] : [], view, width, height });
+      if (!titleText || centerTitle) return { view: region ? view : null, labelSpots, title: null };
+      const labelBoxes = labels.filter((l) => labelSpots.has(l.key)).map((l) => {
+        const c = labelSpots.get(l.key);
+        return { x: c.x - l.w / 2, y: c.y - l.h / 2, w: l.w, h: l.h };
+      });
+      const placed = placeTitle({
+        view, width, height, mapPerCss,
+        textWidthCss: lineWidth, lineHeightCss: TITLE_LINE_PX, padCss: TITLE_PAD_PX,
+        obstacles: [...obstacles, ...labelBoxes, ...marks], avoid: focus ? [focus] : [], polygons: owned,
+      });
+      const option = { view: region ? view : null, labelSpots, title: placed };
+      if (!chosen || (placed && chosen.title && placed.covered < chosen.title.covered)) chosen = option;
+      if (placed && placed.covered <= GOOD_ENOUGH) return option;
+    }
+    return chosen;
+  }, [snapshot, region, focus, width, height, frameWidth, nameByPlayerId, titleText, centerTitle, event?.path, event?.type, engine?.point]);
+  const highlighted = useMemo(() => highlightedItems(event, snapshot), [event, snapshot]);
+  const view = layout.view;
+  const labelSpots = layout.labelSpots;
   if (!width || !height) return null;
   // A player who left or stopped playing is marked where the event says: the snapshot of that very second
   // may no longer hold any of their bases.
   const leaveBases = leaveMarker ? (snapshot?.bases || []).filter((b) => b.player_id === leaveMarker.playerID && (b.polygon || []).length >= 3) : [];
   const leaveBase = leaveBases.find((b) => b.kind === 'main') || leaveBases[0] || null;
   const leavePoint = engine?.point || (leaveBase ? polygonCentroid(leaveBase.polygon) : event?.base?.center || null);
-  const showZoomed = Boolean(region);
+  const showZoomed = Boolean(view);
   // Terrain, then creep on the floor, then minerals and geysers, then everything else.
-  const crop = showZoomed ? terrainCrop(replayId, region, width, height) : null;
+  const crop = showZoomed ? terrainCrop(replayId, view, width, height) : null;
   const color = (id) => colorByPlayerId?.get(id) || '#e2e8f0';
   const nameOf = (id) => nameByPlayerId?.get(id) || '';
   const bases = (snapshot?.bases || []).filter((b) => (b.polygon || []).length >= 3);
   // Bars and icons keep a readable size on screen whether the view is a base or the whole map.
-  const uiScale = showZoomed ? Math.max(1, region.w / 1100) : Math.max(2.5, width / 1100);
+  const uiScale = showZoomed ? Math.max(1, view.w / 1100) : Math.max(2.5, width / 1100);
   const segmentsId = `${ids}-seg`;
   const creepId = `${ids}-creep`;
   const warpId = `${ids}-warp`;
   const focusId = `${ids}-focus`;
+
   const hoverBase = (e, base) => {
     const box = rootRef.current?.getBoundingClientRect();
     if (box) setHover({ base, x: e.clientX - box.left + 14, y: e.clientY - box.top + 14 });
@@ -413,6 +435,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
       const sb = place(m.shadow, b.x, b.y, 1);
       shadows.push(<image key={`bs-${i}`} href={getUnitIcon(b.unit_type, { shadow: true })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
     }
+    const lit = highlighted.buildings.has(i);
     const building = b.progress != null;
     const title = building ? t('snapshot.underConstruction', { unit: b.unit_type }) : b.unit_type;
     (b.lifted ? air : ground).push({
@@ -427,6 +450,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
             h={box.h}
             filter={building ? `url(#${warpId})` : undefined}
             title={title}
+            className={lit ? 'engine-hl-glow' : undefined}
           />
           {building ? (
             <ProgressBar cx={b.x} top={b.y + b.h / 2 + 2 * uiScale} width={Math.min(b.w * 0.8, 110 * uiScale)} progress={b.progress} scale={uiScale} segmentsId={segmentsId} />
@@ -441,6 +465,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
     const box = place(m, u.x, u.y, 1);
     const variant = variantOf(u.unit_type, u.burrowed);
     const burrowedLook = u.burrowed && !variant;
+    const lit = highlighted.units.has(i);
     if (m.shadow && !burrowedLook) {
       const sb = place(m.shadow, u.x, u.y, 1);
       shadows.push(<image key={`us-${i}`} href={getUnitIcon(u.unit_type, { shadow: true, variant })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
@@ -457,6 +482,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
           h={box.h}
           opacity={burrowedLook ? 0.45 : 1}
           title={u.unit_type}
+          className={lit ? 'engine-hl-glow' : undefined}
         />
       ),
     });
@@ -465,6 +491,9 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   ground.sort(byY);
   air.sort(byY);
   const nukePoint = event?.type === 'nuke' && engine?.point ? engine.point : null;
+  const insightPath = Array.isArray(event?.path) ? event.path : [];
+  const pathNumbered = event?.type === 'elevator';
+  const pathColor = color(event?.actor?.player_id);
   const ghost = nukePoint ? nukeGhost(snapshot?.units, event?.actor?.player_id, nukePoint) : null;
 
   return (
@@ -474,9 +503,9 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
         mapUrl={mapUrl}
         mapWidth={width}
         mapHeight={height}
-        view={showZoomed ? region : null}
+        view={showZoomed ? view : null}
         detail={crop}
-        maxHeight="100vh - var(--events-title-h)"
+        maxHeight="100vh"
         alt={mapAlt}
         mapLayers={(
           <>
@@ -518,6 +547,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
             {ground.map((g) => g.node)}
             {air.map((a) => a.node)}
             {focus ? <rect className="engine-focus-dim" width={width} height={height} fill={`url(#${focusId})`} /> : null}
+
             {ghost ? (
               <g className="engine-nuke-ghost" pointerEvents="none">
                 <line x1={ghost.x} y1={ghost.y} x2={nukePoint.x} y2={nukePoint.y} stroke="#ff2b2b" strokeOpacity={0.7} strokeWidth={2 * uiScale} strokeDasharray={`${6 * uiScale} ${5 * uiScale}`} />
@@ -529,6 +559,34 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
                 <circle className="engine-nuke-target-wave" cx={nukePoint.x} cy={nukePoint.y} r={24 * uiScale} strokeWidth={4 * uiScale} />
                 <circle cx={nukePoint.x} cy={nukePoint.y} r={24 * uiScale} fill="#ff1a1a" fillOpacity={0.3} />
                 <circle cx={nukePoint.x} cy={nukePoint.y} r={12 * uiScale} fill="#ff1a1a" stroke="#fff" strokeWidth={2.5 * uiScale} />
+              </g>
+            ) : null}
+            {insightPath.length > 0 ? (
+              <g className="engine-insight-path" pointerEvents="none">
+                {pathNumbered && insightPath.length > 1 ? (
+                  <polyline
+                    points={insightPath.map((p) => `${p.x},${p.y}`).join(' ')}
+                    fill="none"
+                    stroke={pathColor}
+                    strokeOpacity={0.8}
+                    strokeWidth={2.5 * uiScale}
+                    strokeDasharray={`${7 * uiScale} ${5 * uiScale}`}
+                  />
+                ) : null}
+                {insightPath.map((p, i) => (pathNumbered ? (
+                  <g key={`hop-${i}`}>
+                    <circle cx={p.x} cy={p.y} r={11 * uiScale} fill={pathColor} stroke="#fff" strokeWidth={2 * uiScale} />
+                    <text x={p.x} y={p.y} fontSize={12 * uiScale}>{i + 1}</text>
+                  </g>
+                ) : (
+                  <path
+                    key={`kill-${i}`}
+                    d={`M${p.x - 7 * uiScale},${p.y - 7 * uiScale}L${p.x + 7 * uiScale},${p.y + 7 * uiScale}M${p.x + 7 * uiScale},${p.y - 7 * uiScale}L${p.x - 7 * uiScale},${p.y + 7 * uiScale}`}
+                    stroke="#ff3b3b"
+                    strokeWidth={3 * uiScale}
+                    strokeLinecap="round"
+                  />
+                )))}
               </g>
             ) : null}
             {bases.map((b) => (
@@ -572,6 +630,17 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
           ) : null;
         })}
       </GameMap>
+      {title && centerTitle ? <div className="engine-title engine-title--center">{title}</div> : null}
+      {title && !centerTitle && layout.title ? (
+        <div
+          className="engine-title"
+          style={{ left: `${layout.title.x}px`, ...titleAnchor(layout.title), width: `${layout.title.w}px`, padding: `${TITLE_PAD_PX}px` }}
+        >
+          {title}
+        </div>
+      ) : null}
+      {progress}
+      {loadingExact ? <div className="engine-loading" role="status" aria-label={t('snapshot.loading')} title={t('snapshot.loading')} /> : null}
       {hover ? <BaseTooltip hover={hover} color={color} nameOf={nameOf} /> : null}
     </div>
   );

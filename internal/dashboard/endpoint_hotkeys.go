@@ -44,7 +44,7 @@ type hotkeyTimelinePayload struct {
 	Buildings map[byte]string `json:"buildings"`
 	// Units maps the unit types used in events to display names.
 	Units map[uint16]string `json:"units"`
-	// UnitTypesExact is true when every unit assign carries its real units.
+	// UnitTypesExact is true for an engine game: its unit assigns carry the real units the engine saw.
 	UnitTypesExact bool `json:"unit_types_exact"`
 }
 

@@ -177,5 +177,7 @@
   "skill.player.none": "Skill shows once a player has 5 games with engine data.",
   "skill.trend.up": "Improving",
   "skill.trend.down": "Declining",
-  "skill.trend.flat": "Steady"
+  "skill.trend.flat": "Steady",
+  "labs.feature.gameInsights": "Game insights: why a game was lost, and technique pills like Elevator and Eraser",
+  "snapshot.loading": "Loading every unit"
 }

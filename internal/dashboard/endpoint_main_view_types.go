@@ -139,6 +139,8 @@ var workflowFeaturingFilters = []struct {
 	Emoji     string
 	// Race groups the "bo" chips under per-race disclosures. Empty for "marker".
 	Race string
+	// Labs chips show only while the game_insights flag is on.
+	Labs bool
 }{
 	// The former Terran style markers (mech / sk_terran / one_one_one /
 	// mech_transition) are now first-class composition BOs in the "bo" group
@@ -171,6 +173,15 @@ var workflowFeaturingFilters = []struct {
 	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
 	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
 	{Key: "muta_hitnrun", Label: "Muta hit-n-run", Group: "marker", IconKey: "mutalisk", IconLabel: "Muta hit-n-run"},
+	{Key: "elevator", Label: "Elevator", Group: "marker", IconKey: "dropship", IconLabel: "Elevator", Labs: true},
+	{Key: "eraser", Label: "Eraser", Group: "marker", IconKey: "sciencevessel", IconLabel: "Eraser", Labs: true},
+	{Key: "defilers_irradiated", Label: "Irradiated Defilers", Group: "marker", IconKey: "defiler", IconLabel: "Irradiated", Labs: true},
+	{Key: "nydus_denied", Label: "Nydus denied", Group: "marker", IconKey: "nyduscanal", IconLabel: "Denied", Labs: true},
+	{Key: "overlord_hunt", Label: "Overlord hunt", Group: "marker", IconKey: "overlord", IconLabel: "Hunt", Labs: true},
+	{Key: "undetected_cloak", Label: "No detection", Group: "marker", IconKey: "darktemplar", IconLabel: "No detection", Labs: true},
+	{Key: "undefended_air_harass", Label: "No anti-air", Group: "marker", IconKey: "mutalisk", IconLabel: "No anti-air", Labs: true},
+	{Key: "lurker_contain", Label: "Lurker contain", Group: "marker", IconKey: "lurker", IconLabel: "Contain", Labs: true},
+	{Key: "overrun", Label: "Overrun", Group: "marker", IconKey: "zergling", IconLabel: "Overrun", Labs: true},
 	// Keys and labels are kept in sync with internal/markers. Suppressed in render
 	// for Money maps on the featuring strips; the BO tab and per-player summary
 	// pills still show them.
@@ -302,6 +313,12 @@ type workflowGameDetail struct {
 	EnginePending bool `json:"engine_pending,omitempty"`
 	// EngineUnavailable is true once the engine pass gave up on the game: it failed, or drifted from the real game.
 	EngineUnavailable bool `json:"engine_unavailable,omitempty"`
+	// EngineUpgrading is true while a game with engine data is redone on a newer engine version; the page
+	// shows the older data until it lands.
+	EngineUpgrading bool `json:"engine_upgrading,omitempty"`
+	// CompleteCopyUnplayable is true when the page shows the user's own recording because the engine could
+	// not run the game's complete copy.
+	CompleteCopyUnplayable bool `json:"complete_copy_unplayable,omitempty"`
 	// SkillStatus says whether the skill tiers apply: ok, too_short or custom_rules (empty: no humans to rate).
 	SkillStatus string `json:"skill_status"`
 	// SkillModel feeds the Skill explainer; set with SkillStatus ok.
@@ -485,6 +502,10 @@ type workflowGameEvent struct {
 	Engine *workflowEngineEvent `json:"engine,omitempty"`
 	// Outcome is what an engine attack, drop or harass did.
 	Outcome *workflowGameEventOutcome `json:"outcome,omitempty"`
+	// Parts are the events folded into this one (moments.Combine): the kills a drop's Lurkers made undetected.
+	Parts []workflowGameEvent `json:"parts,omitempty"`
+	// RebuiltAfterSecond is when the base an attack or drop hit last fell before the target rebuilt it.
+	RebuiltAfterSecond int64 `json:"rebuilt_after_second,omitempty"`
 	// DurationSeconds is how long a span event (a long supply block) lasted.
 	DurationSeconds int64 `json:"duration_seconds,omitempty"`
 	// Result is how an engine nuke or recall ended (moments.Nuke*, moments.Recall*).
@@ -494,6 +515,25 @@ type workflowGameEvent struct {
 	Hallucinated int64 `json:"hallucinated,omitempty"`
 	// Key events are the few the tab shows by default; the rest show on request.
 	Key bool `json:"key"`
+	// Why marks the insight that explains why the loser left (Labs: game_insights).
+	Why bool `json:"why,omitempty"`
+	// WhyRoles say which turning point the event is: "you", the viewer's own, and "final", why the game ended.
+	WhyRoles []string `json:"why_roles,omitempty"`
+	// WhyAfterAlly is set when the viewer's turning point is an ally's: the viewer left soon after that ally.
+	WhyAfterAlly *workflowGameEventPlayer `json:"why_after_ally,omitempty"`
+	// WhyLeaver is the viewer who followed WhyAfterAlly out.
+	WhyLeaver *workflowGameEventPlayer `json:"why_leaver,omitempty"`
+	// WhyYou is the viewer, so a turning point can say "you" for them.
+	WhyYou *workflowGameEventPlayer `json:"why_you,omitempty"`
+	// WhyAllies is how many of the viewer's allies were still playing at their turning point.
+	WhyAllies int64             `json:"why_allies,omitempty"`
+	WhyForce  *workflowWhyForce `json:"why_force,omitempty"`
+	// WhyTargetBases is how many bases the turning point's target had when it began.
+	WhyTargetBases int64 `json:"why_target_bases,omitempty"`
+	// Path draws an insight on the map, in map pixels: an elevator's unloads, an Eraser's kills.
+	Path []workflowGameEventPoint `json:"path,omitempty"`
+	// Defenders is how many anti-air units stood in a base an undefended air harass hit.
+	Defenders int64 `json:"defenders,omitempty"`
 }
 
 type workflowGameEventOutcome struct {
@@ -565,6 +605,8 @@ type workflowGameEventBase struct {
 type workflowOpenField struct {
 	Relation string `json:"relation"`
 	Ref      string `json:"ref,omitempty"`
+	// near is the base a near_base place is near, so its name can follow who holds it at the event's time.
+	near *workflowGameEventBase
 }
 
 type workflowGameOwnership struct {
@@ -865,4 +907,22 @@ type workflowPlayersListFilterOptions struct {
 	Apm        []workflowPlayersListFilterOption `json:"apm"`
 	Games      []workflowPlayersListFilterOption `json:"games"`
 	LastPlayed []workflowPlayersListFilterOption `json:"last_played"`
+}
+
+type workflowWhyForce struct {
+	Value   int64                  `json:"value"`
+	Defence int64                  `json:"defence"`
+	Count   int64                  `json:"count"`
+	Units   []workflowWhyForceUnit `json:"units,omitempty"`
+	// Mostly is the unit the force is mostly made of, Class its class ("air", "bio", "mech") when no single
+	// unit is, and Pair its two main units when neither is.
+	Mostly  string   `json:"mostly,omitempty"`
+	Class   string   `json:"class,omitempty"`
+	Pair    []string `json:"pair,omitempty"`
+	Recalls int64    `json:"recalls,omitempty"`
+}
+
+type workflowWhyForceUnit struct {
+	Name  string `json:"name"`
+	Count int64  `json:"count"`
 }

@@ -57,10 +57,19 @@ func dashboardContextBaseFromAnalyzer(base replaymap.BasePolygon) models.MapCont
 		Polygon:          polygon,
 		MineralOnly:      base.MineralOnly,
 		NaturalExpansion: base.NaturalExpansion,
+		Chokes:           dashboardContextChokes(base.Chokes),
 	}
 }
 
 // scmapanalyzer replaymap.TilePoint values are in minitiles (8x8 px cells).
 func minitileToPixelDashboard(minitileValue int) int {
 	return minitileValue*8 + 4
+}
+
+func dashboardContextChokes(chokes []replaymap.Choke) []models.MapContextChoke {
+	out := make([]models.MapContextChoke, 0, len(chokes))
+	for _, c := range chokes {
+		out = append(out, models.MapContextChoke{X: minitileToPixelDashboard(c.Center.X), Y: minitileToPixelDashboard(c.Center.Y), ConnectsTo: c.ConnectsTo})
+	}
+	return out
 }

@@ -17,7 +17,7 @@ func fullDigest() *Digest {
 	d.Economy = append(d.Economy, EconomySample{Frame: 72, Owner: 7, Minerals: 1000, Gas: 500, GatheredMinerals: 4000, GatheredGas: 1200, SupplyUsed: 300, SupplyMax: 400, Workers: 60, Larva: 0})
 	d.Army = append(d.Army, ArmySnapshot{Frame: 480, Units: []ArmyUnit{{Owner: 0, Type: 0, X: 1, Y: 2}, {Owner: 3, Type: 43, X: -1, Y: 255}}})
 	d.Unloads = []Unload{
-		{Frame: 3000, Transport: 501, TransportType: 11, Owner: 0, X: 640, Y: 320, Cargo: []uint16{0, 0, 32, 1}},
+		{Frame: 3000, Transport: 501, TransportType: 11, Owner: 0, X: 640, Y: 320, Cargo: []uint16{0, 0, 32, 1}, Units: []uint32{3, 9, 4100, 70001}},
 		{Frame: 3000, Transport: 502, TransportType: 72, Owner: 3, X: 100, Y: 100},
 		{Frame: 4200, Transport: 501, TransportType: 11, Owner: 0, X: 700, Y: 330, Cargo: []uint16{103}},
 	}
@@ -26,9 +26,9 @@ func fullDigest() *Digest {
 		{Frame: 9600, Owner: 0, FromX: 10, FromY: 20, ToX: 30, ToY: 40},
 	}
 	d.Casts = []Cast{
-		{Frame: 5000, Owner: 3, Order: 0x89, X: 2000, Y: 2100},
-		{Frame: 5000, Owner: 0, Order: 0x8e, X: 0, Y: 0},
-		{Frame: 7777, Owner: 7, Order: 0x77, X: 4095, Y: 4095},
+		{Frame: 5000, Owner: 3, Order: 0x89, X: 2000, Y: 2100, CasterType: 71, TargetOwner: NoOwner},
+		{Frame: 5000, Owner: 0, Order: 0x8e, X: 0, Y: 0, CasterType: 9, Target: 4099, TargetType: 9, TargetOwner: 0},
+		{Frame: 7777, Owner: 7, Order: 0x77, X: 4095, Y: 4095, TargetOwner: NoOwner},
 	}
 	d.Hotkeys = []HotkeyAssign{
 		{Frame: 100, Owner: 0, Group: 1, MainType: 7, Count: 12},

@@ -80,13 +80,32 @@ type Base struct {
 	Kind    BaseKind
 	X, Y    int32
 	Polygon [][2]int32
+	Chokes  []Choke
+}
+
+// Choke is a narrow passage out of a base's terrain, and the base it leads to, or NoBase.
+type Choke struct {
+	X, Y int32
+	To   int
 }
 
 type Player struct {
 	Slot  int8
 	Race  openbw.Race
 	Human bool
+	// Team groups allies: players sharing a non-zero Team are on one side. Zero is a team of one.
+	Team int
+	// Result is how the player's side did, as the library decided it from the engine, the commands and
+	// Battle.net: ResultWon, ResultLost or zero when unknown.
+	Result int8
+	// LeftAt is the second the player left by the commands, or zero.
+	LeftAt int
 }
+
+const (
+	ResultWon  int8 = 1
+	ResultLost int8 = -1
+)
 
 // Event is one curated moment. Base is an index into the bases given to Detect, or NoBase.
 // Region is what the map should show: the fight, the new base, the drop, not the whole base area.
@@ -109,6 +128,20 @@ type Event struct {
 	Count int
 	// Hallucinated is how many hallucinated Arbiters went in with a recall.
 	Hallucinated int
+	// Path is the points that draw an insight on the map, in order: the hops of an elevator, the kills of an Eraser.
+	Path [][2]int32 `json:",omitempty"`
+	// Defenders is how many anti-air units of the victim's stood in the base an undefended air harass hit.
+	Defenders int `json:",omitempty"`
+	// Insight marks an event from DetectInsights.
+	Insight bool `json:",omitempty"`
+	// Members are the unit IDs the event is about: what a drop or an elevator set down, the units that made an
+	// insight's kills, the Lurkers holding a contain. Combine reads them to prove two events are one.
+	Members []uint32 `json:",omitempty"`
+	// Parts are the events Combine folded into this one.
+	Parts []Event `json:",omitempty"`
+	// RebuiltAfter is the second the target's town hall at the event's base last fell, when the target built
+	// another there before the event: a hit on a rebuilt base, not on ruins. Zero otherwise.
+	RebuiltAfter int `json:",omitempty"`
 }
 
 const (
@@ -149,6 +182,7 @@ type game struct {
 	ownership [][]ownedSpan
 	deaths    []engine.Death
 	mains     map[int8]int
+	diedSec   map[uint32]int
 }
 
 type ownedSpan struct {
@@ -156,7 +190,7 @@ type ownedSpan struct {
 	from, to int
 }
 
-func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
+func newGame(d *engine.Digest, bases []Base, players []Player) *game {
 	g := &game{d: d, bases: bases, players: map[int8]Player{}, trusted: second(d.TrustedUntil()), mains: map[int8]int{}}
 	for _, p := range players {
 		g.players[p.Slot] = p
@@ -167,6 +201,11 @@ func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
 			g.deaths = append(g.deaths, x)
 		}
 	}
+	return g
+}
+
+func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
+	g := newGame(d, bases, players)
 	var out []Event
 	out = append(out, g.expansions()...)
 	out = append(out, g.zerglingRushes()...)
@@ -186,6 +225,7 @@ func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
 	for _, e := range out {
 		if e.Second < g.trusted {
 			e.SnapshotSecond = max(e.Second, min(e.SnapshotSecond, lastShown))
+			e.RebuiltAfter = g.rebuiltAfter(e)
 			kept = append(kept, e)
 		}
 	}
@@ -279,7 +319,14 @@ func (g *game) holder(base, sec int) int8 {
 }
 
 func (g *game) enemies(a, b int8) bool {
-	return a != b && a != NoPlayer && b != NoPlayer && g.players[a].Human && g.players[b].Human
+	return a != b && a != NoPlayer && b != NoPlayer && g.players[a].Human && g.players[b].Human && g.teamOf(a) != g.teamOf(b)
+}
+
+func (g *game) teamOf(slot int8) int {
+	if t := g.players[slot].Team; t != 0 {
+		return t
+	}
+	return -1 - int(slot)
 }
 
 // enemyHomeBase is the main or natural an enemy of actor holds at the point, for rushes that only
@@ -682,7 +729,15 @@ func (g *game) firstTech() []Event {
 			first("first_corsair", bwgame.UnitTypesProtossCorsair)
 			for _, r := range g.d.Research {
 				if r.Owner == p.Slot && r.Upgrade && r.ID == uint8(bwgame.UpgradeTypesLegEnhancements) && second(r.Start) < firstTechBefore {
-					out = append(out, g.event("speedlot", second(r.Start), p.Slot, NoPlayer, NoBase, 0, 0, []uint16{ut(bwgame.UnitTypesProtossZealot)}))
+					x, y, b := int32(0), int32(0), NoBase
+					if px, py, ok := g.placeOf(r.Producer); ok {
+						x, y, b = px, py, g.baseOf(px, py)
+					}
+					e := g.event("speedlot", second(r.Start), p.Slot, NoPlayer, b, x, y, []uint16{ut(bwgame.UnitTypesProtossZealot)})
+					if b == NoBase {
+						e.Region = around(x, y, buildingFocus)
+					}
+					out = append(out, e)
 					break
 				}
 			}
@@ -691,6 +746,21 @@ func (g *game) firstTech() []Event {
 		}
 	}
 	return out
+}
+
+// placeOf is where a building or unit was made, or where it stood at the start.
+func (g *game) placeOf(unit uint32) (int32, int32, bool) {
+	for _, pr := range g.d.Productions {
+		if pr.Unit == unit {
+			return pr.X, pr.Y, true
+		}
+	}
+	for _, u := range g.d.Initial {
+		if u.Unit == unit {
+			return u.X, u.Y, true
+		}
+	}
+	return 0, 0, false
 }
 
 // becameRace marks a Protoss player's first building of another race, raised with a mind-controlled worker.
@@ -767,6 +837,8 @@ func (g *game) drops() []Event {
 		x, y          int32
 		cargo         []uint16
 		transport     uint16
+		transports    map[uint32]bool
+		members       []uint32
 	}
 	var clusters []*cluster
 	for _, u := range g.d.Unloads {
@@ -792,11 +864,13 @@ func (g *game) drops() []Event {
 			}
 		}
 		if c == nil {
-			c = &cluster{actor: u.Owner, target: target, base: b, first: sec, x: u.X, y: u.Y, transport: u.TransportType}
+			c = &cluster{actor: u.Owner, target: target, base: b, first: sec, x: u.X, y: u.Y, transport: u.TransportType, transports: map[uint32]bool{}}
 			clusters = append(clusters, c)
 		}
 		c.last = sec
 		c.cargo = append(c.cargo, combat...)
+		c.transports[u.Transport] = true
+		c.members = append(c.members, u.Units...)
 	}
 	var out []Event
 	for _, c := range clusters {
@@ -809,6 +883,8 @@ func (g *game) drops() []Event {
 		deaths := g.fight(c.actor, c.target, c.base, c.first, c.last+dropFollowUp)
 		e.Outcome = g.outcome(c.actor, deaths)
 		e.Region = fightRegion(deaths, around(c.x, c.y, buildingFocus+2*tile), c.x, c.y)
+		e.Count = len(c.transports)
+		e.Members = c.members
 		out = append(out, e)
 	}
 	return out
@@ -1557,4 +1633,32 @@ func fighter(t uint16) uint16 {
 		return ut(bwgame.UnitTypesProtossReaver)
 	}
 	return t
+}
+
+var hitsBase = map[string]bool{"attack": true, "worker_kills": true, "drop": true, "reaver_drop": true, "dt_drop": true, "cliff_drop": true}
+
+// rebuiltAfter is when the target's town hall at the event's base last fell, if the target started another
+// there afterwards that still stood when the event began; 0 when the event hits a base that never fell.
+func (g *game) rebuiltAfter(e Event) int {
+	if !hitsBase[e.Type] || e.Base == NoBase {
+		return 0
+	}
+	fell := 0
+	for _, d := range g.d.Deaths {
+		if s := second(d.Frame); s < e.Second && d.Owner == e.Target && IsTownHall(d.Type) && g.baseOf(d.X, d.Y) == e.Base {
+			fell = max(fell, s)
+		}
+	}
+	if fell == 0 {
+		return 0
+	}
+	for _, p := range g.d.Productions {
+		if p.Owner != e.Target || !IsTownHall(p.Type) || second(p.Start) < fell || second(p.Start) >= e.Second || g.baseOf(p.X, p.Y) != e.Base {
+			continue
+		}
+		if p.Cancel == engine.NoFrame || second(p.Cancel) >= e.Second {
+			return fell
+		}
+	}
+	return 0
 }

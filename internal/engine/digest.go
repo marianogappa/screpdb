@@ -7,10 +7,19 @@ package engine
 // thousands would take hours to redo. Digests from OldestReadableEngineVersion on stay in use, and a feature
 // that needs newer data checks for it (UnitOrdersKnown) and is simply missing on older games. Raise
 // OldestReadableEngineVersion only when older digests would mislead the features that read them.
+//
+// Not every bump is worth hours of background passes: BackgroundUpgradeBelow is the oldest version the
+// background pass leaves alone. Raise it to EngineVersion when a bump changes what library-wide figures
+// read (aggregates, the games list); leave it when a bump only adds to one game's page, and a game with an
+// older digest is redone when someone opens it.
 const (
-	EngineVersion               = 11
+	EngineVersion               = 13
 	OldestReadableEngineVersion = 7
+	BackgroundUpgradeBelow      = 11
 )
+
+// UpgradeInBackground says whether the background pass redoes a digest of this version.
+func UpgradeInBackground(version int32) bool { return version < BackgroundUpgradeBelow }
 
 func Readable(version int32) bool {
 	return version >= OldestReadableEngineVersion && version <= EngineVersion
@@ -94,6 +103,8 @@ type Death struct {
 	Reason      uint8
 	KillerType  uint16
 	KillerOwner int8
+	// Killer is the unit that dealt the killing damage, 0 when none or when the digest predates EngineVersion 13.
+	Killer uint32
 }
 
 type OwnerChange struct {
@@ -158,6 +169,11 @@ type Unload struct {
 	Owner         int8
 	X, Y          int32
 	Cargo         []uint16
+	// Units are the unloaded units' IDs, sorted; empty before EngineVersion 13.
+	Units []uint32
+	// LoadFrame and LoadX, LoadY are where the transport last picked up this cargo, or NoFrame when unknown.
+	LoadFrame    int32
+	LoadX, LoadY int32
 }
 
 // Teleport is a player's units jumping across the map within one second: a Recall or a Nydus Canal.
@@ -169,13 +185,20 @@ type Teleport struct {
 	Units        []uint16
 }
 
-// Cast is a spell order the engine accepted, with its target point.
+// Cast is a spell order the engine accepted, with its target point. From EngineVersion 11 it also says
+// which kind of unit cast it and which unit it targeted (Target 0 and TargetOwner NoOwner for a point).
 type Cast struct {
-	Frame int32
-	Owner int8
-	Order uint8
-	X, Y  int32
+	Frame       int32
+	Owner       int8
+	Order       uint8
+	X, Y        int32
+	CasterType  uint16
+	Target      uint32
+	TargetType  uint16
+	TargetOwner int8
 }
+
+const NoOwner = int8(-1)
 
 type Drift struct {
 	EngineError      string
@@ -210,6 +233,14 @@ func (d *Digest) UnitOrdersKnown() bool { return d.EngineVersion >= 8 }
 // CommandsKnown says army snapshots carry when the player last ordered each unit, which digests before
 // EngineVersion 10 lack.
 func (d *Digest) CommandsKnown() bool { return d.EngineVersion >= 10 }
+
+// CastTargetsKnown says casts carry their caster's type and their target unit, which digests before
+// EngineVersion 11 lack.
+func (d *Digest) CastTargetsKnown() bool { return d.EngineVersion >= 12 }
+
+// UnitIDsKnown says deaths name their killer and unloads name the units they set down, which digests before
+// EngineVersion 13 lack.
+func (d *Digest) UnitIDsKnown() bool { return d.EngineVersion >= 13 }
 
 func (d *Digest) TrustedUntil() int32 {
 	until := d.LastFrame + 1

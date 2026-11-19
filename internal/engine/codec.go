@@ -75,6 +75,9 @@ func Encode(d *Digest) ([]byte, error) {
 		w.uint(uint64(x.Reason))
 		w.uint(uint64(x.KillerType))
 		w.int(int64(x.KillerOwner))
+		if d.EngineVersion >= 13 {
+			w.uint(uint64(x.Killer))
+		}
 	}
 	w.uint(uint64(len(d.OwnerChanges)))
 	prev = 0
@@ -95,7 +98,7 @@ func Encode(d *Digest) ([]byte, error) {
 	}
 	writeEconomy(&w, d.Economy)
 	writeArmy(&w, d.Army, d.EngineVersion)
-	writeUnloads(&w, d.Unloads)
+	writeUnloads(&w, d.Unloads, d.EngineVersion)
 	writeTeleports(&w, d.Teleports)
 	w.uint(uint64(len(d.Casts)))
 	prev = 0
@@ -106,6 +109,12 @@ func Encode(d *Digest) ([]byte, error) {
 		w.uint(uint64(c.Order))
 		w.int(int64(c.X))
 		w.int(int64(c.Y))
+		if d.EngineVersion >= 12 {
+			w.uint(uint64(c.CasterType))
+			w.uint(uint64(c.Target))
+			w.uint(uint64(c.TargetType))
+			w.int(int64(c.TargetOwner))
+		}
 	}
 	w.uint(uint64(len(d.Hotkeys)))
 	prev = 0
@@ -201,7 +210,7 @@ func readTypes(r *reader) []uint16 {
 	return types
 }
 
-func writeUnloads(w *writer, unloads []Unload) {
+func writeUnloads(w *writer, unloads []Unload, version int32) {
 	w.uint(uint64(len(unloads)))
 	var prev int32
 	for _, u := range unloads {
@@ -213,10 +222,21 @@ func writeUnloads(w *writer, unloads []Unload) {
 		w.int(int64(u.X))
 		w.int(int64(u.Y))
 		writeTypes(w, u.Cargo)
+		if version >= 12 {
+			w.int(int64(u.LoadFrame))
+			w.int(int64(u.LoadX))
+			w.int(int64(u.LoadY))
+		}
+		if version >= 13 {
+			w.uint(uint64(len(u.Units)))
+			for _, id := range u.Units {
+				w.uint(uint64(id))
+			}
+		}
 	}
 }
 
-func readUnloads(r *reader) []Unload {
+func readUnloads(r *reader, version int32) []Unload {
 	unloads := makeN[[]Unload](r.count())
 	var prev int32
 	for i := range unloads {
@@ -229,6 +249,18 @@ func readUnloads(r *reader) []Unload {
 		u.X = int32(r.int())
 		u.Y = int32(r.int())
 		u.Cargo = readTypes(r)
+		u.LoadFrame = NoFrame
+		if version >= 12 {
+			u.LoadFrame = int32(r.int())
+			u.LoadX = int32(r.int())
+			u.LoadY = int32(r.int())
+		}
+		if version >= 13 {
+			u.Units = makeN[[]uint32](r.count())
+			for j := range u.Units {
+				u.Units[j] = uint32(r.uint())
+			}
+		}
 	}
 	return unloads
 }
@@ -332,6 +364,9 @@ func Decode(b []byte) (*Digest, error) {
 		x.Reason = uint8(r.uint())
 		x.KillerType = uint16(r.uint())
 		x.KillerOwner = int8(r.int())
+		if d.EngineVersion >= 13 {
+			x.Killer = uint32(r.uint())
+		}
 	}
 	d.OwnerChanges = makeN[[]OwnerChange](r.count())
 	prev = 0
@@ -351,7 +386,7 @@ func Decode(b []byte) (*Digest, error) {
 	}
 	d.Economy = readEconomy(&r)
 	d.Army = readArmy(&r, d.EngineVersion)
-	d.Unloads = readUnloads(&r)
+	d.Unloads = readUnloads(&r, d.EngineVersion)
 	d.Teleports = readTeleports(&r)
 	d.Casts = makeN[[]Cast](r.count())
 	prev = 0
@@ -363,6 +398,13 @@ func Decode(b []byte) (*Digest, error) {
 		c.Order = uint8(r.uint())
 		c.X = int32(r.int())
 		c.Y = int32(r.int())
+		c.TargetOwner = NoOwner
+		if d.EngineVersion >= 12 {
+			c.CasterType = uint16(r.uint())
+			c.Target = uint32(r.uint())
+			c.TargetType = uint16(r.uint())
+			c.TargetOwner = int8(r.int())
+		}
 	}
 	d.Hotkeys = makeN[[]HotkeyAssign](r.count())
 	prev = 0

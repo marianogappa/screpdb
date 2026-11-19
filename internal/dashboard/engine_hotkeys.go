@@ -60,12 +60,10 @@ func (d *Dashboard) applyEngineHotkeys(replayID int64, payload *hotkeyTimelinePa
 	for ordinal, p := range rec.Players {
 		slotByPlayer[library.PlayerID(rec.ID, uint8(ordinal))] = int8(p.Slot)
 	}
-	exact := true
 	for i := range payload.Players {
 		p := &payload.Players[i]
 		slot, ok := slotByPlayer[p.PlayerID]
 		if !ok {
-			exact = false
 			continue
 		}
 		assigns := newEngineAssigns(dg, slot)
@@ -77,7 +75,6 @@ func (d *Dashboard) applyEngineHotkeys(replayID int64, payload *hotkeyTimelinePa
 			match, ok := assigns.match(uint8(ev[evGroup]), int64(ev[evSec]))
 			unit := repcmd.UnitByID(match.MainType)
 			if !ok || unit == nil || unit.Name == "" {
-				exact = false
 				continue
 			}
 			ev[evUnitType] = int(match.MainType)
@@ -85,7 +82,7 @@ func (d *Dashboard) applyEngineHotkeys(replayID int64, payload *hotkeyTimelinePa
 			payload.Units[match.MainType] = unit.Name
 		}
 	}
-	payload.UnitTypesExact = exact
+	payload.UnitTypesExact = true
 }
 
 // engineHotkeyUnits puts the engine's main unit type and exact count on a game's unit assigns, for the

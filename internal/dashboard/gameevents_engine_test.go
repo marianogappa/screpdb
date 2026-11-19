@@ -3,11 +3,13 @@
 package dashboard
 
 import (
+	"slices"
 	"testing"
 
 	openbw "github.com/marianogappa/openbw-go"
 	"github.com/marianogappa/screpdb/internal/engine/moments"
 	"github.com/marianogappa/screpdb/internal/library"
+	"github.com/marianogappa/screpdb/internal/models"
 )
 
 func TestMomentPlayersMapsRaceAndHumanity(t *testing.T) {
@@ -63,7 +65,11 @@ func TestLibraryBasesMarksNaturalsOfStarts(t *testing.T) {
 		{Name: "Third", Kind: "expansion", NaturalExpansion: "Main", CenterX: 50, CenterY: 60},
 		{Name: "Other main", Kind: "start"},
 	}}
+	layout.Bases[1].Chokes = []library.MapChoke{{X: 7, Y: 8, To: 0}}
 	got := libraryBases(layout)
+	if len(got[1].Chokes) != 1 || got[1].Chokes[0] != (moments.Choke{X: 7, Y: 8, To: 0}) {
+		t.Errorf("natural chokes = %+v", got[1].Chokes)
+	}
 	wantKinds := []moments.BaseKind{moments.BaseStart, moments.BaseNatural, moments.BaseExpansion, moments.BaseStart}
 	for i, k := range wantKinds {
 		if got[i].Kind != k {
@@ -167,5 +173,52 @@ func TestOpenFieldBaseOneVsOneWithoutKnownMainsFallsBackToBases(t *testing.T) {
 	got := openFieldBase(moments.Event{Actor: 1, Target: 0, X: 10, Y: 10}, nil, rec, nil, nil, nil)
 	if got.OpenField == nil || got.OpenField.Relation != "middle" {
 		t.Fatalf("got %+v", got.OpenField)
+	}
+}
+
+func TestWithChokesResolvesWhereEachLeads(t *testing.T) {
+	layout := &models.MapContextLayout{Bases: []models.MapContextBase{
+		{Name: "start 7", Chokes: []models.MapContextChoke{{X: 112, Y: 768, ConnectsTo: "natural of 7"}}},
+		{Name: "natural of 7", Chokes: []models.MapContextChoke{{X: 168, Y: 704}, {X: 112, Y: 768, ConnectsTo: "start 7"}}},
+	}}
+	got := withChokes(make([]moments.Base, 2), layout)
+	if len(got[0].Chokes) != 1 || got[0].Chokes[0] != (moments.Choke{X: 112, Y: 768, To: 1}) {
+		t.Errorf("main chokes = %+v", got[0].Chokes)
+	}
+	if len(got[1].Chokes) != 2 || got[1].Chokes[0].To != moments.NoBase || got[1].Chokes[1].To != 0 {
+		t.Errorf("natural chokes = %+v", got[1].Chokes)
+	}
+	if got := withChokes(make([]moments.Base, 1), layout); got[0].Chokes != nil {
+		t.Errorf("bases that do not match the layout get no chokes: %+v", got)
+	}
+}
+
+func TestEventsToldByAFoldedPartKeepTheCombinedEvent(t *testing.T) {
+	actor := &workflowGameEventPlayer{PlayerID: 7}
+	at := &workflowGameEventBase{Name: "natural"}
+	ev := func(typ string, sec int64) workflowGameEvent {
+		return workflowGameEvent{Type: typ, Second: sec, Actor: actor, Base: at, Engine: &workflowEngineEvent{EndSecond: sec + 20}}
+	}
+	drop := ev("dt_drop", 677)
+	drop.Parts = []workflowGameEvent{{Type: moments.InsightUndetectedCloak, Second: 682}}
+	told := drop
+	told.Type = moments.InsightUndetectedCloak
+	got := eventsTold([]workflowGameEvent{drop, ev("worker_kills", 690), ev("attack", 900)}, told, drop.Type)
+	if len(got) != 2 || got[0].Type != "dt_drop" || got[1].Type != "attack" {
+		t.Fatalf("the kills are told, the drop and a later attack are not: %+v", got)
+	}
+}
+
+func TestPlayersTakeTheirSideFromTheLastAllianceElseTheLobby(t *testing.T) {
+	rec := &library.Replay{Players: []library.Player{{Team: 1}, {Team: 1}, {Team: 2}}}
+	if got := playerTeams(rec); !slices.Equal(got, []int{2, 2, 3}) {
+		t.Fatalf("lobby teams %v", got)
+	}
+	rec.Alliance = &library.AllianceTimeline{Snapshots: []library.AllianceSnapshot{{Teams: [][]uint8{{0, 1, 2}}}, {Teams: [][]uint8{{0, 2}, {1}}}}}
+	if got := playerTeams(rec); !slices.Equal(got, []int{1, 2, 1}) {
+		t.Fatalf("last alliance %v", got)
+	}
+	if got := playerTeams(&library.Replay{Players: []library.Player{{Team: 0}, {Team: 0}}}); !slices.Equal(got, []int{0, 0}) {
+		t.Fatalf("a 1v1 has no sides beyond each player: %v", got)
 	}
 }

@@ -686,6 +686,14 @@ type MapBase struct {
 	CenterX          int32
 	CenterY          int32
 	Polygon          []MapPoint
+	Chokes           []MapChoke
+}
+
+// MapChoke is a narrow passage out of a base's terrain, and the index in MapLayout.Bases of the base it
+// leads to, or -1.
+type MapChoke struct {
+	X, Y int32
+	To   int
 }
 
 type MapPoint struct {

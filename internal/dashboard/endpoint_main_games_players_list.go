@@ -362,6 +362,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 	replayIDs := make([]int64, 0, len(items))
 	itemIndexByReplayID := map[int64]int{}
 	featureSets := map[int64]map[string]struct{}{}
+	insights := d.featureFlagEnabled(d.ctx, featureFlagGameInsights)
 	// Resolved payload labels per (replay, featureKey) for dynamic markers
 	// (e.g. "3 Hatch Muta", "~9 Overpool"). A game can feature more than one
 	// value of the same marker, so each distinct label becomes its own pill.
@@ -435,6 +436,10 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 			// specific subtypes also light their own chip.
 			featureSets[replayID]["drop"] = struct{}{}
 			featureSets[replayID][eventType] = struct{}{}
+		default:
+			if insightFeatures[eventType] {
+				featureSets[replayID][eventType] = struct{}{}
+			}
 		}
 	}
 	for replayID, set := range featureSets {
@@ -446,7 +451,7 @@ func (d *Dashboard) populateWorkflowGameListFeaturing(items []workflowGameListIt
 		keys := make([]string, 0, len(set))
 		seenLabel := make(map[string]struct{}, len(set))
 		for _, cfg := range workflowFeaturingFilters {
-			if _, has := set[cfg.Key]; !has {
+			if _, has := set[cfg.Key]; !has || cfg.Labs && !insights {
 				continue
 			}
 			// Prefer resolved payload labels ("3 Hatch Muta") over the static
@@ -647,7 +652,11 @@ func (d *Dashboard) workflowGamesListFilterOptions() (workflowGamesListFilterOpt
 	if err != nil {
 		return result, err
 	}
+	insights := d.featureFlagEnabled(d.ctx, featureFlagGameInsights)
 	for _, feature := range workflowFeaturingFilters {
+		if feature.Labs && !insights {
+			continue
+		}
 		if feature.Key == "bo_z_fuzzy" {
 			for _, label := range fuzzyLabels {
 				result.Featuring = append(result.Featuring, workflowGamesListFilterOption{

@@ -30,6 +30,10 @@ type Candidate struct {
 	// Actor is any stable id of the player the event is about; 0 for none.
 	Actor     int64
 	Magnitude Magnitude
+	// Pinned events are key whatever the budget: the one that says why the game was lost.
+	Pinned bool
+	// Folded are the types of events combined into this one; it weighs as much as the heaviest.
+	Folded []string
 }
 
 type Game struct {
@@ -59,6 +63,8 @@ var baseWeight = map[string]float64{
 	"first_reaver": 0.45, "first_corsair": 0.45, "speedlot": 0.4, "mech_transition": 0.4,
 	"takeover":          0.35,
 	"long_supply_block": 0.2,
+	"eraser":            0.9, "elevator": 0.85, "undetected_cloak": 0.8, "nydus_denied": 0.75,
+	"undefended_air_harass": 0.7, "defilers_irradiated": 0.7, "overlord_hunt": 0.55, "lurker_contain": 0.7, "overrun": 0.8,
 	"scout":             0.1,
 	"location_inactive": 0.05,
 }
@@ -73,9 +79,13 @@ func Weight(c Candidate) float64 {
 	if !ok {
 		w = defaultWeight
 	}
+	for _, t := range c.Folded {
+		w = max(w, baseWeight[t])
+	}
 	m := c.Magnitude
 	switch c.Type {
-	case "attack", "worker_kills", "drop", "reaver_drop", "dt_drop", "recall", "nydus_attack":
+	case "attack", "worker_kills", "drop", "reaver_drop", "dt_drop", "recall", "nydus_attack",
+		"elevator", "eraser", "undetected_cloak", "undefended_air_harass", "defilers_irradiated":
 		w += min(0.4, float64(m.Traded)/7500)
 		w += min(0.3, float64(m.Workers)/30)
 		if m.TownHall {
@@ -119,7 +129,7 @@ func Select(cs []Candidate, g Game) []bool {
 	key := make([]bool, len(cs))
 	weights := make([]float64, len(cs))
 	for i, c := range cs {
-		key[i] = mandatory[c.Type]
+		key[i] = mandatory[c.Type] || c.Pinned
 		weights[i] = Weight(c)
 	}
 	type typeActor struct {

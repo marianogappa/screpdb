@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/marianogappa/screpdb/internal/enginepass"
+	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/power"
 )
 
@@ -79,6 +80,40 @@ func (d *Dashboard) focusEnginePass(replayID int64) {
 func (d *Dashboard) enginePending(replayID int64) bool {
 	runner := d.enginePass.get()
 	return runner != nil && runner.Pending(replayID)
+}
+
+// engineUpgrading reports whether a game with engine data is being redone on a newer engine version.
+func (d *Dashboard) engineUpgrading(replayID int64) bool {
+	runner := d.enginePass.get()
+	return runner != nil && runner.Upgrading(replayID)
+}
+
+// completeFallback is the user's own recording to show in place of a game's complete copy (issue #341) when
+// the engine could not run the complete copy but may run the own one: a shorter recording can stop before
+// the point where the longer one drifted. replayID may be either copy, as the page refreshes by the copy it
+// shows.
+func (d *Dashboard) completeFallback(replayID int64) (int64, bool) {
+	runner := d.enginePass.get()
+	if runner == nil || d.library == nil {
+		return 0, false
+	}
+	snap := d.library.lib.Snapshot()
+	rec, ok := snap.ByID(replayID)
+	if !ok {
+		return 0, false
+	}
+	complete, own := rec, rec
+	if ownPath, isComplete := library.CompleteBasePath(rec.Path()); isComplete {
+		if own, ok = snap.ByPath(ownPath); !ok {
+			return 0, false
+		}
+	} else if complete, ok = snap.ByPath(library.CompletePathFor(rec.Path())); !ok || complete == rec {
+		return 0, false
+	}
+	if !runner.Unavailable(complete.ID) || runner.Unavailable(own.ID) {
+		return 0, false
+	}
+	return own.ID, true
 }
 
 func (d *Dashboard) engineUnavailable(replayID int64) bool {

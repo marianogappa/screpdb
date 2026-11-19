@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { api } from './api';
-import { useT, t } from './lib/i18nContext';
+import { useT, t, getLocale } from './lib/i18nContext';
+import { youTemplate } from './lib/youTemplate';
 import { slugKey } from './lib/i18n';
+import { turningPointSentence } from './lib/turningPoint';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
@@ -9,6 +11,7 @@ import EngineProgressNote from './components/EngineProgressNote';
 import SkillTab, { PlayersSkillTab, LEFT_EARLY_MARK, SkillCard, SkillTierChip, TIER_KEYS, tierLabel } from './components/SkillTab';
 import { cardRaces, skillCardFileName } from './lib/skillCard';
 import { downloadSvgAsPng } from './lib/svgPng';
+import { gamePhaseFor, gamePhaseStarts } from './lib/gamePhase';
 import { bnetFreshness } from './lib/bnetFreshness';
 import SkillExplainerLink from './components/SkillExplainer';
 import EngineSnapshotMap from './components/EngineSnapshotMap';
@@ -20,9 +23,11 @@ import TimingScatterRows from './components/charts/TimingScatterRows';
 import BuildOrderTimelineRows from './components/charts/BuildOrderTimelineRows';
 import MutaliskTimingChart from './components/charts/MutaliskTimingChart';
 import SupplyTimeline from './components/charts/SupplyTimeline';
+import { baseOutline } from './lib/baseOutline';
 import HotkeyTimeline from './components/charts/HotkeyTimeline';
 import HotkeyMaps from './components/charts/HotkeyMaps';
 import HotkeySignature from './components/charts/HotkeySignature';
+import OneRowPills from './components/OneRowPills';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
@@ -46,6 +51,15 @@ const BetaTag = () => {
   return (
     <sup className="workflow-beta-tag" title={betaTooltip()} aria-label={t('marker.betaAria')}>β</sup>
   );
+};
+
+const isYouPlayer = (player) => String(player?.name || '').trim().endsWith(YOU_MARKER);
+
+// youFill fills an event sentence with the viewer told as "you".
+const youFill = (key, parts, players) => {
+  const roles = Object.entries(players).filter(([, p]) => isYouPlayer(p)).map(([role]) => role);
+  const words = { subject: t('you.subject'), object: t('you.object'), possessive: t('you.possessive') };
+  return fillTemplate(youTemplate(t(key), roles, words, getLocale() === 'en'), parts);
 };
 
 const fillTemplate = (template, parts) => {
@@ -105,6 +119,15 @@ const getRaceIcon = (race) => {
   return null;
 };
 
+const MAP_TILE_PIXELS = 32;
+
+// engineMapStrokePercent is an engine event map's base outline width, in the 0 to 100 units of the older map
+// overlay, so both maps draw bases alike.
+const engineMapStrokePercent = (width, mapWidthPixels) => {
+  const w = Number(mapWidthPixels || 0);
+  return w > 0 ? (width * Math.max(2.5, w / 1100) * 100) / w : 0;
+};
+
 const normalizeEventType = (eventType) => String(eventType || '').trim().toLowerCase();
 
 /** Aligns with NeverUsedHotkeysPlayerDetector (7+ minute replays). */
@@ -134,6 +157,12 @@ const DROP_EVENT_TYPES = ['drop', 'cliff_drop', 'reaver_drop', 'dt_drop'];
 const DROP_ACTOR_EVENT_TYPES = DROP_EVENT_TYPES;
 
 // DROP_TEXT names each drop variant: its short label and its event sentence.
+// PATTERN_EVENT_TYPES are the game event types a marker pill stands for when their names differ.
+const PATTERN_EVENT_TYPES = {
+  made_recalls: ['recall'],
+  made_drops: DROP_EVENT_TYPES,
+};
+
 const DROP_TEXT = {
   drop: { label: 'events.drop', sentence: 'events.sentence.drops' },
   cliff_drop: { label: 'events.cliffDrop', sentence: 'events.sentence.cliffDrops' },
@@ -141,14 +170,24 @@ const DROP_TEXT = {
   dt_drop: { label: 'events.dtDrop', sentence: 'events.sentence.dtDrops' },
 };
 
-const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => {
+// playerEventsOfTypes are the events a player did of any of the types, counting events folded into others.
+const playerEventsOfTypes = (events, playerID, wantedTypes) => {
   const pid = Number(playerID);
   const wanted = new Set((wantedTypes || []).map((t) => normalizeEventType(t)));
-  return (events || []).some((ev) => {
-    if (!wanted.has(normalizeEventType(ev?.type))) return false;
+  return (events || []).filter((ev) => {
+    const types = [ev?.type, ...(Array.isArray(ev?.parts) ? ev.parts.map((p) => p?.type) : [])];
+    if (!types.some((type) => wanted.has(normalizeEventType(type)))) return false;
     const aid = ev?.actor?.player_id;
     return aid != null && Number(aid) === pid;
   });
+};
+
+const playerIsActorForGameEventTypes = (events, playerID, wantedTypes) => playerEventsOfTypes(events, playerID, wantedTypes).length > 0;
+
+// A pill stands for the player's first key event of its kind, else their first: the one the events list shows.
+const pillEvent = (events, playerID, wantedTypes) => {
+  const mine = playerEventsOfTypes(events, playerID, wantedTypes);
+  return mine.find((ev) => ev?.key !== false) || mine[0] || null;
 };
 
 const dropTransportIconForRace = (race, opts) => {
@@ -176,6 +215,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   const transportIcon = dropTransportIconForRace(player?.race);
   if (playerIsActorForGameEventTypes(events, pid, ['drop'])) {
     positive.push({
+      event: pillEvent(events, pid, ['drop']),
       key: 'drop',
       domKey: `ge-drop-${pid}`,
       icons: [transportIcon].filter(Boolean),
@@ -185,6 +225,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['cliff_drop'])) {
     positive.push({
+      event: pillEvent(events, pid, ['cliff_drop']),
       key: 'cliff_drop',
       domKey: `ge-cliff-drop-${pid}`,
       icons: [getUnitIcon('dropship')].filter(Boolean),
@@ -195,6 +236,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   for (const [key, unit] of [['reaver_drop', 'reaver'], ['dt_drop', 'darktemplar']]) {
     if (playerIsActorForGameEventTypes(events, pid, [key])) {
       positive.push({
+        event: pillEvent(events, pid, [key]),
         key,
         domKey: `ge-${key}-${pid}`,
         icons: [getUnitIcon('shuttle'), getUnitIcon(unit)].filter(Boolean),
@@ -205,6 +247,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['cannon_rush'])) {
     positive.push({
+      event: pillEvent(events, pid, ['cannon_rush']),
       key: `ge-cannon-${pid}`,
       icon: getUnitIcon('photoncannon'),
       label: t('events.cannonRush'),
@@ -213,6 +256,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['bunker_rush'])) {
     positive.push({
+      event: pillEvent(events, pid, ['bunker_rush']),
       key: `ge-bunker-${pid}`,
       icon: getUnitIcon('bunker'),
       label: t('events.bunkerRush'),
@@ -221,6 +265,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['proxy_gate'])) {
     positive.push({
+      event: pillEvent(events, pid, ['proxy_gate']),
       key: `ge-proxy-gate-${pid}`,
       icon: getUnitIcon('gateway'),
       label: t('events.proxyGateway'),
@@ -229,6 +274,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['proxy_rax'])) {
     positive.push({
+      event: pillEvent(events, pid, ['proxy_rax']),
       key: `ge-proxy-rax-${pid}`,
       icon: getUnitIcon('barracks'),
       label: t('events.proxyBarracks'),
@@ -237,6 +283,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['proxy_factory'])) {
     positive.push({
+      event: pillEvent(events, pid, ['proxy_factory']),
       key: `ge-proxy-factory-${pid}`,
       icon: getUnitIcon('factory'),
       label: t('events.proxyFactory'),
@@ -245,6 +292,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   }
   if (playerIsActorForGameEventTypes(events, pid, ['proxy_starport'])) {
     positive.push({
+      event: pillEvent(events, pid, ['proxy_starport']),
       key: `ge-proxy-starport-${pid}`,
       icon: getUnitIcon('starport'),
       label: t('events.proxyStarport'),
@@ -254,6 +302,7 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
   if (playerIsActorForGameEventTypes(events, pid, ['long_supply_block'])) {
     const supply = { terran: 'supplydepot', protoss: 'pylon', zerg: 'overlord' }[String(player?.race || '').toLowerCase()];
     positive.push({
+      event: pillEvent(events, pid, ['long_supply_block']),
       key: `ge-long-supply-block-${pid}`,
       icon: supply ? getUnitIcon(supply) : null,
       label: t('events.longSupplyBlock'),
@@ -261,19 +310,75 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     });
   }
 
+  const transport = { terran: 'dropship', protoss: 'shuttle', zerg: 'overlord' }[String(player?.race || '').toLowerCase()] || 'dropship';
+  for (const [type, icon] of [
+    ['elevator', transport], ['eraser', 'sciencevessel'], ['defilers_irradiated', 'sciencevessel'],
+    ['nydus_denied', 'nyduscanal'], ['overlord_hunt', 'overlord'], ['lurker_contain', 'lurker'],
+  ]) {
+    if (playerIsActorForGameEventTypes(events, pid, [type])) {
+      positive.push({
+        event: pillEvent(events, pid, [type]),
+        key: `ge-${type}-${pid}`,
+        icon: getUnitIcon(icon),
+        label: t(`insight.${type}`),
+        className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+      });
+    }
+  }
+
+  if (playerIsActorForGameEventTypes(events, pid, ['overrun'])) {
+    const ev = pillEvent(events, pid, ['overrun']);
+    const unit = String(ev?.attack_unit_types?.[0] || '').toLowerCase().replace(/[^a-z]/g, '');
+    positive.push({
+      event: ev,
+      key: `ge-overrun-${pid}`,
+      icon: unit ? getUnitIcon(unit) : null,
+      label: t('insight.overrun'),
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
+
   return { positive: elideGenericDropPill(positive), noScout: null };
 };
 
-const renderGameSummarySignalPill = (pill) => {
+// GameProgress is how far into the game an event is, drawn as StarCraft draws progress.
+const GameProgress = ({ progress }) => (
+  <div className="workflow-event-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
+    <div className="workflow-event-progress-fill" style={{ width: `${progress * 100}%` }} />
+  </div>
+);
+
+// Strong pills are the Labs insights: they outrank the other game event pills for the one row there is room for.
+const isStrongPill = (pill) => String(pill?.className || '').includes('workflow-pattern-pill-strong');
+
+// A pill drawn from a game event carries the event's time on its top border and opens it in Game Events.
+const renderGameSummarySignalPill = (pill, openEvent) => {
   // Backwards-compat: older entries use { icon }, drop pills use { icons: [] }.
   const icons = Array.isArray(pill.icons) ? pill.icons : (pill.icon ? [pill.icon] : []);
-  return (
-    <span key={pill.domKey || pill.key} className={pill.className} title={pill.title}>
+  const event = openEvent && pill.event ? pill.event : null;
+  const content = (
+    <>
+      {event ? <span className="workflow-pill-legend">{formatDuration(Number(event.second) || 0)}</span> : null}
       {icons.map((url, i) => (
         <img key={`${pill.key || pill.domKey}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
       ))}
       <span>{pill.label}</span>
-    </span>
+    </>
+  );
+  if (!event) {
+    return <span key={pill.domKey || pill.key} className={pill.className} title={pill.title}>{content}</span>;
+  }
+  return (
+    <button
+      type="button"
+      key={pill.domKey || pill.key}
+      className={`${pill.className} workflow-pill-legended workflow-pill-link`}
+      title={pill.title}
+      data-opens-tab="events"
+      onClick={() => openEvent(event)}
+    >
+      {content}
+    </button>
   );
 };
 
@@ -320,8 +425,13 @@ const isTargetAtOwnNaturalBase = (event) => {
 // attackLocationClause picks the right preposition/phrasing for an attack's
 // location: the target's own natural → "at their natural"; open field → the
 // bare relational phrase; otherwise "at <base>".
+const isTargetAtOwnMainBase = (event) => String(event?.base?.kind || '').toLowerCase() === 'start'
+  && Number(event?.base?.clock) > 0 && Number(event?.base?.clock) === Number(event?.target_start_clock);
+
 const attackLocationClause = (event, location) => {
-  if (isTargetAtOwnNaturalBase(event)) return t('events.location.atTheirNatural');
+  const yours = isYouPlayer(event?.target);
+  if (isTargetAtOwnNaturalBase(event)) return t(yours ? 'events.location.atYourNatural' : 'events.location.atTheirNatural');
+  if (isTargetAtOwnMainBase(event)) return t(yours ? 'events.location.atYourMain' : 'events.location.atTheirMain');
   if (isOpenFieldLocation(event)) return location;
   return t('events.location.at', { location });
 };
@@ -337,6 +447,8 @@ const fightSentence = (event, eventType, hasActor, hasTarget, location) => {
     if (!hasTarget) return location ? { key: 'events.sentence.attacksAt', params: { location } } : { fallback: 'events.attack' };
     if (!location) return { key: 'events.sentence.attacksNoLocation', params: {} };
     const params = { locationClause: attackLocationClause(event, location) };
+    if (o?.town_hall && isTargetAtOwnNaturalBase(event)) return { key: 'events.sentence.destroysNatural', params: {} };
+    if (o?.town_hall && isTargetAtOwnMainBase(event)) return { key: 'events.sentence.destroysMain', params: {} };
     if (o?.town_hall) return { key: 'events.sentence.destroysBase', params };
     if (Number(o?.workers) >= 5) return { key: 'events.sentence.attacksKillingWorkers', params: { ...params, count: o.workers } };
     if (o && Number(o.lost) >= 400 && Number(o.lost) > 2 * Number(o.killed)) return { key: 'events.sentence.attackHeldOff', params };
@@ -356,21 +468,145 @@ const fightSentence = (event, eventType, hasActor, hasTarget, location) => {
   return null;
 };
 
+// INSIGHT_TYPES are the Labs game_insights events: techniques and mistakes the engine proved, each with
+// the sentence that says what happened. insightSentence returns null for any other type.
+const INSIGHT_TYPES = new Set([
+  'elevator', 'eraser', 'defilers_irradiated', 'nydus_denied',
+  'undetected_cloak', 'undefended_air_harass', 'overlord_hunt', 'lurker_contain', 'overrun',
+]);
+
+const insightUnitName = (event) => {
+  const raw = String(event?.attack_unit_types?.[0] || '').trim();
+  return raw ? t.server(`server.name.${slugKey(raw)}`, raw) : '';
+};
+
+const insightSentence = (event, eventType, hasActor, location) => {
+  if (!INSIGHT_TYPES.has(eventType)) return null;
+  const fallback = `insight.${eventType}`;
+  if (!hasActor) return { fallback };
+  const o = event?.outcome || {};
+  const count = Number(event?.unit_count || 0);
+  const locationClause = location ? attackLocationClause(event, location) : '';
+  const unit = insightUnitName(event);
+  switch (eventType) {
+    case 'elevator':
+      return locationClause ? { key: 'insight.sentence.elevator', params: { count, locationClause } } : { fallback };
+    case 'eraser':
+      return { key: 'insight.sentence.eraser', params: { count: Number(o.workers || 0), icon: '' }, iconUnit: { sprite: 'sciencevessel', name: 'science_vessel', fallback: 'Science Vessel' } };
+    case 'defilers_irradiated':
+      return { key: 'insight.sentence.defilersIrradiated', params: { count } };
+    case 'nydus_denied':
+      return { key: o.town_hall ? 'insight.sentence.nydusDeniedBase' : 'insight.sentence.nydusDenied', params: {} };
+    case 'undetected_cloak': {
+      const how = ['none', 'elsewhere', 'scan'].includes(event?.result) ? event.result : 'none';
+      return locationClause ? { key: `insight.sentence.cloak.${how}`, params: { unit, count, locationClause } } : { fallback };
+    }
+    case 'undefended_air_harass': {
+      if (!locationClause) return { fallback };
+      const defenders = Number(event?.defenders || 0);
+      return defenders > 0
+        ? { key: 'insight.sentence.airHarassFew', params: { unit, count: Number(o.workers || count), locationClause, defenders } }
+        : { key: 'insight.sentence.airHarass', params: { unit, count: Number(o.workers || count), locationClause } };
+    }
+    case 'overlord_hunt': {
+      const blocked = Number(event?.duration_seconds || 0);
+      return blocked >= 15
+        ? { key: 'insight.sentence.overlordHuntBlocked', params: { count, duration: formatDuration(blocked) } }
+        : { key: 'insight.sentence.overlordHunt', params: { count } };
+    }
+    case 'lurker_contain':
+      return { key: 'insight.sentence.lurkerContain', params: { count, duration: formatDuration(Number(event?.duration_seconds || 0)) } };
+    case 'overrun': {
+      if (!locationClause) return { fallback };
+      const raw = String(event?.attack_unit_types?.[0] || '').trim();
+      const iconUnit = raw ? { sprite: raw.toLowerCase().replace(/[^a-z]/g, ''), name: slugKey(raw), fallback: raw } : null;
+      const key = Number(event?.defenders || 0) > 0 ? 'insight.sentence.overrun' : 'insight.sentence.overrunUnopposed';
+      return { key, params: { count, locationClause, icon: '' }, iconUnit };
+    }
+    default:
+      return { fallback };
+  }
+};
+
+// COMBINED_CLAUSES are how an event folded into another (moments.Combinations) reads after the lead's sentence,
+// by the part's type and then the lead's: a pair missing here folds in silently, as a drop into its elevator.
+const COMBINED_CLAUSES = {
+  undetected_cloak: {
+    drop: 'after', reaver_drop: 'after', dt_drop: 'after', elevator: 'after', lurker_contain: 'during',
+  },
+};
+
+const combinedClauses = (event) => {
+  const leadType = normalizeEventType(event?.type);
+  return (Array.isArray(event?.parts) ? event.parts : []).map((part) => {
+    const partType = normalizeEventType(part?.type);
+    const when = COMBINED_CLAUSES[partType]?.[leadType];
+    if (!when || partType !== 'undetected_cloak') return null;
+    const how = ['none', 'elsewhere', 'scan'].includes(part?.result) ? part.result : 'none';
+    return { key: `insight.clause.cloak.${when}.${how}`, params: { unit: insightUnitName(part), count: Number(part?.unit_count || 0) } };
+  }).filter(Boolean);
+};
+
+// A hit on a base that fell before and was rebuilt says so, or it reads as an attack on ruins.
+const rebuiltClause = (event) => {
+  const fell = Number(event?.rebuilt_after_second || 0);
+  return fell > 0 ? [{ key: 'events.fragment.rebuilt', params: { time: formatDuration(fell) } }] : [];
+};
+
+const gameEventDescription = (event, registry) => {
+  const lead = gameEventLeadDescription(event, registry);
+  const target = String(event?.target?.name || '').trim();
+  return [...rebuiltClause(event), ...combinedClauses(event)].reduce((text, c) => text + t(c.key, { target, ...c.params }), String(lead));
+};
+
+const renderGameEventDescription = (event, registry, playerRaceByID) => {
+  const lead = renderGameEventLeadDescription(event, registry, playerRaceByID);
+  const clauses = [...rebuiltClause(event), ...combinedClauses(event)];
+  if (clauses.length === 0) return lead;
+  const targetSpan = gamePlayerNameSpan(event?.target, 'ct');
+  return (
+    <>
+      {lead}
+      {clauses.map((c, i) => <React.Fragment key={`clause-${i}`}>{youFill(c.key, { target: targetSpan, ...c.params }, { target: event?.target })}</React.Fragment>)}
+    </>
+  );
+};
+
 // openFieldLabel says where a place away from bases is, in the reader's language.
-const openFieldLabel = (base) => {
+const openFieldLabel = (base, event = null, options) => {
   const of = base?.open_field;
   if (!of) return '';
-  if (of.relation === 'near_base') return t('events.location.nearBase', { location: of.ref });
+  if (of.relation === 'near_base') return t('events.location.nearBase', { location: ownedBaseWords(of.ref, event, options) });
   if (of.relation === 'near_player_base') return t('events.location.nearPlayerBase', { player: of.ref });
   if (of.relation === 'player_side') return t('events.location.playerSide', { player: of.ref });
   if (of.relation === 'middle') return t('events.location.middle');
   return '';
 };
 
+// ownedBaseWords tells a base named after a player already in the sentence by "your" or "their": the
+// viewer's own anywhere, the target's once they are named, and the actor's when nobody else is named before
+// the place ("AnimalMove recalls from their main base"), else "their own", as "their" would read as the
+// target's ("X attacks Y at their own natural").
+const ownedBaseWords = (name, event, { actorFirst = false } = {}) => {
+  const label = String(name || '').trim();
+  if (!label) return '';
+  const own = (player) => {
+    const who = String(player?.name || '').trim();
+    return who && label.startsWith(`${who}'s `) ? label.slice(who.length + 3) : null;
+  };
+  const you = label.replace(new RegExp(`^.*${YOU_MARKER}'s `), `${t('you.possessive')} `);
+  if (you !== label) return you;
+  const ofTarget = event?.target ? own(event.target) : null;
+  if (ofTarget != null) return `${t('events.their')} ${ofTarget}`;
+  const ofActor = own(event?.actor);
+  if (ofActor != null) return `${t(actorFirst || !event?.target ? 'events.their' : 'events.theirOwn')} ${ofActor}`;
+  return label;
+};
+
 const gameEventLocationLabel = (event) => {
-  const openField = openFieldLabel(event?.base);
+  const openField = openFieldLabel(event?.base, event);
   if (openField) return openField;
-  const baseName = String(event?.base?.name || '').trim();
+  const baseName = ownedBaseWords(event?.base?.name, event);
   if (baseName) {
     const isMineralOnly = event?.base?.mineral_only === true;
     if (isMineralOnly && !baseName.toLowerCase().includes('mineral only')) {
@@ -391,6 +627,20 @@ const gameEventTargetLocationLabel = (event) => {
     return t('events.location.mineralOnly', { name: baseName });
   }
   return baseName;
+};
+
+// recallFromLabel is where a recall was cast: the recaller's own base reads "their", as they are named first.
+const recallFromLabel = (event) => openFieldLabel(event?.base, event, { actorFirst: true }) || ownedBaseWords(event?.base?.name, event, { actorFirst: true });
+
+// recallDestination splits a recall's destination into the owner it is named after, if any, and the rest:
+// "TZPNEWB's expa at 3's natural" is TZPNEWB and "expa at 3's natural", so the owner is drawn as a name.
+const recallDestination = (event) => {
+  const label = gameEventTargetLocationLabel(event);
+  const owner = event?.target_owner;
+  const ownerName = String(owner?.name || '').trim();
+  if (!label || !ownerName) return { label, owner: null, rest: '' };
+  if (label.startsWith(`${ownerName}'s `)) return { label, owner, rest: label.slice(ownerName.length + 3), named: true };
+  return { label, owner, rest: '', named: false };
 };
 
 // boOpenerLines groups the "bo_openers" event's per-(player × BO) entries into
@@ -493,7 +743,7 @@ const recallOutcomeSuffix = (event) => {
   return hallucination + (key ? t(key, { count: Number(event?.outcome?.buildings) || 0 }) : '');
 };
 
-const gameEventDescription = (event, registry) => {
+const gameEventLeadDescription = (event, registry) => {
   const eventType = normalizeEventType(event?.type);
   const actor = String(event?.actor?.name || '').trim();
   const target = String(event?.target?.name || '').trim();
@@ -545,6 +795,8 @@ const gameEventDescription = (event, registry) => {
   }
   const fight = fightSentence(event, eventType, Boolean(actor), Boolean(target), location);
   if (fight) return fight.key ? t(fight.key, { actor, target, ...fight.params }) : t(fight.fallback);
+  const insight = insightSentence(event, eventType, Boolean(actor), location);
+  if (insight) return insight.key ? t(insight.key, { actor, target, ...insight.params }) : t(insight.fallback);
   if (eventType === 'scout') return actor && target && location ? t('events.sentence.scouts', { actor, target, location }) : t('events.scout');
   if (DROP_TEXT[eventType]) {
     const fallback = t(DROP_TEXT[eventType].label);
@@ -552,8 +804,8 @@ const gameEventDescription = (event, registry) => {
     // event.base is the destination polygon for drops (toReplayEvent stamps
     // DstPolyID there). Source, when worldstate could resolve it, lives on
     // payload.sb → event.source_base.
-    const sourceLabel = String(event?.source_base?.name || '').trim();
-    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
+    const sourceLabel = ownedBaseWords(event?.source_base?.name, event, { actorFirst: true });
+    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.transports', { count: event.drop_count }) : '';
     const from = sourceLabel ? t('events.fragment.from', { location: sourceLabel }) : '';
     const params = { actor, target, location, icon: '', count, from };
     return t(DROP_TEXT[eventType].sentence, params);
@@ -564,15 +816,16 @@ const gameEventDescription = (event, registry) => {
     // backend infers the destination via attack-coincidence + post-recall
     // activity heuristics (see worldstate.emitRecallEvents); when neither
     // proxy fires we surface "(destination unknown)".
-    const targetLocation = gameEventTargetLocationLabel(event);
-    const targetOwnerName = String(event?.target_owner?.name || '').trim();
+    const dest = recallDestination(event);
     const count = recallCountFragment(event);
     if (!actor) return t('events.recall');
-    const from = location ? t('events.fragment.from', { location }) : '';
-    const params = { actor, icon: '', count, from, owner: targetOwnerName, location: targetLocation };
+    const fromLabel = recallFromLabel(event);
+    const from = fromLabel ? t('events.fragment.from', { location: fromLabel }) : '';
+    const ownerLabel = isYouPlayer(dest.owner) ? t('you.possessive') : `${String(dest.owner?.name || '').trim()}'s`;
+    const params = { actor, icon: '', count, from, owner: String(dest.owner?.name || '').trim(), location: dest.named ? `${ownerLabel} ${dest.rest}` : dest.label };
     const suffix = recallOutcomeSuffix(event);
-    if (targetLocation) {
-      return (targetOwnerName ? t('events.sentence.recallsToOwner', params) : t('events.sentence.recallsTo', params)) + suffix;
+    if (dest.label) {
+      return (dest.owner && !dest.named ? t('events.sentence.recallsToOwner', params) : t('events.sentence.recallsTo', params)) + suffix;
     }
     return t('events.sentence.recallsUnknown', params) + suffix;
   }
@@ -1010,14 +1263,14 @@ const gamePlayerNameSpan = (player, key) => {
 // colored spans for the event-row body; the string variant remains for search
 // and dedup keys. playerRaceByID inlines race-correct icons without requiring
 // the backend to embed race on every event row.
-const renderGameEventDescription = (event, registry, playerRaceByID) => {
+const renderGameEventLeadDescription = (event, registry, playerRaceByID) => {
   const eventType = normalizeEventType(event?.type);
   const actorName = String(event?.actor?.name || '').trim();
   const targetName = String(event?.target?.name || '').trim();
   const location = gameEventLocationLabel(event);
   const actorSpan = gamePlayerNameSpan(event?.actor, 'a');
   const targetSpan = gamePlayerNameSpan(event?.target, 't');
-  const fill = (key, parts) => fillTemplate(t(key), parts);
+  const fill = (key, parts) => youFill(key, parts, { actor: event?.actor, target: event?.target, owner: event?.target_owner });
 
   if (eventType === 'phase_snapshot') return t(`events.phase.${event.phase}`);
   if (eventType === 'bo_openers') {
@@ -1109,6 +1362,14 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   }
   const fight = fightSentence(event, eventType, Boolean(actorName), Boolean(targetName), location);
   if (fight) return fight.key ? fill(fight.key, { actor: actorSpan, target: targetSpan, ...fight.params }) : t(fight.fallback);
+  const insight = insightSentence(event, eventType, Boolean(actorName), location);
+  if (insight) {
+    if (!insight.key) return t(insight.fallback);
+    const iconURL = insight.iconUnit ? getUnitIcon(insight.iconUnit.sprite) : null;
+    const iconName = insight.iconUnit ? t.server(`server.name.${insight.iconUnit.name}`, insight.iconUnit.fallback) : '';
+    const icon = iconURL ? <img src={iconURL} alt={iconName} title={iconName} className="workflow-event-row-recall-arbiter" /> : '';
+    return fill(insight.key, { actor: actorSpan, target: targetSpan, ...insight.params, icon });
+  }
   if (eventType === 'scout') {
     return actorName && targetName && location
       ? fill('events.sentence.scouts', { actor: actorSpan, target: targetSpan, location })
@@ -1126,8 +1387,8 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   if (DROP_TEXT[eventType]) {
     const fallback = t(DROP_TEXT[eventType].label);
     if (!actorName || !targetName || !location) return fallback;
-    const sourceLabel = String(event?.source_base?.name || '').trim();
-    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.count', { count: event.drop_count }) : '';
+    const sourceLabel = ownedBaseWords(event?.source_base?.name, event, { actorFirst: true });
+    const count = Number(event?.drop_count || 0) > 1 ? t('events.fragment.transports', { count: event.drop_count }) : '';
     const from = sourceLabel ? t('events.fragment.from', { location: sourceLabel }) : '';
     // Inline vessel icon right after the verb — race-correct transport. Mirrors
     // the Arbiter-icon-after-"recalls" pattern. The trailing row-icon strip
@@ -1150,20 +1411,22 @@ const renderGameEventDescription = (event, registry, playerRaceByID) => {
   }
   if (eventType === 'recall') {
     if (!actorName) return t('events.recall');
-    const targetLocation = gameEventTargetLocationLabel(event);
-    const targetOwner = event?.target_owner;
-    const targetOwnerSpan = gamePlayerNameSpan(targetOwner, 'to');
-    const targetOwnerName = String(targetOwner?.name || '').trim();
+    const dest = recallDestination(event);
+    const targetOwnerSpan = gamePlayerNameSpan(dest.owner, 'to');
     const count = recallCountFragment(event);
     const arbiterIconURL = getUnitIcon('arbiter');
     const arbiterName = t.server('server.name.arbiter', 'Arbiter');
     const arbiterIcon = arbiterIconURL ? (
       <img src={arbiterIconURL} alt={arbiterName} title={arbiterName} className="workflow-event-row-recall-arbiter" />
     ) : null;
-    const from = location ? t('events.fragment.from', { location }) : '';
-    const parts = { actor: actorSpan, icon: arbiterIcon, count, from, owner: targetOwnerSpan, location: targetLocation };
-    const sentence = targetLocation
-      ? fill(targetOwnerName ? 'events.sentence.recallsToOwner' : 'events.sentence.recallsTo', parts)
+    const fromLabel = recallFromLabel(event);
+    const from = fromLabel ? t('events.fragment.from', { location: fromLabel }) : '';
+    const destination = !dest.named ? dest.label
+      : isYouPlayer(dest.owner) ? `${t('you.possessive')} ${dest.rest}`
+        : <>{targetOwnerSpan}{`'s ${dest.rest}`}</>;
+    const parts = { actor: actorSpan, icon: arbiterIcon, count, from, owner: targetOwnerSpan, location: destination };
+    const sentence = dest.label
+      ? fill(dest.owner && !dest.named ? 'events.sentence.recallsToOwner' : 'events.sentence.recallsTo', parts)
       : fill('events.sentence.recallsUnknown', parts);
     const suffix = recallOutcomeSuffix(event);
     return suffix ? <>{sentence}{suffix}</> : sentence;
@@ -1979,10 +2242,8 @@ const DEFAULT_SUMMARY_FILTERS = {
   scout: false,
 };
 
-// Engine event views are 4:3 (regionAspect on the server); the title under the map is EVENTS_TITLE_PX tall,
-// so map and title fill the viewport together.
+// Engine event views are 4:3 (regionAspect on the server) and fill the viewport's height; the title sits on the map.
 const ENGINE_EVENT_ASPECT = 4 / 3;
-const EVENTS_TITLE_PX = 72;
 
 const SUMMARY_TOPIC_PATTERNS = {
   attack: /\battacks?\b|\bworker kills\b/i,
@@ -2042,7 +2303,8 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
   return indexed.map((entry) => entry.pattern);
 };
 
-const renderPatternPill = (pattern, keyPrefix, team, registry, link) => {
+// timed puts a pill's time on its top border, the label without it, as the summary does for every pill.
+const renderPatternPill = (pattern, keyPrefix, team, registry, link, timed = false) => {
   if (!registry) return null;
   const def = lookupDefinitionForPattern(registry, pattern);
   if (!def) return null;
@@ -2054,15 +2316,16 @@ const renderPatternPill = (pattern, keyPrefix, team, registry, link) => {
   const isOpener = isOpenerEventType(pattern?.event_type);
   // A top-border legend names the pill type (opener); the Spellcasts pill
   // carries its own legend (see SpellcastsPill).
-  const legendText = isOpener ? 'pill.buildOrderLegend' : null;
-  const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legendText ? 'workflow-pill-legended' : ''}`.trim();
+  const legend = isOpener ? t('pill.buildOrderLegend') : (timed && !def.whole_game ? rendered.timestamp : null);
+  const label = timed && !isOpener ? rendered.timeless : rendered.label;
+  const className = `${pillClassName(rendered.style)} ${pillEventTypeClass(pattern?.event_type)} ${legend ? 'workflow-pill-legended' : ''}`.trim();
   const key = `${keyPrefix}-${team ? `team-${team}-` : ''}${pattern?.event_type || ''}-${pattern?.detected_second ?? ''}`;
   const content = (
     <>
-      {legendText ? <span className="workflow-pill-legend">{t(legendText)}</span> : null}
+      {legend ? <span className="workflow-pill-legend">{legend}</span> : null}
       {team !== undefined ? <span className="team-dot" style={{ backgroundColor: getTeamColor(team) }}></span> : null}
       {rendered.icon ? <img src={rendered.icon} alt="" className="workflow-pattern-icon" /> : null}
-      {rendered.label ? <span>{rendered.label}</span> : null}
+      {label ? <span>{label}</span> : null}
       {featureIsBeta(def) ? <BetaTag /> : null}
     </>
   );
@@ -2073,6 +2336,7 @@ const renderPatternPill = (pattern, keyPrefix, team, registry, link) => {
         className={`${className} workflow-pill-link`}
         title={rendered.title || undefined}
         href={link.href}
+        data-opens-tab={link.tab}
         onClick={(event) => {
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
           event.preventDefault();
@@ -3103,7 +3367,7 @@ function App() {
     const bo = (mainGame?.build_orders || []).find((b) => b.player_id === player.player_id && b.feature_key === pattern?.event_type);
     if (!bo) return undefined;
     const key = buildOrderKey(bo);
-    return { href: buildOrderHref(key), onOpen: () => openBuildOrder(key) };
+    return { href: buildOrderHref(key), onOpen: () => openBuildOrder(key), tab: 'build-orders' };
   };
 
   useEffect(() => {
@@ -4071,6 +4335,13 @@ function App() {
     const phases = [Number(mainGame?.early_game_ends_at_second) || 0, Number(mainGame?.mid_game_ends_at_second) || 0].filter((sec) => sec > 0);
     return [...new Set([...seconds, ...phases])].sort((a, b) => a - b);
   }, [mainGame?.game_events, mainGame?.early_game_ends_at_second, mainGame?.mid_game_ends_at_second]);
+  // A game's first exact snapshot replays it up to its last event. Starting that when the game opens has its
+  // events ready by the time anyone looks at them, instead of their units arriving seconds after the map.
+  useEffect(() => {
+    const replayId = mainGame?.replay_id;
+    if (!replayId || mainGame?.mode !== 'engine' || mainEngineEventSeconds.length === 0) return;
+    api.getEngineSnapshot(replayId, mainEngineEventSeconds[0], { exact: true, seconds: mainEngineEventSeconds }).catch(() => {});
+  }, [mainGame?.replay_id, mainGame?.mode, mainEngineEventSeconds]);
   const mainMapVisual = mainGame?.map_visual || {};
   const mainMapVisualURL = String(mainMapVisual?.url || '').trim();
   const mainMapVisualThumbURL = String(mainMapVisual?.thumbnail_url || mainMapVisualURL).trim();
@@ -4090,13 +4361,9 @@ function App() {
     const midEnd = Number(mainGame?.mid_game_ends_at_second) || 0;
     const trustedUntil = Number(mainGame?.engine_trusted_until_seconds) || Infinity;
     const out = {};
-    const add = (phase, second) => {
-      if (second > 0 && second < trustedUntil) out[phase] = { type: 'phase_snapshot', phase, second, engine: { snapshot_second: second, end_second: second } };
-    };
-    if (midEnd > 0) {
-      add('mid', earlyEnd);
-      add('late', midEnd);
-    }
+    Object.entries(gamePhaseStarts(earlyEnd, midEnd)).forEach(([phase, second]) => {
+      if (second < trustedUntil) out[phase] = { type: 'phase_snapshot', phase, second, engine: { snapshot_second: second, end_second: second } };
+    });
     return out;
   }, [mainGame]);
   const selectedMainGameEvent = useMemo(() => {
@@ -4127,6 +4394,78 @@ function App() {
       setMainGameTab('supply-timeline');
     }
   }, [mainGame, selectedReplayId, mainGameTab, mainTimingCategory, mainSupplyFromEngine]);
+  // A team game has a turning point per losing team; the summary shows the last, the one that ended it.
+  const mainGameYouWhy = useMemo(() => (mainGame?.game_events || []).find((e) => e?.why_roles?.includes('you')) || null, [mainGame]);
+  const mainGameFinalWhy = useMemo(() => (mainGame?.game_events || []).find((e) => e?.why_roles?.includes('final')) || null, [mainGame]);
+  const mainGameWhyEvent = mainGameYouWhy || mainGameFinalWhy;
+  const mainGameYouLeftNote = useMemo(() => {
+    const you = (mainGame?.players || []).find((p) => String(p?.name || '').endsWith(YOU_MARKER));
+    const left = Number(you?.left_second || 0);
+    return left > 0 ? t('insight.youLeftAt', { time: formatDuration(left) }) : null;
+  }, [mainGame]);
+  const openMainGameEvent = (event) => {
+    setMainGameTab('events');
+    const idx = topicFilteredGameEvents.indexOf(event);
+    if (idx >= 0) setMainSelectedGameEventKey(gameEventTopicKey(idx));
+  };
+  // A turning point card: what it is, the sentence that opens the event, and the button that stages the
+  // recording it happened in. With no turning point the card is just its button.
+  const renderTurningPoint = (event) => {
+    const sentence = turningPointSentence(t, event);
+    if (!sentence) return renderGameEventDescription(event, markerRegistry, mainEventRaceByPlayerID);
+    const parts = Object.fromEntries(Object.entries(sentence.params).map(([name, value]) => {
+      if (value?.player) return [name, gamePlayerNameSpan(value.player, `tp-${name}`)];
+      if (value?.possessive) return [name, fillTemplate(t('turningPoint.possessiveName'), { name: gamePlayerNameSpan(value.possessive, `tp-${name}`) })];
+      return [name, value];
+    }));
+    return (
+      <>
+        {sentence.lead ? <span className="insight-why-ally">{t(sentence.lead)} </span> : null}
+        {fillTemplate(t(sentence.key), parts)}
+      </>
+    );
+  };
+  const renderTurningPointCard = (key, labelKey, event, buttons, note) => {
+    return (
+      <div key={key} className={event ? 'insight-why-watch' : 'insight-why-bare'}>
+        {event ? (
+          <>
+            <span className="insight-why-label">{t(labelKey)} · {formatDuration(event.second)}</span>
+            <button type="button" className="insight-why-watch-text" data-opens-tab="events" onClick={() => openMainGameEvent(event)}>
+              {renderTurningPoint(event)}
+            </button>
+          </>
+        ) : null}
+        <div className="workflow-game-stage-buttons">
+          {buttons}
+          {!event && note ? <span className="insight-why-note">{note}</span> : null}
+        </div>
+      </div>
+    );
+  };
+  const stageButton = (variant, labelKey, tipKey) => (
+    <button
+      key={variant || 'one'}
+      type="button"
+      className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
+      disabled={mainGameSeeLoading}
+      data-tip={t(tipKey)}
+      onClick={() => copyMainGameToWatchMe(variant)}
+    >
+      {mainGameSeeLoading ? t('game.stage.copying') : t(labelKey)}
+    </button>
+  );
+  // A marker pill opens the game event it matches, the same kind by the same player near its time, when the
+  // events list shows one.
+  const patternEventLink = (player, pattern) => {
+    const kinds = PATTERN_EVENT_TYPES[pattern?.event_type] || [normalizeEventType(pattern?.event_type)];
+    const at = Number(pattern?.detected_second);
+    const event = topicFilteredGameEvents.find((e) => kinds.includes(normalizeEventType(e?.type))
+      && Number(e?.actor?.player_id) === Number(player?.player_id)
+      && Math.abs(Number(e?.second) - at) <= 30);
+    if (!event || !mainGame?.replay_id) return undefined;
+    return { href: `?view=game&replay=${mainGame.replay_id}&gameTab=events`, tab: 'events', onOpen: () => openMainGameEvent(event) };
+  };
   const selectedMainGameEventKeyResolved = useMemo(() => {
     if (!selectedMainGameEvent) return '';
     if (selectedMainGameEvent.type === 'phase_snapshot') return gamePhaseKey(selectedMainGameEvent.phase);
@@ -4158,20 +4497,14 @@ function App() {
   const mainEventRows = useMemo(() => {
     const earlyEnd = Number(mainGame?.early_game_ends_at_second) || 0;
     const midEnd = Number(mainGame?.mid_game_ends_at_second) || 0;
-    const phaseFor = (sec) => {
-      if (earlyEnd > 0 && sec < earlyEnd) return 'early';
-      if (midEnd > 0 && sec < midEnd) return 'mid';
-      return 'late';
-    };
+    const starts = gamePhaseStarts(earlyEnd, midEnd);
     const rows = [];
     let lastPhase = null;
     filteredGameEvents.forEach((event) => {
-      const phase = phaseFor(Number(event?.second) || 0);
+      const phase = gamePhaseFor(Number(event?.second) || 0, earlyEnd, midEnd);
       const isLeaveGame = ['leave_game', 'player_dropped', 'mass_disconnect'].includes(normalizeEventType(event?.type));
       if (!isLeaveGame && phase !== lastPhase) {
-        // Only show "Mid game" / "Late game" when mid game actually ended; otherwise the game never
-        // reached those phases.
-        if (phase === 'early' ? earlyEnd > 0 : midEnd > 0) {
+        if (phase === 'early' ? earlyEnd > 0 || midEnd > 0 : starts[phase] != null) {
           rows.push({ kind: 'phase', phase, key: gamePhaseKey(phase), snapshot: mainPhaseSnapshots[phase] || null });
         }
         lastPhase = phase;
@@ -4288,7 +4621,7 @@ function App() {
       if (!ev?.actor) return;
       const polygon = Array.isArray(ev?.base?.polygon) ? ev.base.polygon : [];
       if (polygon.length < 3) return;
-      const percentPoints = polygon
+      const percentPoints = baseOutline(polygon, MAP_TILE_PIXELS)
         .map((point) => mapPointToPercent(point, bounds))
         .filter(Boolean);
       const points = percentPoints.map((point) => `${point.x},${point.y}`).join(' ');
@@ -4309,10 +4642,11 @@ function App() {
         baseName: String(ev?.base?.name || '').trim(),
         ownerColor,
         ...polygonStrokeFor(ownerColor, team),
+        engineStroke: engineMapStrokePercent(isTeamGame && team != null ? 7 : 3, mainGame?.map_width_pixels),
       });
     });
     return acc;
-  }, [mainGame?.game_events, mainEventMapBounds, mainGameTeamByPlayerID, isTeamGame, t]);
+  }, [mainGame?.game_events, mainGame?.map_width_pixels, mainEventMapBounds, mainGameTeamByPlayerID, isTeamGame, t]);
   // The BO openers event sits at 0:00 with no persisted ownership snapshot, so
   // draw the starting-location polygons directly from the player_start events.
   // Every other event keeps using its ownership snapshot.
@@ -4727,7 +5061,7 @@ function App() {
       const layoutW = el.clientWidth;
       const widthBound = 0.7 * layoutW;
       const stageAspect = mainEngineEventSeconds.length ? ENGINE_EVENT_ASPECT : mainEventMapAspect;
-      const heightBound = stageAspect * (window.innerHeight - EVENTS_TITLE_PX);
+      const heightBound = stageAspect * window.innerHeight;
       setMainEventsMapColPx(Math.max(0, Math.round(Math.min(widthBound, heightBound))));
     };
     compute();
@@ -4736,9 +5070,9 @@ function App() {
     window.addEventListener('resize', compute);
     return () => { ro.disconnect(); window.removeEventListener('resize', compute); };
   }, [mainGameTab, mainEventsLayoutEl, mainEventMapAspect, mainEngineEventSeconds.length]);
-  // The events tab snaps the map and its title to the viewport once scrolled to, and holds there while
-  // the reader browses events.
-  useEffect(() => {
+  // The events tab snaps the map and its title to the viewport once scrolled near, and holds there while the
+  // reader browses events. It is set before paint, so no other tab ever renders with it and snaps.
+  useLayoutEffect(() => {
     if (mainGameTab !== 'events') return undefined;
     document.documentElement.classList.add('events-snap');
     return () => document.documentElement.classList.remove('events-snap');
@@ -5044,6 +5378,20 @@ function App() {
     () => new Map(mainGamePlayers.map((player) => [Number(player?.player_id || 0), String(player?.race || '').trim()])),
     [mainGamePlayers],
   );
+  // The event's title sits on its map; an event with no place of its own (a game phase, the openers) has it
+  // in the middle. Game time is the progress bar along the stage, not part of the title.
+  const stageEventType = normalizeEventType(selectedMainGameEvent?.type);
+  const openersTitle = t(isTeamGame ? 'events.stageTitle.openers' : 'events.stageTitle.openersNoTeams');
+  const stageTitle = !selectedMainGameEvent ? null
+    : stageEventType === 'bo_openers' ? openersTitle
+      : renderGameEventDescription(selectedMainGameEvent, markerRegistry, mainEventRaceByPlayerID);
+  const stageTitleText = !selectedMainGameEvent ? ''
+    : stageEventType === 'bo_openers' ? openersTitle
+      : String(gameEventDescription(selectedMainGameEvent, markerRegistry) || '');
+  const stageTitleCentered = stageEventType === 'bo_openers' || stageEventType === 'phase_snapshot' || !selectedMainGameEvent?.engine?.region;
+  const stageProgress = selectedMainGameEvent && Number(mainGame?.duration_seconds) > 0
+    ? Math.min(1, Math.max(0, Number(selectedMainGameEvent.second || 0) / Number(mainGame.duration_seconds)))
+    : null;
   const hasTeamInfo = useMemo(() => {
     const uniqueTeams = new Set(mainGamePlayers.map((player) => player.team));
     return uniqueTeams.size > 1;
@@ -5746,6 +6094,7 @@ function App() {
                       role="tab"
                       aria-selected={mainGameTab === 'summary'}
                       className={`workflow-production-tab ${mainGameTab === 'summary' ? 'workflow-production-tab-active' : ''}`}
+                      data-tab="summary"
                       onClick={() => setMainGameTab('summary')}
                     >
                       {t('tabs.summary')}
@@ -5755,6 +6104,7 @@ function App() {
                       role="tab"
                       aria-selected={mainGameTab === 'events'}
                       className={`workflow-production-tab ${mainGameTab === 'events' ? 'workflow-production-tab-active' : ''}`}
+                      data-tab="events"
                       onClick={() => setMainGameTab('events')}
                     >
                       {t('game.tabs.events')}
@@ -5765,6 +6115,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'skill'}
                         className={`workflow-production-tab ${mainGameTab === 'skill' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="skill"
                         onClick={() => setMainGameTab('skill')}
                       >
                         {t('game.tabs.skill')}
@@ -5788,6 +6139,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'build-orders'}
                         className={`workflow-production-tab ${mainGameTab === 'build-orders' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="build-orders"
                         onClick={() => { setMainGameBuildOrder(''); setMainGameTab('build-orders'); }}
                       >
                         {t('game.tabs.buildOrders')}
@@ -5799,6 +6151,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'mutalisk-timing'}
                         className={`workflow-production-tab ${mainGameTab === 'mutalisk-timing' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="mutalisk-timing"
                         onClick={() => setMainGameTab('mutalisk-timing')}
                       >
                         {t('game.tabs.mutaTiming')}
@@ -5809,6 +6162,7 @@ function App() {
                       role="tab"
                       aria-selected={mainGameTab === 'timings'}
                       className={`workflow-production-tab ${mainGameTab === 'timings' ? 'workflow-production-tab-active' : ''}`}
+                      data-tab="timings"
                       onClick={() => setMainGameTab('timings')}
                     >
                       {t('game.tabs.timings')}
@@ -5819,6 +6173,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'alliances'}
                         className={`workflow-production-tab ${mainGameTab === 'alliances' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="alliances"
                         onClick={() => setMainGameTab('alliances')}
                       >
                         {t('game.tabs.alliances')}{mainGame?.team_stacking ? ' 😈' : ''}
@@ -5830,6 +6185,7 @@ function App() {
                         role="tab"
                         aria-selected={mainGameTab === 'supply-timeline'}
                         className={`workflow-production-tab ${mainGameTab === 'supply-timeline' ? 'workflow-production-tab-active' : ''}`}
+                        data-tab="supply-timeline"
                         onClick={() => setMainGameTab('supply-timeline')}
                       >
                         {t('game.tabs.supply')}
@@ -5840,11 +6196,14 @@ function App() {
                       role="tab"
                       aria-selected={mainGameTab === 'hotkeys'}
                       className={`workflow-production-tab ${mainGameTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
+                      data-tab="hotkeys"
                       onClick={() => setMainGameTab('hotkeys')}
                     >
                       {t('tabs.hotkeys')}
                     </button>
-                    {mainGame?.complete_copy ? (
+                    {mainGame?.complete_copy_unplayable ? (
+                      <span className="engine-notice engine-notice--unavailable" role="status">{t('game.completeNotice.unplayable')}</span>
+                    ) : mainGame?.complete_copy ? (
                       <span className="engine-notice engine-notice--active">{t('game.completeNotice')}</span>
                     ) : null}
                     {mainGame?.engine_unavailable ? (
@@ -5855,6 +6214,8 @@ function App() {
                       <span className={`engine-notice${mainGame?.engine_pending ? ' engine-notice--running' : ' engine-notice--ready'}`} role="status">
                         {mainGame?.engine_pending ? t('game.engineNotice.running') : t('game.engineNotice.ready')}
                       </span>
+                    ) : mainGame?.engine_upgrading ? (
+                      <span className="engine-notice engine-notice--running" role="status">{t('game.engineNotice.upgrading')}</span>
                     ) : mainGame?.mode === 'engine' && mainGame?.engine_confidence === 'high' ? (
                       <span className="engine-notice engine-notice--active">{t('game.engineNotice.active')}</span>
                     ) : null}
@@ -5872,6 +6233,7 @@ function App() {
                           <button
                             type="button"
                             className="workflow-map-thumb-btn workflow-map-thumb-btn--events-link"
+                            data-opens-tab="events"
                             onClick={() => setMainGameTab('events')}
                             title={t('game.summary.openEvents')}
                           >
@@ -5901,85 +6263,34 @@ function App() {
                             buttons in the column alongside. */}
                         <div className="workflow-map-caption">
                           {formatMapNameWithKind(mainGame.map_name, mainGame.map_kind)}
+                          <div className="workflow-map-caption-when">
+                            {formatDuration(mainGame.duration_seconds)} · {formatRelativeReplayDate(mainGame.replay_date)}
+                          </div>
                         </div>
                       </div>
-                      {/* Beside the map sits what identifies this game: when it was
-                          played, how long it ran, which file it is, and the buttons
-                          that act on it. This space used to hold a Featuring row and
-                          aggregate composition and spellcast blocks, all three of
-                          which were unions of the per-player table below. Captions
-                          reuse labels the app already has (the games list calls this
-                          column Played, the omnibar calls duration Length) so a layout
-                          change does not become a translation change. */}
+                      {/* Beside the map sits the turning point and the buttons that stage the
+                          replay to watch it. */}
                       <div className="workflow-summary-features-col">
-                        <dl className="workflow-game-facts">
-                          <dt>{t('games.table.played')}</dt>
-                          <dd>{formatRelativeReplayDate(mainGame.replay_date)}</dd>
-                          <dt>{t('omnibar.axis.length')}</dt>
-                          <dd>{formatDuration(mainGame.duration_seconds)}</dd>
-                        </dl>
-
-                        {mainGame.file_path ? (
-                          <div className="workflow-game-file-row">
-                            <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
-                              {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
-                            </code>
-                            <button
-                              type="button"
-                              className="btn-switch workflow-meta-filepath-copy"
-                              data-tip={t('game.copyPathTip')}
-                              onClick={() => {
-                                if (navigator.clipboard && navigator.clipboard.writeText) {
-                                  navigator.clipboard.writeText(mainGame.file_path);
-                                }
-                              }}
-                            >
-                              {t('game.copyPath')}
-                            </button>
-                          </div>
-                        ) : null}
-
                         {/* Two buttons share one caption so neither has to repeat
                             "Stage watch replay" to say which recording it stages. A
                             lone button keeps its full label: a heading over a single
                             control is just a longer way of writing the control. */}
-                        {mainGame?.own_copy_file_name ? (
-                          <div className="workflow-game-stage">
-                            <div className="workflow-game-stage-title">{t('game.stage.button')}</div>
-                            <div className="workflow-game-stage-buttons">
-                              <button
-                                type="button"
-                                className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                                disabled={mainGameSeeLoading}
-                                data-tip={t('game.stage.tipOwn')}
-                                onClick={() => copyMainGameToWatchMe('own')}
-                              >
-                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.own')}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                                disabled={mainGameSeeLoading}
-                                data-tip={t('game.stage.tipComplete')}
-                                onClick={() => copyMainGameToWatchMe('complete')}
-                              >
-                                {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.complete')}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="workflow-game-stage-buttons">
-                            <button
-                              type="button"
-                              className="btn-switch btn-switch-see-replay workflow-meta-stage-btn"
-                              disabled={mainGameSeeLoading}
-                              data-tip={t('game.stage.tip')}
-                              onClick={() => copyMainGameToWatchMe()}
-                            >
-                              {mainGameSeeLoading ? t('game.stage.copying') : t('game.stage.button')}
-                            </button>
-                          </div>
-                        )}
+                        {(() => {
+                          const own = stageButton('own', 'game.stage.yourReplay', 'game.stage.tipOwn');
+                          const complete = stageButton('complete', 'game.stage.completeReplay', 'game.stage.tipComplete');
+                          if (!mainGame?.own_copy_file_name) {
+                            return renderTurningPointCard('one', 'insight.why', mainGameWhyEvent, [stageButton(undefined, 'game.stage.button', 'game.stage.tip')]);
+                          }
+                          if (mainGameYouWhy && mainGameYouWhy === mainGameFinalWhy) {
+                            return renderTurningPointCard('both', 'insight.why', mainGameYouWhy, [own, complete]);
+                          }
+                          return (
+                            <>
+                              {renderTurningPointCard('you', 'insight.whyYours', mainGameYouWhy, [own], mainGameYouLeftNote)}
+                              {renderTurningPointCard('final', 'insight.whyFinal', mainGameFinalWhy, [complete])}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className={`workflow-player-table${mainGameShowsSkill ? ' workflow-player-table--skill' : ''}`} style={{ '--workflow-player-name-width': `${mainPlayerNameWidthCh}ch` }}>
@@ -6008,7 +6319,7 @@ function App() {
                           <React.Fragment key={player.player_id}>
                             <div
                               className={`wpt-cell wpt-name${hoveredRow ? ' is-hovered' : ''}`}
-                              style={{ borderLeftColor: getTeamColor(player.team) }}
+                              style={{ borderLeftColor: isTeamGame ? getTeamColor(player.team) : playerColorToCss(player.color) }}
                               onMouseEnter={() => setMainGameHoverPlayerID(player.player_id)}
                               onMouseLeave={() => setMainGameHoverPlayerID(null)}
                             >
@@ -6049,7 +6360,7 @@ function App() {
                             {mainGameShowsSkill ? (
                               <div className="wpt-cell wpt-skill">
                                 {player.skill?.combined ? (
-                                  <button type="button" className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[player.skill.combined.tier]}`} onClick={() => setMainGameTab('skill')}>
+                                  <button type="button" className={`wpt-skill-tier wpt-skill-tier--${TIER_KEYS[player.skill.combined.tier]}`} data-opens-tab="skill" onClick={() => setMainGameTab('skill')}>
                                     {tierLabel(t, player.skill)}
                                   </button>
                                 ) : player.skill_left_early ? (
@@ -6058,12 +6369,13 @@ function App() {
                               </div>
                             ) : null}
                             <div className="wpt-cell wpt-featuring">
-                              <div className="workflow-pattern-pills">
+                              <OneRowPills className="workflow-pattern-pills">
                                 {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry, buildOrderLinkFor(player, pattern)))}
-                                {gameSummaryParts.positive.map(renderGameSummarySignalPill)}
-                                {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry))}
+                                {gameSummaryParts.positive.filter(isStrongPill).map((pill) => renderGameSummarySignalPill(pill, openMainGameEvent))}
+                                {gameSummaryParts.positive.filter((p) => !isStrongPill(p)).map((pill) => renderGameSummarySignalPill(pill, openMainGameEvent))}
+                                {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry, patternEventLink(player, pattern), true))}
                                 <SpellcastsPill spells={collectPlayerSpells(playerPhases)} />
-                              </div>
+                              </OneRowPills>
                             </div>
                             <div className="wpt-cell wpt-comp">
                               {playerPhases.length > 0 ? (
@@ -6074,6 +6386,27 @@ function App() {
                         );
                       })}
                     </div>
+                    {mainGame.file_path ? (
+                      <div className="workflow-game-footer">
+                        <div className="workflow-game-file-row">
+                          <code className="workflow-meta-filepath-text" title={mainGame.file_path}>
+                            {mainGame.file_path.replace(/\\/g, '/').split('/').pop()}
+                          </code>
+                          <button
+                            type="button"
+                            className="btn-switch workflow-meta-filepath-copy"
+                            data-tip={t('game.copyPathTip')}
+                            onClick={() => {
+                              if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(mainGame.file_path);
+                              }
+                            }}
+                          >
+                            {t('game.copyPath')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </>
                 )}
 
@@ -6099,6 +6432,10 @@ function App() {
                               leaveMarker={selectedLeaveMarker}
                               teamColorByPlayerId={isTeamGame ? new Map(mainGamePlayers.map((p) => [p.player_id, getTeamColor(p.team)])) : null}
                               mapAlt={t('events.mapAlt', { map: mainGame.map_name })}
+                              title={stageTitle}
+                              titleText={stageTitleText}
+                              centerTitle={stageTitleCentered}
+                              progress={stageProgress != null ? <GameProgress progress={stageProgress} /> : null}
                             />
                           ) : mainMapVisualAvailable ? (
                             <>
@@ -6107,7 +6444,7 @@ function App() {
                                 mapUrl={mainMapVisualURL}
                                 mapWidth={mainGame.map_width_pixels}
                                 mapHeight={mainGame.map_height_pixels}
-                                maxHeight="100vh - var(--events-title-h)"
+                                maxHeight="100vh"
                                 alt={t('events.mapAlt', { map: mainGame.map_name })}
                               >
                                 {selectedMainGameEvent ? (
@@ -6148,8 +6485,10 @@ function App() {
                                         <polygon
                                           key={overlay.key}
                                           points={overlay.points}
-                                          className="workflow-event-map-base-polygon"
-                                          style={{ fill: `${overlay.ownerColor}66`, stroke: overlay.teamColor || overlay.ownerColor, strokeWidth: overlay.strokeWidth || 0.4 }}
+                                          className={`workflow-event-map-base-polygon${overlay.engineStroke ? ' engine-base' : ''}`}
+                                          style={overlay.engineStroke
+                                            ? { fill: overlay.ownerColor, stroke: overlay.teamColor || overlay.ownerColor, strokeWidth: overlay.engineStroke }
+                                            : { fill: `${overlay.ownerColor}66`, stroke: overlay.teamColor || overlay.ownerColor, strokeWidth: overlay.strokeWidth || 0.4 }}
                                           onMouseEnter={onEnter}
                                           onMouseMove={onEnter}
                                           onMouseLeave={clearMainEventMapHover}
@@ -6455,16 +6794,12 @@ function App() {
                             </div>
                           )}
                           </div>
-                          <div className="workflow-event-stage-title">
-                            {selectedMainGameEvent && normalizeEventType(selectedMainGameEvent.type) === 'bo_openers' ? (
-                              <span>{t('events.stageTitle.openers')}</span>
-                            ) : selectedMainGameEvent ? (
-                              <>
-                                <span className="workflow-event-stage-time">{formatDuration(selectedMainGameEvent.second)}</span>
-                                <span>{renderGameEventDescription(selectedMainGameEvent, markerRegistry, mainEventRaceByPlayerID)}</span>
-                              </>
-                            ) : null}
-                          </div>
+                          {stageTitle && !(mainMapVisualAvailable && selectedMainGameEvent?.engine && mainGame?.map_width_pixels) ? (
+                            <div className={`workflow-event-stage-title${stageTitleCentered ? ' workflow-event-stage-title--center' : ''}`}>{stageTitle}</div>
+                          ) : null}
+                          {stageProgress != null && !(mainMapVisualAvailable && selectedMainGameEvent?.engine && mainGame?.map_width_pixels) ? (
+                            <GameProgress progress={stageProgress} />
+                          ) : null}
                           {mainEventMapHover ? (
                             <div
                               className="workflow-event-map-tooltip"
@@ -6611,6 +6946,9 @@ function App() {
                                   >
                                     <span className="workflow-event-row-time">{formatDuration(event.second)}</span>
                                     <span className="workflow-event-row-body">
+                                      {[...new Set((event?.why_roles || []).map((role) => (!mainGame?.own_copy_file_name ? 'insight.why' : role === 'you' ? 'insight.whyYours' : 'insight.whyFinal')))].map((label) => (
+                                        <span key={label} className="insight-why-label workflow-event-row-why">{t(label)}</span>
+                                      ))}
                                       <span>{renderGameEventDescription(event, markerRegistry, mainEventRaceByPlayerID)}</span>
                                       {(iconEntries.length > 0 || castEntries.length > 0) ? (
                                         <span className="workflow-event-row-units">

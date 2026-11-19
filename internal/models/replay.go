@@ -272,6 +272,14 @@ type MapContextBase struct {
 	Polygon          []MapPolygonPoint   `json:"-"`
 	MineralOnly      bool                `json:"-"`
 	NaturalExpansion string              `json:"-"`
+	Chokes           []MapContextChoke   `json:"-"`
+}
+
+// MapContextChoke is a narrow passage out of a base's terrain in map pixels, and the name of the base it
+// leads to, if any.
+type MapContextChoke struct {
+	X, Y       int
+	ConnectsTo string
 }
 
 // MapContextLayout stores high-level map geometry from external analyzers.
