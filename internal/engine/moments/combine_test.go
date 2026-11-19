@@ -1,6 +1,10 @@
 package moments
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/marianogappa/openbw-go/bwgame"
+)
 
 func lurkerDrop() Event {
 	return Event{Type: "drop", Second: 677, Actor: 0, Target: 1, Members: []uint32{11, 12, 13}, Outcome: Outcome{Workers: 8, KilledUnits: 11}, Region: Region{X: 0, Y: 0, W: 600, H: 600}}
@@ -61,5 +65,19 @@ func TestADropFoldsIntoItsElevatorBeforeItsKills(t *testing.T) {
 	events, why := Combine([]Event{elevator, lurkerDrop(), undetectedKills(12, 13)}, 2)
 	if len(events) != 1 || why != 0 || len(events[0].Parts) != 2 {
 		t.Fatalf("events %+v why %d", events, why)
+	}
+}
+
+func TestHitsOnOneBaseChainIntoOnePushButAnotherBaseStaysApart(t *testing.T) {
+	hydras := []uint16{ut(bwgame.UnitTypesZergHydralisk)}
+	events := []Event{
+		{Type: "attack", Second: 461, Actor: 1, Target: 0, Base: 2, Units: hydras, Outcome: Outcome{Workers: 13, TownHall: true}},
+		{Type: "worker_kills", Second: 528, Seconds: 20, Actor: 1, Target: 0, Base: 1, Units: hydras, Outcome: Outcome{Workers: 12, Killed: 1125}},
+		{Type: "worker_kills", Second: 607, Seconds: 30, Actor: 1, Target: 0, Base: 1, Units: hydras, Outcome: Outcome{Workers: 22, Killed: 1925}},
+		{Type: "worker_kills", Second: 900, Actor: 1, Target: 0, Base: 1, Units: hydras, Outcome: Outcome{Workers: 6}},
+	}
+	got := ChainPushes(events)
+	if len(got) != 3 || got[1].Second != 528 || got[1].Outcome.Workers != 34 || got[1].Seconds != 109 || len(got[1].Parts) != 1 {
+		t.Fatalf("the two hits on the main are one push, the natural and the much later hit their own: %+v", got)
 	}
 }

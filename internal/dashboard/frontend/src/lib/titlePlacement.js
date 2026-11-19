@@ -21,6 +21,13 @@ const addPolygon = (grid, poly, weight, cell) => {
   }
 };
 
+// A title in the lower half is anchored by its bottom edge, so text that wraps to more lines than estimated
+// grows away from the frame's bottom edge and the progress bar along it.
+export const titleAnchor = (box) => {
+  const viewH = box.y + box.h + box.bottom;
+  return box.y + box.h / 2 > viewH / 2 ? { bottom: `${box.bottom}px` } : { top: `${box.y}px` };
+};
+
 // placeTitle finds the emptiest box for a title of textWidthCss on one line, wrapped to 1..MAX_LINES lines,
 // in a view of the map shown at mapPerCss map pixels per CSS pixel. obstacles and avoid are rectangles in
 // map pixels; polygons are owned base outlines. The box comes back in CSS pixels from the view's corner.
@@ -41,7 +48,7 @@ export function placeTitle({ view, width, height, mapPerCss, textWidthCss, lineH
         const box = { x: view.x + x * mapPerCss, y: view.y + y * mapPerCss, w: w * mapPerCss, h: h * mapPerCss };
         const covered = grid.covered(box);
         const score = covered + LINE_PENALTY * (lines - 1);
-        if (!best || score < best.score) best = { x, y, w, h, lines, score, covered };
+        if (!best || score < best.score) best = { x, y, w, h, lines, score, covered, bottom: viewH - y - h };
       }
     }
   }

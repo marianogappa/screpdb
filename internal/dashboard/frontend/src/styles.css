@@ -4052,7 +4052,7 @@ html.events-snap .workflow-nav-app {
   top: 50%;
   left: 50%;
   right: auto;
-  max-width: 70%;
+  max-width: min(44%, 15em);
   transform: translate(-50%, -50%);
   padding: 16px 24px;
   text-align: center;
@@ -4079,7 +4079,7 @@ html.events-snap .workflow-nav-app {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  max-width: 70%;
+  max-width: min(44%, 15em);
   padding: 16px 24px;
   text-align: center;
 }
@@ -4090,10 +4090,40 @@ html.events-snap .workflow-nav-app {
   vertical-align: -0.3em;
 }
 
+/* A name breaks across lines only between words, never at the hyphens many names are made of. */
+.engine-title .workflow-event-row-player {
+  white-space: nowrap;
+}
+
 /* Titles drop the colour square before names: the overlay already shows each player's colour. */
 .engine-title .rd-swatch,
 .workflow-event-stage-title .rd-swatch {
   display: none;
+}
+
+/* While the exact snapshot is on its way the map shows fewer units; a small spinner says more are coming. */
+.engine-loading {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #38d13c;
+  opacity: 0;
+  animation: engine-loading-spin 0.8s linear infinite, engine-loading-show 0s linear 0.3s forwards;
+  pointer-events: none;
+}
+
+@keyframes engine-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* A snapshot that arrives at once never shows the spinner. */
+@keyframes engine-loading-show {
+  to { opacity: 1; }
 }
 
 /* Game time as StarCraft draws progress: a green bar of short segments, lit along its top edge. */
@@ -8098,6 +8128,20 @@ button.skill-compare-marker:hover { color: #fff; }
   background: rgba(56, 209, 60, 0.06);
 }
 
+.insight-why-note {
+  align-self: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+}
+
+.insight-why-bare {
+  margin-top: 4px;
+}
+
+.insight-why-ally {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .insight-why-watch-text {
   padding: 0;
   border: 0;
@@ -8119,4 +8163,22 @@ button.skill-compare-marker:hover { color: #fff; }
   fill: #fff;
   text-anchor: middle;
   dominant-baseline: central;
+}
+
+/* What an event is about glows on its map, fading out to nothing between pulses so the sprite also reads
+   plainly. */
+.engine-hl-glow {
+  animation: engine-hl-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes engine-hl-glow {
+  0%, 25%, 100% { filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0)); }
+  62% { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 1)) drop-shadow(0 0 14px rgba(255, 240, 160, 0.9)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .engine-hl-glow {
+    animation: none;
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.9));
+  }
 }

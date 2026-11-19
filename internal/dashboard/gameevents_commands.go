@@ -3,6 +3,7 @@ package dashboard
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -344,7 +345,8 @@ func applyRecallPayload(event *workflowGameEvent, raw string, baseMetas []overla
 
 // resolveNaturalOwnerLabels relabels a natural expansion with its owner's name
 // ("Skins_'s natural") instead of the start-clock form ("7's natural") when the
-// natural_of_clock matches a player's start location (issue #186). Falls through
+// natural_of_clock matches a player's start location (issue #186), and a start
+// location with the name of who started there ("Skins_'s main base"). Falls through
 // unchanged when no owner is found, preserving the clock-based label.
 func resolveNaturalOwnerLabels(events []workflowGameEvent, players []workflowGamePlayer, startClockByPlayerID map[int64]int) []workflowGameEvent {
 	if len(events) == 0 || len(startClockByPlayerID) == 0 {
@@ -354,22 +356,162 @@ func resolveNaturalOwnerLabels(events []workflowGameEvent, players []workflowGam
 	for _, p := range players {
 		nameByID[p.PlayerID] = p.Name
 	}
+	clocks := layoutStartClocks(events, startClockByPlayerID)
 	nameByClock := map[int64]string{}
-	for id, clock := range startClockByPlayerID {
+	for id, clock := range clocks {
 		if name, ok := nameByID[id]; ok {
 			nameByClock[int64(clock)] = name
 		}
 	}
 	for i := range events {
-		b := events[i].Base
-		if b == nil || strings.ToLower(b.Kind) != "natural" || b.NaturalOfClock == nil {
-			continue
+		events[i].ActorStartClock = layoutClockOf(events[i].Actor, clocks, events[i].ActorStartClock)
+		events[i].TargetStartClock = layoutClockOf(events[i].Target, clocks, events[i].TargetStartClock)
+	}
+	leftAt := map[int64]int64{}
+	for _, e := range events {
+		switch e.Type {
+		case "leave_game", "player_dropped", "player_stopped_playing":
+			if e.Actor == nil {
+				continue
+			}
+			if at, seen := leftAt[e.Actor.PlayerID]; !seen || e.Second < at {
+				leftAt[e.Actor.PlayerID] = e.Second
+			}
 		}
-		if name, ok := nameByClock[*b.NaturalOfClock]; ok && strings.TrimSpace(name) != "" {
-			b.Name = name + "'s natural"
+	}
+	idByClock := map[int64]int64{}
+	for id, clock := range clocks {
+		idByClock[int64(clock)] = id
+	}
+	holders := baseHolders(events)
+	namer := baseNamer{nameByID: nameByID, idByClock: idByClock, leftAt: leftAt, holders: holders}
+	for i := range events {
+		sec := events[i].Second
+		for _, b := range []*workflowGameEventBase{events[i].Base, events[i].TargetBase, events[i].SourceBase} {
+			if b == nil || (b == events[i].Base && events[i].Type == "player_start") {
+				continue
+			}
+			if name := namer.name(b, sec); name != "" {
+				b.Name = name
+			}
+			if of := b.OpenField; of != nil && of.Relation == "near_base" && of.near != nil {
+				if name := namer.name(of.near, sec); name != "" {
+					of.Ref, b.Name = name, "near "+name
+				}
+			}
 		}
 	}
 	return events
+}
+
+// baseNamer names a starting location's main or natural as the game stands at a second: once someone other
+// than its starting player has expanded there, as that player's expa at it ("TZPNEWB's expa at 3's main
+// base"), whether or not the starter still plays; else after its starting player while they still play; else
+// by its o'clock ("3's natural"), as an empty place.
+type baseNamer struct {
+	nameByID  map[int64]string
+	idByClock map[int64]int64
+	leftAt    map[int64]int64
+	holders   map[string][]baseHold
+}
+
+func (n baseNamer) name(b *workflowGameEventBase, sec int64) string {
+	var clock int64
+	var owned, empty string
+	switch {
+	case strings.EqualFold(b.Kind, "natural") && b.NaturalOfClock != nil:
+		clock = *b.NaturalOfClock
+		owned, empty = "%s's natural", "%d's natural"
+	case strings.EqualFold(b.Kind, "start") && b.Clock > 0:
+		clock = b.Clock
+		owned, empty = "%s's main base", "%d's main base"
+	default:
+		return ""
+	}
+	starter, started := n.idByClock[clock]
+	holder, held := n.holderAt(baseHoldKey(b), sec)
+	if left, gone := n.leftAt[holder]; held && gone && sec > left {
+		held = false
+	}
+	if held && (!started || holder != starter) {
+		if name := strings.TrimSpace(n.nameByID[holder]); name != "" {
+			return name + "'s expa at " + fmt.Sprintf(empty, clock)
+		}
+	}
+	if started {
+		left, gone := n.leftAt[starter]
+		if name := strings.TrimSpace(n.nameByID[starter]); name != "" && (!gone || sec <= left) {
+			return fmt.Sprintf(owned, name)
+		}
+	}
+	return fmt.Sprintf(empty, clock)
+}
+
+// baseHold is a player taking a base (an expansion) or losing its town hall there (Holder 0).
+type baseHold struct {
+	Second int64
+	Holder int64
+}
+
+func baseHoldKey(b *workflowGameEventBase) string {
+	if b.NaturalOfClock != nil {
+		return fmt.Sprintf("%s/%d/%d", strings.ToLower(b.Kind), b.Clock, *b.NaturalOfClock)
+	}
+	return fmt.Sprintf("%s/%d", strings.ToLower(b.Kind), b.Clock)
+}
+
+func baseHolders(events []workflowGameEvent) map[string][]baseHold {
+	out := map[string][]baseHold{}
+	for _, e := range events {
+		switch {
+		case e.Base == nil:
+		case e.Type == "expansion" && e.Actor != nil:
+			out[baseHoldKey(e.Base)] = append(out[baseHoldKey(e.Base)], baseHold{Second: e.Second, Holder: e.Actor.PlayerID})
+		case e.Outcome != nil && e.Outcome.TownHall:
+			out[baseHoldKey(e.Base)] = append(out[baseHoldKey(e.Base)], baseHold{Second: e.Second})
+		}
+	}
+	return out
+}
+
+// holderAt is who held a base just before a second: the last to take it, unless its town hall fell since.
+func (n baseNamer) holderAt(key string, sec int64) (int64, bool) {
+	var holder int64
+	at := int64(-1)
+	for _, h := range n.holders[key] {
+		if h.Second < sec && h.Second >= at {
+			holder, at = h.Holder, h.Second
+		}
+	}
+	return holder, holder != 0
+}
+
+// layoutStartClocks are the players' start clocks as the map's base layout names them, taken from where each
+// player_start event says they started. A player's own start o'clock is measured from their start position
+// and can name a different hour than the base it stands on (Python: "1" for the base laid out as "start 3"),
+// so base names and "their natural" must be matched against these.
+func layoutStartClocks(events []workflowGameEvent, fallback map[int64]int) map[int64]int {
+	clocks := maps.Clone(fallback)
+	if clocks == nil {
+		clocks = map[int64]int{}
+	}
+	for _, e := range events {
+		if e.Type == "player_start" && e.Actor != nil && e.Base != nil && e.Base.Clock > 0 {
+			clocks[e.Actor.PlayerID] = int(e.Base.Clock)
+		}
+	}
+	return clocks
+}
+
+func layoutClockOf(p *workflowGameEventPlayer, clocks map[int64]int, current *int64) *int64 {
+	if p == nil || current == nil {
+		return current
+	}
+	if clock, ok := clocks[p.PlayerID]; ok {
+		v := int64(clock)
+		return &v
+	}
+	return current
 }
 
 func resolveRecallTargetOwners(events []workflowGameEvent, players []workflowGamePlayer) []workflowGameEvent {

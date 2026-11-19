@@ -119,3 +119,59 @@ func TestALoneHarasserOverrunsOnlyAPlayerWithNoArmyAnywhere(t *testing.T) {
 		t.Fatal("a player with four Dragoons across the map was not unprepared")
 	}
 }
+
+func fourPlayers() (*engine.Digest, []Player) {
+	d := digest()
+	d.Players = []engine.Player{{Slot: 0}, {Slot: 1}, {Slot: 2}, {Slot: 3}}
+	d.LastFrame = f(1500)
+	players := []Player{
+		{Slot: 0, Human: true, Team: 1, Result: ResultLost}, {Slot: 1, Human: true, Team: 1, Result: ResultLost},
+		{Slot: 2, Human: true, Team: 2, Result: ResultWon}, {Slot: 3, Human: true, Team: 2, Result: ResultWon},
+	}
+	return d, players
+}
+
+func TestYouFollowingAnAllyOutTakeTheAllysTurningPoint(t *testing.T) {
+	d, players := fourPlayers()
+	d.Outcomes = []engine.Outcome{{Frame: f(900), Owner: 1, Kind: engine.OutcomeLeft}, {Frame: f(960), Owner: 0, Kind: engine.OutcomeLeft}}
+	events := []Event{
+		{Type: "attack", Second: 300, Actor: 2, Target: 0, Outcome: Outcome{Killed: 200}},
+		{Type: InsightOverrun, Second: 870, Actor: 3, Target: 1, Count: 12},
+	}
+	p := TurningPoints(d, testBases, players, events, 0)
+	if p.You == nil || p.You.Event != 1 || p.Ally != 1 {
+		t.Fatalf("you left a minute after your overrun ally: %+v", p)
+	}
+	if p.Final == nil || p.Final.Event != 1 {
+		t.Fatalf("final %+v", p.Final)
+	}
+	events[1].Second = 600
+	if p := TurningPoints(d, testBases, players, events, 0); p.You != nil {
+		t.Fatalf("a blow to an ally six minutes before you left is not why you left: %+v", p.You)
+	}
+}
+
+func TestAWinnerIsToldWhyTheirOpponentsLost(t *testing.T) {
+	d, players := fourPlayers()
+	d.Outcomes = []engine.Outcome{{Frame: f(900), Owner: 1, Kind: engine.OutcomeLeft}, {Frame: f(960), Owner: 0, Kind: engine.OutcomeLeft}}
+	events := []Event{{Type: InsightOverrun, Second: 930, Actor: 3, Target: 0, Count: 12}}
+	p := TurningPoints(d, testBases, players, events, 2)
+	if p.You == nil || p.You.Event != 0 || p.Ally != NoPlayer {
+		t.Fatalf("the winner sees why the last opponent left: %+v", p)
+	}
+}
+
+func TestARushThatKillsTheWorkersIsWhyTheVictimLeft(t *testing.T) {
+	d := digest()
+	d.LastFrame = f(200)
+	players := []Player{{Slot: 0, Human: true}, {Slot: 1, Human: true}}
+	events := []Event{{Type: "zergling_rush", Second: 151, Actor: 1, Target: 0, Outcome: Outcome{Killed: 600, Lost: 25, Workers: 10}}}
+	whys := Whys(d, testBases, players, events)
+	if len(whys) != 1 || whys[0].Event != 0 || whys[0].Loser != 0 {
+		t.Fatalf("ten workers lost to a rush is why the recorder left: %+v", whys)
+	}
+	events[0].Outcome = Outcome{Killed: 150, Lost: 300, Workers: 3}
+	if whys := Whys(d, testBases, players, events); len(whys) != 0 {
+		t.Fatalf("a rush that was held explains nothing: %+v", whys)
+	}
+}

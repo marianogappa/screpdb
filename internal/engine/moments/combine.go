@@ -132,3 +132,70 @@ func unionRegion(a, b Region) Region {
 	x, y := min(a.X, b.X), min(a.Y, b.Y)
 	return Region{X: x, Y: y, W: max(a.X+a.W, b.X+b.W) - x, H: max(a.Y+a.H, b.Y+b.H) - y}
 }
+
+// pushGap is how long after a hit ends the next may start and still be the same push.
+const pushGap = 120
+
+var pushTypes = []string{"attack", "worker_kills"}
+
+// ChainPushes folds the hits one army keeps making on one base into the first of them: Hydralisks killing
+// workers in a main, leaving and coming back a minute later, are one push, not two events that differ only
+// in their counts. A push into another base stays its own event, with its own map. Hits chain while each
+// starts within pushGap of the last one ending and shares a unit type with the push. Each hit counts its own
+// deaths, so the push adds them up.
+func ChainPushes(events []Event) []Event {
+	order := make([]int, len(events))
+	for i := range order {
+		order[i] = i
+	}
+	slices.SortStableFunc(order, func(a, b int) int { return events[a].Second - events[b].Second })
+	folded := make([]bool, len(events))
+	out := slices.Clone(events)
+	for oi, l := range order {
+		if folded[l] || !slices.Contains(pushTypes, out[l].Type) {
+			continue
+		}
+		for _, p := range order[oi+1:] {
+			lead, part := out[l], out[p]
+			end := lead.Second + lead.Seconds
+			for _, q := range lead.Parts {
+				end = max(end, q.Second+q.Seconds)
+			}
+			if part.Second > end+pushGap {
+				break
+			}
+			if folded[p] || !slices.Contains(pushTypes, part.Type) || !sameSides(lead, part) || lead.Base != part.Base || !sharesUnit(lead.Units, part.Units) {
+				continue
+			}
+			out[l] = push(lead, part)
+			folded[p] = true
+		}
+	}
+	var kept []Event
+	for i, e := range out {
+		if !folded[i] {
+			kept = append(kept, e)
+		}
+	}
+	return kept
+}
+
+func sharesUnit(a, b []uint16) bool {
+	return slices.ContainsFunc(b, func(t uint16) bool { return slices.Contains(a, t) })
+}
+
+func push(lead, part Event) Event {
+	lead.Seconds = max(lead.Seconds, part.Second+part.Seconds-lead.Second)
+	lead.Region = unionRegion(lead.Region, part.Region)
+	o, q := &lead.Outcome, part.Outcome
+	o.Killed, o.Lost = o.Killed+q.Killed, o.Lost+q.Lost
+	o.Workers, o.Buildings, o.KilledUnits = o.Workers+q.Workers, o.Buildings+q.Buildings, o.KilledUnits+q.KilledUnits
+	o.TownHall = o.TownHall || q.TownHall
+	for _, t := range part.Units {
+		if !slices.Contains(lead.Units, t) {
+			lead.Units = append(lead.Units, t)
+		}
+	}
+	lead.Parts = append(lead.Parts, part)
+	return lead
+}

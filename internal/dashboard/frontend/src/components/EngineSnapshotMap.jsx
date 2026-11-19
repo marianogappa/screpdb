@@ -5,7 +5,8 @@ import { getUnitIcon, normalizeUnitName, spriteKeyOf } from '../lib/gameAssets';
 import { formatDuration } from '../lib/formatters';
 import { placeLabels } from '../lib/labelPlacement';
 import { baseOutline } from '../lib/baseOutline';
-import { GOOD_ENOUGH, placeTitle } from '../lib/titlePlacement';
+import { GOOD_ENOUGH, placeTitle, titleAnchor } from '../lib/titlePlacement';
+import { highlightedItems } from '../lib/eventHighlight';
 import GameMap from './GameMap';
 
 const TILE = 32;
@@ -88,10 +89,10 @@ function ProgressBar({ cx, top, width, progress, scale, segmentsId }) {
   );
 }
 
-function Sprite({ href, x, y, w, h, opacity = 1, filter, title }) {
+function Sprite({ href, x, y, w, h, opacity = 1, filter, title, className }) {
   if (!href) return null;
   return (
-    <g opacity={opacity}>
+    <g opacity={opacity} className={className}>
       <image href={href} x={x} y={y} width={w} height={h} preserveAspectRatio="none" filter={filter} />
       <title>{title}</title>
     </g>
@@ -312,10 +313,12 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const engine = event?.engine;
   const second = engine?.snapshot_second ?? event?.second ?? 0;
   const [snapshot, setSnapshot] = useState(null);
+  const [loadingExact, setLoadingExact] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     let exactArrived = false;
+    setLoadingExact(true);
     api.getEngineSnapshot(replayId, second)
       .then((data) => { if (!cancelled && !exactArrived) setSnapshot(data); })
       .catch(() => {});
@@ -324,8 +327,9 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
         if (cancelled) return;
         exactArrived = true;
         setSnapshot(data);
+        setLoadingExact(false);
       })
-      .catch(() => {});
+      .catch(() => { if (!cancelled) setLoadingExact(false); });
     return () => { cancelled = true; };
   }, [replayId, second, eventSeconds]);
 
@@ -384,6 +388,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
     }
     return chosen;
   }, [snapshot, region, focus, width, height, frameWidth, nameByPlayerId, titleText, centerTitle, event?.path, event?.type, engine?.point]);
+  const highlighted = useMemo(() => highlightedItems(event, snapshot), [event, snapshot]);
   const view = layout.view;
   const labelSpots = layout.labelSpots;
   if (!width || !height) return null;
@@ -404,6 +409,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
   const creepId = `${ids}-creep`;
   const warpId = `${ids}-warp`;
   const focusId = `${ids}-focus`;
+
   const hoverBase = (e, base) => {
     const box = rootRef.current?.getBoundingClientRect();
     if (box) setHover({ base, x: e.clientX - box.left + 14, y: e.clientY - box.top + 14 });
@@ -429,6 +435,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
       const sb = place(m.shadow, b.x, b.y, 1);
       shadows.push(<image key={`bs-${i}`} href={getUnitIcon(b.unit_type, { shadow: true })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
     }
+    const lit = highlighted.buildings.has(i);
     const building = b.progress != null;
     const title = building ? t('snapshot.underConstruction', { unit: b.unit_type }) : b.unit_type;
     (b.lifted ? air : ground).push({
@@ -443,6 +450,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
             h={box.h}
             filter={building ? `url(#${warpId})` : undefined}
             title={title}
+            className={lit ? 'engine-hl-glow' : undefined}
           />
           {building ? (
             <ProgressBar cx={b.x} top={b.y + b.h / 2 + 2 * uiScale} width={Math.min(b.w * 0.8, 110 * uiScale)} progress={b.progress} scale={uiScale} segmentsId={segmentsId} />
@@ -457,6 +465,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
     const box = place(m, u.x, u.y, 1);
     const variant = variantOf(u.unit_type, u.burrowed);
     const burrowedLook = u.burrowed && !variant;
+    const lit = highlighted.units.has(i);
     if (m.shadow && !burrowedLook) {
       const sb = place(m.shadow, u.x, u.y, 1);
       shadows.push(<image key={`us-${i}`} href={getUnitIcon(u.unit_type, { shadow: true, variant })} x={sb.x} y={sb.y} width={sb.w} height={sb.h} preserveAspectRatio="none" />);
@@ -473,6 +482,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
           h={box.h}
           opacity={burrowedLook ? 0.45 : 1}
           title={u.unit_type}
+          className={lit ? 'engine-hl-glow' : undefined}
         />
       ),
     });
@@ -537,6 +547,7 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
             {ground.map((g) => g.node)}
             {air.map((a) => a.node)}
             {focus ? <rect className="engine-focus-dim" width={width} height={height} fill={`url(#${focusId})`} /> : null}
+
             {ghost ? (
               <g className="engine-nuke-ghost" pointerEvents="none">
                 <line x1={ghost.x} y1={ghost.y} x2={nukePoint.x} y2={nukePoint.y} stroke="#ff2b2b" strokeOpacity={0.7} strokeWidth={2 * uiScale} strokeDasharray={`${6 * uiScale} ${5 * uiScale}`} />
@@ -623,12 +634,13 @@ export default function EngineSnapshotMap({ replayId, event, eventSeconds, mapUr
       {title && !centerTitle && layout.title ? (
         <div
           className="engine-title"
-          style={{ left: `${layout.title.x}px`, top: `${layout.title.y}px`, width: `${layout.title.w}px`, padding: `${TITLE_PAD_PX}px` }}
+          style={{ left: `${layout.title.x}px`, ...titleAnchor(layout.title), width: `${layout.title.w}px`, padding: `${TITLE_PAD_PX}px` }}
         >
           {title}
         </div>
       ) : null}
       {progress}
+      {loadingExact ? <div className="engine-loading" role="status" aria-label={t('snapshot.loading')} title={t('snapshot.loading')} /> : null}
       {hover ? <BaseTooltip hover={hover} color={color} nameOf={nameOf} /> : null}
     </div>
   );

@@ -5,6 +5,7 @@ package dashboard
 import (
 	"math"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strings"
 
@@ -150,12 +151,14 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		}
 		return e, e.Actor != nil
 	}
-	events, why := moments.Detect(dg, bases, players), map[int]bool{}
+	events, roles := moments.ChainPushes(moments.Detect(dg, bases, players)), map[int][]string{}
+	tp := moments.Perspective{Ally: moments.NoPlayer}
+	you := moments.NoPlayer
 	if d.featureFlagEnabled(d.ctx, featureFlagGameInsights) {
 		events, _ = moments.Combine(append(events, moments.DetectInsights(dg, bases, players).Events...), -1)
-		for _, w := range moments.Whys(dg, bases, players, events) {
-			why[w.Event] = true
-		}
+		you = d.youSlot(rec)
+		tp = moments.TurningPoints(dg, bases, players, events, you)
+		roles = turningPointRoles(tp, you, detail.OwnCopyFileName != "")
 	}
 	type teller struct {
 		told workflowGameEvent
@@ -167,7 +170,21 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		if !ok {
 			continue
 		}
-		e.Why = why[i]
+		e.WhyRoles = roles[i]
+		e.Why = len(roles[i]) > 0
+		if slices.Contains(roles[i], whyRoleYou) && tp.Ally != moments.NoPlayer {
+			e.WhyAfterAlly, e.WhyLeaver = player(tp.Ally), player(you)
+		}
+		if len(roles[i]) > 0 {
+			e.WhyYou, e.WhyAllies = player(you), int64(tp.LiveAllies)
+			w := tp.Final
+			if tp.You != nil && tp.You.Event == i {
+				w = tp.You
+			}
+			if w != nil {
+				e.WhyForce, e.WhyTargetBases = whyForce(w.Force), int64(w.TargetBases)
+			}
+		}
 		if m.Insight {
 			e.Engine.EndSecond = int64(m.Second + m.Seconds)
 			tellers = append(tellers, teller{told: e})
@@ -192,6 +209,7 @@ var plainEventsTold = map[string]map[string]bool{
 	moments.InsightEraser:          {"worker_kills": true, "attack": true},
 	moments.InsightUndefendedAir:   {"worker_kills": true, "attack": true},
 	moments.InsightUndetectedCloak: {"worker_kills": true, "attack": true, "dt_drop": true},
+	moments.InsightOverrun:         {"worker_kills": true, "attack": true},
 }
 
 // keep is a type never removed: a combined event's own, which a part folded into it may otherwise tell.
@@ -202,7 +220,7 @@ func eventsTold(events []workflowGameEvent, told workflowGameEvent, keep string)
 	}
 	kept := events[:0]
 	for _, e := range events {
-		same := types[e.Type] && e.Type != keep && actorID(e.Actor) == actorID(told.Actor) && e.Base != nil && told.Base != nil && e.Base.Name == told.Base.Name
+		same := types[e.Type] && e.Type != keep && len(e.WhyRoles) == 0 && actorID(e.Actor) == actorID(told.Actor) && e.Base != nil && told.Base != nil && e.Base.Name == told.Base.Name
 		if same && e.Second >= told.Second-toldBefore && e.Second <= told.Engine.EndSecond+toldAfter {
 			continue
 		}
@@ -490,7 +508,60 @@ func openFieldBase(m moments.Event, metas []overlayBaseMeta, rec *library.Replay
 	if best < 0 {
 		return set("middle", "", "in the middle")
 	}
-	near := []workflowGameEvent{{Base: &workflowGameEventBase{Name: metas[best].Base.Name, Kind: metas[best].Base.Kind, NaturalOfClock: metas[best].Base.NaturalOfClock}}}
-	name := resolveNaturalOwnerLabels(near, roster, startClockByPlayerID)[0].Base.Name
-	return set("near_base", name, "near "+name)
+	nearBase := &workflowGameEventBase{Name: metas[best].Base.Name, Kind: metas[best].Base.Kind, Clock: metas[best].Base.Clock, NaturalOfClock: metas[best].Base.NaturalOfClock}
+	name := resolveNaturalOwnerLabels([]workflowGameEvent{{Base: nearBase}}, roster, startClockByPlayerID)[0].Base.Name
+	out = set("near_base", name, "near "+name)
+	out.OpenField.near = nearBase
+	return out
+}
+
+const (
+	whyRoleYou   = "you"
+	whyRoleFinal = "final"
+)
+
+// turningPointRoles marks the turning points the summary shows. A viewer sees their own; why the game ended
+// shows too when no viewer is known, or when a complete recording carries the game on past the viewer.
+func turningPointRoles(tp moments.Perspective, you int8, completeCopy bool) map[int][]string {
+	roles := map[int][]string{}
+	if tp.You != nil {
+		roles[tp.You.Event] = append(roles[tp.You.Event], whyRoleYou)
+	}
+	if tp.Final != nil && (you == moments.NoPlayer || completeCopy) {
+		roles[tp.Final.Event] = append(roles[tp.Final.Event], whyRoleFinal)
+	}
+	return roles
+}
+
+func whyForce(f moments.Force) *workflowWhyForce {
+	if f.Value <= 0 && f.Recalls == 0 {
+		return nil
+	}
+	name := func(t uint16) string {
+		if u := repcmd.UnitByID(t); u != nil {
+			return u.Name
+		}
+		return ""
+	}
+	out := &workflowWhyForce{Value: int64(f.Value), Defence: int64(f.Defence), Count: int64(f.Count), Class: f.Class, Recalls: int64(f.Recalls)}
+	for _, u := range f.Units {
+		out.Units = append(out.Units, workflowWhyForceUnit{Name: name(u.Type), Count: int64(u.Count)})
+	}
+	if f.Mostly != 0 {
+		out.Mostly = name(f.Mostly)
+	}
+	if f.MostlyPair[0] != 0 {
+		out.Pair = []string{name(f.MostlyPair[0]), name(f.MostlyPair[1])}
+	}
+	return out
+}
+
+// youSlot is the slot of the user in a game, or NoPlayer when they did not play in it.
+func (d *Dashboard) youSlot(rec *library.Replay) int8 {
+	for _, p := range rec.Players {
+		if !p.IsObserver() && d.isYouPlayer(p.Name) {
+			return int8(p.Slot)
+		}
+	}
+	return moments.NoPlayer
 }

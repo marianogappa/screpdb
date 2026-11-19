@@ -178,5 +178,6 @@
   "skill.trend.up": "상승 중",
   "skill.trend.down": "하락 중",
   "skill.trend.flat": "유지 중",
-  "labs.feature.gameInsights": "게임 인사이트: 패배 이유와 엘리베이터, 이레이저 같은 기술 표시"
+  "labs.feature.gameInsights": "게임 인사이트: 패배 이유와 엘리베이터, 이레이저 같은 기술 표시",
+  "snapshot.loading": "모든 유닛 불러오는 중"
 }

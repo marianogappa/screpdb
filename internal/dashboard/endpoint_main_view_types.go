@@ -511,6 +511,19 @@ type workflowGameEvent struct {
 	Key bool `json:"key"`
 	// Why marks the insight that explains why the loser left (Labs: game_insights).
 	Why bool `json:"why,omitempty"`
+	// WhyRoles say which turning point the event is: "you", the viewer's own, and "final", why the game ended.
+	WhyRoles []string `json:"why_roles,omitempty"`
+	// WhyAfterAlly is set when the viewer's turning point is an ally's: the viewer left soon after that ally.
+	WhyAfterAlly *workflowGameEventPlayer `json:"why_after_ally,omitempty"`
+	// WhyLeaver is the viewer who followed WhyAfterAlly out.
+	WhyLeaver *workflowGameEventPlayer `json:"why_leaver,omitempty"`
+	// WhyYou is the viewer, so a turning point can say "you" for them.
+	WhyYou *workflowGameEventPlayer `json:"why_you,omitempty"`
+	// WhyAllies is how many of the viewer's allies were still playing at their turning point.
+	WhyAllies int64             `json:"why_allies,omitempty"`
+	WhyForce  *workflowWhyForce `json:"why_force,omitempty"`
+	// WhyTargetBases is how many bases the turning point's target had when it began.
+	WhyTargetBases int64 `json:"why_target_bases,omitempty"`
 	// Path draws an insight on the map, in map pixels: an elevator's unloads, an Eraser's kills.
 	Path []workflowGameEventPoint `json:"path,omitempty"`
 	// Defenders is how many anti-air units stood in a base an undefended air harass hit.
@@ -586,6 +599,8 @@ type workflowGameEventBase struct {
 type workflowOpenField struct {
 	Relation string `json:"relation"`
 	Ref      string `json:"ref,omitempty"`
+	// near is the base a near_base place is near, so its name can follow who holds it at the event's time.
+	near *workflowGameEventBase
 }
 
 type workflowGameOwnership struct {
@@ -886,4 +901,22 @@ type workflowPlayersListFilterOptions struct {
 	Apm        []workflowPlayersListFilterOption `json:"apm"`
 	Games      []workflowPlayersListFilterOption `json:"games"`
 	LastPlayed []workflowPlayersListFilterOption `json:"last_played"`
+}
+
+type workflowWhyForce struct {
+	Value   int64                  `json:"value"`
+	Defence int64                  `json:"defence"`
+	Count   int64                  `json:"count"`
+	Units   []workflowWhyForceUnit `json:"units,omitempty"`
+	// Mostly is the unit the force is mostly made of, Class its class ("air", "bio", "mech") when no single
+	// unit is, and Pair its two main units when neither is.
+	Mostly  string   `json:"mostly,omitempty"`
+	Class   string   `json:"class,omitempty"`
+	Pair    []string `json:"pair,omitempty"`
+	Recalls int64    `json:"recalls,omitempty"`
+}
+
+type workflowWhyForceUnit struct {
+	Name  string `json:"name"`
+	Count int64  `json:"count"`
 }

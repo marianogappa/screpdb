@@ -178,5 +178,6 @@
   "skill.trend.up": "Improving",
   "skill.trend.down": "Declining",
   "skill.trend.flat": "Steady",
-  "labs.feature.gameInsights": "Game insights: why a game was lost, and technique pills like Elevator and Eraser"
+  "labs.feature.gameInsights": "Game insights: why a game was lost, and technique pills like Elevator and Eraser",
+  "snapshot.loading": "Loading every unit"
 }

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"math"
 	"runtime"
 	"runtime/debug"
@@ -77,8 +78,15 @@ type Runner struct {
 	cache     *digestcache.Cache
 	snapCache *digestcache.Cache
 	snapLocks map[[32]byte]*sync.Mutex
-	limit     int
-	active    int
+	// snapMem keeps the snapshots of the last few games opened decoded, so stepping through a game's events
+	// does not read and inflate its whole cache entry again for each one.
+	snapMem   map[[32]byte]map[int]engine.Snapshot
+	snapOrder [][32]byte
+	// snapNone are the seconds a game has no snapshot for, past its last frame: asking for them again
+	// would replay the whole game to learn it once more.
+	snapNone map[[32]byte]map[int]bool
+	limit    int
+	active   int
 
 	wake     chan struct{}
 	stop     chan struct{}
@@ -178,15 +186,19 @@ func (r *Runner) Snapshots(ctx context.Context, checksum [32]byte, path string, 
 	defer lock.Unlock()
 
 	key := r.key(checksum)
-	have := map[int]engine.Snapshot{}
-	if entry, ok, err := snapCache.Get(key); err == nil && ok && entry.Failed == "" {
-		if decoded, err := engine.DecodeSnapshots(entry.Digest); err == nil {
-			have = decoded
+	have := r.rememberedSnapshots(checksum)
+	if have == nil {
+		have = map[int]engine.Snapshot{}
+		if entry, ok, err := snapCache.Get(key); err == nil && ok && entry.Failed == "" {
+			if decoded, err := engine.DecodeSnapshots(entry.Digest); err == nil {
+				have = decoded
+			}
 		}
 	}
+	none := r.secondsWithoutSnapshot(checksum)
 	var missing []int
 	for _, s := range seconds {
-		if _, ok := have[s]; !ok {
+		if _, ok := have[s]; !ok && !none[s] {
 			missing = append(missing, s)
 		}
 	}
@@ -205,12 +217,14 @@ func (r *Runner) Snapshots(ctx context.Context, checksum [32]byte, path string, 
 		for s, snap := range fresh {
 			have[s] = snap
 		}
+		r.markWithoutSnapshot(checksum, missing, fresh)
 		if encoded, err := engine.EncodeSnapshots(have); err == nil {
 			if err := snapCache.Put(key, digestcache.Entry{Digest: encoded}); err != nil {
 				r.opts.Logf("Engine snapshots: %v", err)
 			}
 		}
 	}
+	r.rememberSnapshots(checksum, have)
 	out := make(map[int]engine.Snapshot, len(seconds))
 	for _, s := range seconds {
 		if snap, ok := have[s]; ok {
@@ -218,6 +232,47 @@ func (r *Runner) Snapshots(ctx context.Context, checksum [32]byte, path string, 
 		}
 	}
 	return out, nil
+}
+
+const snapMemGames = 4
+
+func (r *Runner) rememberedSnapshots(checksum [32]byte) map[int]engine.Snapshot {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.snapMem[checksum]
+}
+
+func (r *Runner) secondsWithoutSnapshot(checksum [32]byte) map[int]bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return maps.Clone(r.snapNone[checksum])
+}
+
+func (r *Runner) markWithoutSnapshot(checksum [32]byte, asked []int, got map[int]engine.Snapshot) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, s := range asked {
+		if _, ok := got[s]; ok {
+			continue
+		}
+		if r.snapNone[checksum] == nil {
+			r.snapNone[checksum] = map[int]bool{}
+		}
+		r.snapNone[checksum][s] = true
+	}
+}
+
+func (r *Runner) rememberSnapshots(checksum [32]byte, snaps map[int]engine.Snapshot) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.snapMem[checksum]; !ok {
+		r.snapOrder = append(r.snapOrder, checksum)
+	}
+	r.snapMem[checksum] = snaps
+	for len(r.snapOrder) > snapMemGames {
+		delete(r.snapMem, r.snapOrder[0])
+		r.snapOrder = r.snapOrder[1:]
+	}
 }
 
 // Focus runs the replay the user has open now, on a worker of its own, instead of after the passes already
@@ -340,6 +395,8 @@ func (r *Runner) run() {
 	r.mu.Lock()
 	r.data, r.dataHash, r.cache, r.snapCache = data, dataHash, cache, snapCache
 	r.snapLocks = map[[32]byte]*sync.Mutex{}
+	r.snapMem = map[[32]byte]map[int]engine.Snapshot{}
+	r.snapNone = map[[32]byte]map[int]bool{}
 	r.status.State = StateRunning
 	r.mu.Unlock()
 	r.updateLimit()

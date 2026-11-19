@@ -7,9 +7,14 @@ import (
 )
 
 // Why points at the event that explains why a losing team left. In a 1v1 the losing team is one player.
+// End is the second the team ended.
 type Why struct {
 	Loser int8
 	Event int
+	End   int
+	Force Force
+	// TargetBases is how many town halls the event's target had standing when it began.
+	TargetBases int
 }
 
 // whyLookBack is how long before a team left an event may have happened and still explain it.
@@ -53,6 +58,7 @@ func (g *game) whys(events []Event) []Why {
 			continue
 		}
 		if w, _, ok := bestWhy(events, teams[t], min(end, g.trusted)); ok {
+			w.End = end
 			out = append(out, w)
 		}
 	}
@@ -60,6 +66,7 @@ func (g *game) whys(events []Event) []Why {
 		end := min(second(g.d.LastFrame), g.trusted)
 		a, sa, oka := bestWhy(events, teams[order[0]], end)
 		b, sb, okb := bestWhy(events, teams[order[1]], end)
+		a.End, b.End = end, end
 		switch {
 		case oka && (!okb || sa >= sb):
 			return []Why{a}
@@ -67,8 +74,109 @@ func (g *game) whys(events []Event) []Why {
 			return []Why{b}
 		}
 	}
-	slices.SortFunc(out, func(a, b Why) int { return events[a.Event].Second - events[b.Event].Second })
+	slices.SortFunc(out, func(a, b Why) int { return a.End - b.End })
 	return out
+}
+
+// Perspective is what one viewer is told about why a game ended. You is the viewer's own turning point: why
+// they lost, or when they won, why the last side against them did. When the viewer lost and nothing in their
+// last four minutes was aimed at them, the costliest blow to an ally in that time stands in, and Ally names
+// that ally: a side often collapses together, the viewer leaving after a teammate is beaten. Final is why the
+// game ended: the turning point of the last side to lose.
+type Perspective struct {
+	You   *Why
+	Ally  int8
+	Final *Why
+	// LiveAllies is how many of the viewer's allies were still playing when their turning point happened.
+	LiveAllies int
+}
+
+// TurningPoints is the Perspective of the player in slot you, or NoPlayer for a game with no viewer in it.
+func TurningPoints(d *engine.Digest, bases []Base, players []Player, events []Event, you int8) Perspective {
+	g := newGame(d, bases, players)
+	p := g.turningPoints(events, you)
+	for _, w := range []*Why{p.You, p.Final} {
+		if w != nil {
+			w.Force = g.force(events[w.Event], events)
+			w.TargetBases = g.townHallsOf(events[w.Event].Target, events[w.Event].Second)
+		}
+	}
+	if p.You != nil {
+		p.LiveAllies = g.liveAllies(you, events[p.You.Event].Second)
+	}
+	return p
+}
+
+func (g *game) turningPoints(events []Event, you int8) Perspective {
+	p := Perspective{Ally: NoPlayer}
+	whys := g.whys(events)
+	if len(whys) > 0 {
+		p.Final = &whys[len(whys)-1]
+	}
+	if you == NoPlayer || !g.players[you].Human {
+		return p
+	}
+	if !g.youLost(you, whys) {
+		if p.Final != nil {
+			w := *p.Final
+			p.You = &w
+		}
+		return p
+	}
+	end := g.endOf(you)
+	if end < 0 {
+		end = second(g.d.LastFrame)
+	}
+	end = min(end, g.trusted)
+	if w, _, ok := bestWhy(events, []int8{you}, end); ok {
+		w.End = end
+		p.You = &w
+		return p
+	}
+	var allies []int8
+	for _, slot := range sortedSlots(g.players) {
+		if slot != you && g.players[slot].Human && g.teamOf(slot) == g.teamOf(you) {
+			allies = append(allies, slot)
+		}
+	}
+	if w, _, ok := bestWhy(events, allies, end); ok {
+		w.End = end
+		p.You, p.Ally = &w, w.Loser
+	}
+	return p
+}
+
+// townHallsOf counts a player's standing town halls by place, since a Lair or Hive is also recorded as the
+// Hatchery it morphed from.
+func (g *game) townHallsOf(slot int8, sec int) int {
+	at := map[[2]int32]bool{}
+	for _, b := range g.buildingsAt(sec) {
+		if b.owner == slot && IsTownHall(b.typ) {
+			at[[2]int32{b.x, b.y}] = true
+		}
+	}
+	return len(at)
+}
+
+func (g *game) liveAllies(you int8, sec int) int {
+	n := 0
+	for _, slot := range sortedSlots(g.players) {
+		if slot != you && g.players[slot].Human && g.teamOf(slot) == g.teamOf(you) {
+			if end := g.endOf(slot); end < 0 || end >= sec {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// youLost says the viewer's side lost: by the library's result, else unless the engine saw them win, since a
+// viewer's own replay with no result ends when they quit.
+func (g *game) youLost(you int8, whys []Why) bool {
+	if r := g.players[you].Result; r != 0 {
+		return r == ResultLost
+	}
+	return !g.won(you)
 }
 
 // endOf is when a player left: the engine's record, else the commands', else -1.
@@ -132,7 +240,7 @@ func bestWhy(events []Event, team []int8, end int) (Why, int32, bool) {
 		var score int32
 		var who int8
 		switch {
-		case slices.Contains(team, e.Target) && (decisive(e) || bigWin(e)):
+		case slices.Contains(team, e.Target) && (decisive(e) || bigWin(e) || crushingRush(e)):
 			score, who = e.Outcome.Killed+100*int32(e.Outcome.Workers), e.Target
 			if e.Outcome.TownHall {
 				score += 2000
@@ -150,6 +258,15 @@ func bestWhy(events []Event, team []int8, end int) (Why, int32, bool) {
 }
 
 var winningAttacks = map[string]bool{"attack": true, "drop": true, "reaver_drop": true, "dt_drop": true, "cliff_drop": true, "nydus_attack": true, "recall": true}
+
+var rushes = map[string]bool{"zergling_rush": true, "cannon_rush": true, "bunker_rush": true}
+
+// crushingRush is a rush that crippled its target: a town hall, 6 workers or 1500 resources, for less than it
+// killed.
+func crushingRush(e Event) bool {
+	o := e.Outcome
+	return rushes[e.Type] && (o.TownHall || o.Workers >= 6 || o.Killed >= 1500) && o.Killed >= o.Lost
+}
 
 // bigLoss is an attack, drop or recall that threw its army away: 1500 resources lost for less than half of
 // it killed, or a recall the engine saw trade poorly or get wiped out for 1000.
