@@ -22,16 +22,18 @@ import (
 
 const recentDigests = 8
 
-// digestMemo keeps the last few full digests: a game page asks for several views of one game.
+// digestMemo keeps the last few full digests: a game page asks for several views of one game. A digest is
+// kept for the engine version the library records for its game, so a game redone on a newer version is read
+// afresh the moment its new digest lands, not on the next launch.
 type digestMemo struct {
 	mu    sync.Mutex
 	order [][32]byte
 	byKey map[[32]byte]*engine.Digest
 }
 
-func (m *digestMemo) get(checksum [32]byte, load func() (*engine.Digest, bool)) *engine.Digest {
+func (m *digestMemo) get(checksum [32]byte, version int32, load func() (*engine.Digest, bool)) *engine.Digest {
 	m.mu.Lock()
-	if d, ok := m.byKey[checksum]; ok {
+	if d, ok := m.byKey[checksum]; ok && d.EngineVersion == version {
 		m.mu.Unlock()
 		return d
 	}
@@ -45,12 +47,14 @@ func (m *digestMemo) get(checksum [32]byte, load func() (*engine.Digest, bool)) 
 	if m.byKey == nil {
 		m.byKey = map[[32]byte]*engine.Digest{}
 	}
-	if len(m.order) >= recentDigests {
-		delete(m.byKey, m.order[0])
-		m.order = m.order[1:]
+	if _, kept := m.byKey[checksum]; !kept {
+		if len(m.order) >= recentDigests {
+			delete(m.byKey, m.order[0])
+			m.order = m.order[1:]
+		}
+		m.order = append(m.order, checksum)
 	}
 	m.byKey[checksum] = d
-	m.order = append(m.order, checksum)
 	return d
 }
 
@@ -65,7 +69,7 @@ func (d *Dashboard) engineDigest(replayID int64) (*engine.Digest, *library.Repla
 	if !ok || rec.EngineData == nil || rec.EngineData.LowConfidence {
 		return nil, nil
 	}
-	dg := d.digests.get(rec.Checksum, func() (*engine.Digest, bool) { return runner.Digest(rec.Checksum) })
+	dg := d.digests.get(rec.Checksum, rec.EngineData.EngineVersion, func() (*engine.Digest, bool) { return runner.Digest(rec.Checksum) })
 	return dg, rec
 }
 

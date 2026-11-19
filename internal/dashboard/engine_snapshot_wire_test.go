@@ -201,15 +201,15 @@ func TestDigestMemoCachesAndEvictsOldest(t *testing.T) {
 	}
 	key := func(i int) [32]byte { return [32]byte{byte(i)} }
 
-	first := m.get(key(0), loader(key(0)))
+	first := m.get(key(0), 0, loader(key(0)))
 	if first == nil {
 		t.Fatal("first load returned nil")
 	}
-	if again := m.get(key(0), loader(key(0))); again != first || loads[key(0)] != 1 {
+	if again := m.get(key(0), 0, loader(key(0))); again != first || loads[key(0)] != 1 {
 		t.Fatalf("cached hit reloaded: loads=%d", loads[key(0)])
 	}
 	for i := 1; i <= recentDigests; i++ {
-		m.get(key(i), loader(key(i)))
+		m.get(key(i), 0, loader(key(i)))
 	}
 	if len(m.order) != recentDigests || len(m.byKey) != recentDigests {
 		t.Fatalf("memo holds %d/%d, want %d", len(m.order), len(m.byKey), recentDigests)
@@ -217,11 +217,11 @@ func TestDigestMemoCachesAndEvictsOldest(t *testing.T) {
 	if _, ok := m.byKey[key(0)]; ok {
 		t.Fatal("oldest digest was not evicted")
 	}
-	if m.get(key(0), loader(key(0))) == first || loads[key(0)] != 2 {
+	if m.get(key(0), 0, loader(key(0))) == first || loads[key(0)] != 2 {
 		t.Fatalf("evicted digest loads = %d, want 2", loads[key(0)])
 	}
 
-	if got := m.get(key(99), func() (*engine.Digest, bool) { return nil, false }); got != nil {
+	if got := m.get(key(99), 0, func() (*engine.Digest, bool) { return nil, false }); got != nil {
 		t.Fatalf("failed load returned %+v", got)
 	}
 	if _, ok := m.byKey[key(99)]; ok {
