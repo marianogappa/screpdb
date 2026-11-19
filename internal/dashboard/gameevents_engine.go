@@ -151,15 +151,10 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 		}
 		return e, e.Actor != nil
 	}
-	events, roles := moments.ChainPushes(moments.Detect(dg, bases, players)), map[int][]string{}
-	tp := moments.Perspective{Ally: moments.NoPlayer}
-	you := moments.NoPlayer
-	if d.featureFlagEnabled(d.ctx, featureFlagGameInsights) {
-		events, _ = moments.Combine(append(events, moments.DetectInsights(dg, bases, players).Events...), -1)
-		you = d.youSlot(rec)
-		tp = moments.TurningPoints(dg, bases, players, events, you)
-		roles = turningPointRoles(tp, you, detail.OwnCopyFileName != "")
-	}
+	events, _ := moments.Combine(append(moments.ChainPushes(moments.Detect(dg, bases, players)), moments.DetectInsights(dg, bases, players).Events...), -1)
+	you := d.youSlot(rec)
+	tp := moments.TurningPoints(dg, bases, players, events, you)
+	roles := turningPointRoles(tp, you, detail.OwnCopyFileName != "")
 	type teller struct {
 		told workflowGameEvent
 		keep string

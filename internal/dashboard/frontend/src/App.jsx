@@ -348,7 +348,7 @@ const GameProgress = ({ progress }) => (
   </div>
 );
 
-// Strong pills are the Labs insights: they outrank the other game event pills for the one row there is room for.
+// Strong pills are the insights: they outrank the other game event pills for the one row there is room for.
 const isStrongPill = (pill) => String(pill?.className || '').includes('workflow-pattern-pill-strong');
 
 // A pill drawn from a game event carries the event's time on its top border and opens it in Game Events.
@@ -468,7 +468,7 @@ const fightSentence = (event, eventType, hasActor, hasTarget, location) => {
   return null;
 };
 
-// INSIGHT_TYPES are the Labs game_insights events: techniques and mistakes the engine proved, each with
+// INSIGHT_TYPES are the insight events: techniques and mistakes the engine proved, each with
 // the sentence that says what happened. insightSentence returns null for any other type.
 const INSIGHT_TYPES = new Set([
   'elevator', 'eraser', 'defilers_irradiated', 'nydus_denied',
