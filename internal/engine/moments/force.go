@@ -50,7 +50,7 @@ var unitClass = map[uint16]string{
 	ut(bwgame.UnitTypesProtossCorsair): ClassAir, ut(bwgame.UnitTypesProtossArbiter): ClassAir, ut(bwgame.UnitTypesZergMutalisk): ClassAir,
 	ut(bwgame.UnitTypesZergGuardian): ClassAir, ut(bwgame.UnitTypesZergDevourer): ClassAir, ut(bwgame.UnitTypesZergScourge): ClassAir,
 	ut(bwgame.UnitTypesTerranMarine): ClassBio, ut(bwgame.UnitTypesTerranFirebat): ClassBio, ut(bwgame.UnitTypesTerranMedic): ClassBio,
-	ut(bwgame.UnitTypesTerranGhost): ClassBio,
+	ut(bwgame.UnitTypesTerranGhost):   ClassBio,
 	ut(bwgame.UnitTypesTerranVulture): ClassMech, ut(bwgame.UnitTypesTerranSiegeTankTankMode): ClassMech,
 	ut(bwgame.UnitTypesTerranSiegeTankSiegeMode): ClassMech, ut(bwgame.UnitTypesTerranGoliath): ClassMech,
 }
