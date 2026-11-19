@@ -288,13 +288,20 @@ func (r *Runner) Focus(replayID int64) {
 	}
 	r.mu.Lock()
 	j, queued := r.queue.byChecksum[rec.Checksum]
-	if !queued && rec.EngineData != nil && rec.EngineData.EngineVersion < engine.EngineVersion && !r.running[rec.Checksum] {
-		j, queued = &job{checksum: rec.Checksum, id: rec.ID, date: rec.Date, path: rec.Path(), upgrade: true}, true
+	if !queued && !r.running[rec.Checksum] {
+		switch {
+		case rec.EngineData != nil && rec.EngineData.EngineVersion < engine.EngineVersion:
+			j, queued = &job{checksum: rec.Checksum, id: rec.ID, date: rec.Date, path: rec.Path(), upgrade: true}, true
+		case rec.EngineData == nil && rec.Flags.Has(library.FlagSuperseded):
+			// A hidden own copy is opened only when its complete copy could not be run: run it now.
+			j, queued = &job{checksum: rec.Checksum, id: rec.ID, date: rec.Date, path: rec.Path()}, true
+		}
 	}
 	if queued && r.status.State == StateRunning {
 		r.queue.remove(rec.Checksum)
+		r.markRunningLocked(j.checksum)
 		r.mu.Unlock()
-		r.wg.Go(func() { r.process(j) })
+		r.wg.Go(func() { r.passJob(j) })
 		return
 	}
 	r.queue.setFocus(rec.Checksum)
@@ -307,6 +314,19 @@ func (r *Runner) Focus(replayID int64) {
 func (r *Runner) Pending(replayID int64) bool {
 	rec, ok := r.lib.Snapshot().ByID(replayID)
 	if !ok || rec.EngineData != nil {
+		return false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, queued := r.queue.byChecksum[rec.Checksum]
+	return queued || r.running[rec.Checksum]
+}
+
+// Upgrading reports whether a replay that already has engine data is being redone on a newer engine version:
+// its page shows the older data meanwhile.
+func (r *Runner) Upgrading(replayID int64) bool {
+	rec, ok := r.lib.Snapshot().ByID(replayID)
+	if !ok || rec.EngineData == nil || rec.EngineData.EngineVersion >= engine.EngineVersion {
 		return false
 	}
 	r.mu.Lock()
@@ -590,15 +610,26 @@ func (r *Runner) next() *job {
 
 func (r *Runner) process(j *job) {
 	r.mu.Lock()
-	if r.running == nil {
-		r.running = map[[32]byte]bool{}
-	}
 	if r.running[j.checksum] {
 		r.mu.Unlock()
 		return
 	}
-	r.running[j.checksum] = true
+	r.markRunningLocked(j.checksum)
 	r.mu.Unlock()
+	r.passJob(j)
+}
+
+// markRunningLocked claims a replay's pass before its goroutine starts, so a page asking about it right after
+// sees it running rather than idle.
+func (r *Runner) markRunningLocked(checksum [32]byte) {
+	if r.running == nil {
+		r.running = map[[32]byte]bool{}
+	}
+	r.running[checksum] = true
+}
+
+// passJob runs a claimed pass.
+func (r *Runner) passJob(j *job) {
 	defer func() {
 		r.mu.Lock()
 		delete(r.running, j.checksum)

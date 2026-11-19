@@ -17,12 +17,16 @@ func (s *LibStore) CorpusView() *library.View { return s.view() }
 // global filter (corpus totals, settings, bnet).
 func (s *LibStore) snapshot() *library.Snapshot { return s.lib.Snapshot() }
 
+// replay is one game for its own page. The user's own copy of a game with a complete copy is hidden from
+// the filtered view, yet still has a page: the game shows it when the engine cannot run the complete copy.
 func (s *LibStore) replay(replayID int64) (*library.Replay, error) {
-	r, ok := s.view().ByID(replayID)
-	if !ok {
-		return nil, ErrNotFound
+	if r, ok := s.view().ByID(replayID); ok {
+		return r, nil
 	}
-	return r, nil
+	if r, ok := s.snapshot().ByID(replayID); ok && r.Flags.Has(library.FlagSuperseded) {
+		return r, nil
+	}
+	return nil, ErrNotFound
 }
 
 // replaysByIDs resolves ids against the filtered view, preserving the caller's

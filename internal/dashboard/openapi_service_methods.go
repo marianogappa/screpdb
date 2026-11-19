@@ -151,16 +151,24 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 }
 
 func (d *Dashboard) GameDetail(_ context.Context, request apigen.GameDetailRequestObject) (any, error) {
-	d.focusEnginePass(int64(request.ReplayID))
-	detail, err := d.buildWorkflowGameDetail(request.ReplayID)
+	id := int64(request.ReplayID)
+	d.focusEnginePass(id)
+	own, fallback := d.completeFallback(id)
+	if fallback {
+		id = own
+		d.focusEnginePass(id)
+	}
+	detail, err := d.buildWorkflowGameDetail(id)
 	if err != nil {
 		if errors.Is(err, dashboarddb.ErrNotFound) {
 			return nil, dashboardservice.WithStatus(http.StatusNotFound, err)
 		}
 		return nil, dashboardservice.WithStatus(http.StatusInternalServerError, err)
 	}
-	detail.EnginePending = d.enginePending(int64(request.ReplayID))
-	detail.EngineUnavailable = !detail.EnginePending && d.engineUnavailable(int64(request.ReplayID))
+	detail.EnginePending = d.enginePending(id)
+	detail.EngineUnavailable = !detail.EnginePending && d.engineUnavailable(id)
+	detail.EngineUpgrading = !detail.EnginePending && d.engineUpgrading(id)
+	detail.CompleteCopyUnplayable = fallback
 	return detail, nil
 }
 

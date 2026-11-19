@@ -507,5 +507,7 @@
   "events.sentence.destroysNatural": "{actor} destroys {target}'s natural",
   "events.sentence.destroysMain": "{actor} destroys {target}'s main base",
   "events.their": "their",
-  "events.theirOwn": "their own"
+  "events.theirOwn": "their own",
+  "game.engineNotice.upgrading": "Further enhancing report using the StarCraft engine",
+  "game.completeNotice.unplayable": "Complete replay couldn’t be run through the StarCraft engine"
 }

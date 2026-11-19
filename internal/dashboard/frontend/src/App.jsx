@@ -6201,7 +6201,9 @@ function App() {
                     >
                       {t('tabs.hotkeys')}
                     </button>
-                    {mainGame?.complete_copy ? (
+                    {mainGame?.complete_copy_unplayable ? (
+                      <span className="engine-notice engine-notice--unavailable" role="status">{t('game.completeNotice.unplayable')}</span>
+                    ) : mainGame?.complete_copy ? (
                       <span className="engine-notice engine-notice--active">{t('game.completeNotice')}</span>
                     ) : null}
                     {mainGame?.engine_unavailable ? (
@@ -6212,6 +6214,8 @@ function App() {
                       <span className={`engine-notice${mainGame?.engine_pending ? ' engine-notice--running' : ' engine-notice--ready'}`} role="status">
                         {mainGame?.engine_pending ? t('game.engineNotice.running') : t('game.engineNotice.ready')}
                       </span>
+                    ) : mainGame?.engine_upgrading ? (
+                      <span className="engine-notice engine-notice--running" role="status">{t('game.engineNotice.upgrading')}</span>
                     ) : mainGame?.mode === 'engine' && mainGame?.engine_confidence === 'high' ? (
                       <span className="engine-notice engine-notice--active">{t('game.engineNotice.active')}</span>
                     ) : null}

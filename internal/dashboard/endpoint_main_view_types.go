@@ -313,6 +313,12 @@ type workflowGameDetail struct {
 	EnginePending bool `json:"engine_pending,omitempty"`
 	// EngineUnavailable is true once the engine pass gave up on the game: it failed, or drifted from the real game.
 	EngineUnavailable bool `json:"engine_unavailable,omitempty"`
+	// EngineUpgrading is true while a game with engine data is redone on a newer engine version; the page
+	// shows the older data until it lands.
+	EngineUpgrading bool `json:"engine_upgrading,omitempty"`
+	// CompleteCopyUnplayable is true when the page shows the user's own recording because the engine could
+	// not run the game's complete copy.
+	CompleteCopyUnplayable bool `json:"complete_copy_unplayable,omitempty"`
 	// SkillStatus says whether the skill tiers apply: ok, too_short or custom_rules (empty: no humans to rate).
 	SkillStatus string `json:"skill_status"`
 	// SkillModel feeds the Skill explainer; set with SkillStatus ok.

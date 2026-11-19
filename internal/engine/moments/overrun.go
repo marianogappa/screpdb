@@ -13,7 +13,9 @@ const InsightOverrun = "overrun"
 // so leaves soon after. The force is the attacker's mobile army within reach of the victim side's buildings;
 // the answer is the victim side's whole ground-hitting army, wherever it is, and its static defence in reach of
 // the force. A victim with an army elsewhere is not unprepared, so a lone harasser is no overrun. The force must
-// be worth 100 resources and twice the answer, within 90 s of the victim leaving.
+// be worth 100 resources and twice the answer, within 90 s of the victim leaving. A victim's building in a base
+// the attacker holds a town hall in does not count: that army is at home, beside a ruin or a building the
+// victim lifted away long ago.
 const (
 	overrunReach      = 10 * tile
 	overrunFightReach = 25 * tile
@@ -143,13 +145,25 @@ func (g *game) overrunAt(snap engine.ArmySnapshot, standing []standingBuilding, 
 	within := func(x, y, reach int32) func(standingBuilding) bool {
 		return func(b standingBuilding) bool { return dist2(x, y, b.x, b.y) <= int64(reach)*int64(reach) }
 	}
+	halls := map[int8]map[int]bool{}
+	for _, b := range standing {
+		if IsTownHall(b.typ) {
+			if halls[b.owner] == nil {
+				halls[b.owner] = map[int]bool{}
+			}
+			halls[b.owner][g.baseOf(b.x, b.y)] = true
+		}
+	}
 	forces := map[int8]*overrunForce{}
 	for _, u := range snap.Units {
 		if !g.enemies(u.Owner, victim) || !mobileArmy(u.Type) {
 			continue
 		}
 		ux, uy := u.X*engine.ArmyCellPixels, u.Y*engine.ArmyCellPixels
-		if !slices.ContainsFunc(theirs, within(ux, uy, overrunReach)) {
+		atHome := halls[u.Owner]
+		if !slices.ContainsFunc(theirs, func(b standingBuilding) bool {
+			return within(ux, uy, overrunReach)(b) && !atHome[g.baseOf(b.x, b.y)]
+		}) {
 			continue
 		}
 		f := forces[u.Owner]

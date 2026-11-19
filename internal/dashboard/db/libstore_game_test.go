@@ -910,10 +910,11 @@ func TestLibStoreGetReplayWatchFiles(t *testing.T) {
 		t.Fatalf("paths: %q %q", ownPath, completePath)
 	}
 
-	// The superseded own record is hidden by the filter, so it is not
-	// addressable by its own id.
-	if _, _, err := s.GetReplayWatchFiles(context.Background(), own.ID); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("superseded record: %v", err)
+	// The superseded own record is hidden from lists, yet its page stays reachable by id: the game shows it
+	// when the engine cannot run the complete copy.
+	ownPath, completePath, err = s.GetReplayWatchFiles(context.Background(), own.ID)
+	if err != nil || ownPath != "/replays/bgh.rep" || completePath != "" {
+		t.Fatalf("superseded record: %q %q %v", ownPath, completePath, err)
 	}
 
 	ownPath, completePath, err = s.GetReplayWatchFiles(context.Background(), unpaired.ID)

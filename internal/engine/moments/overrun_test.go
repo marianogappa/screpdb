@@ -175,3 +175,11 @@ func TestARushThatKillsTheWorkersIsWhyTheVictimLeft(t *testing.T) {
 		t.Fatalf("a rush that was held explains nothing: %+v", whys)
 	}
 }
+
+func TestAnArmyInABaseItsOwnerHoldsOverrunsNobodyThere(t *testing.T) {
+	d := lingsAtTheNexus(330)
+	d.Productions = append(d.Productions, engine.Production{Owner: 0, Type: ut(bwgame.UnitTypesZergHatchery), Unit: 900, X: 3600, Y: 3750, Start: f(100), Complete: f(200), Cancel: engine.NoFrame})
+	if e, ok := overrun(DetectInsights(d, testBases, tvz)); ok {
+		t.Fatalf("Zerglings beside their own Hatchery are at home, not overrunning what is left of the old owner: %+v", e)
+	}
+}

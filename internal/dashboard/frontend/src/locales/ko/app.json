@@ -507,5 +507,7 @@
   "events.sentence.destroysNatural": "{actor}, {target}의 앞마당 파괴",
   "events.sentence.destroysMain": "{actor}, {target}의 본진 파괴",
   "events.their": "그들의",
-  "events.theirOwn": "자신의"
+  "events.theirOwn": "자신의",
+  "game.engineNotice.upgrading": "스타크래프트 엔진으로 리포트를 더 자세하게 다듬고 있습니다",
+  "game.completeNotice.unplayable": "완전한 리플레이는 스타크래프트 엔진으로 분석할 수 없습니다"
 }
