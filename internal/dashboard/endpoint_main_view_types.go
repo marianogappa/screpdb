@@ -139,8 +139,6 @@ var workflowFeaturingFilters = []struct {
 	Emoji     string
 	// Race groups the "bo" chips under per-race disclosures. Empty for "marker".
 	Race string
-	// Labs chips show only while the game_insights flag is on.
-	Labs bool
 }{
 	// The former Terran style markers (mech / sk_terran / one_one_one /
 	// mech_transition) are now first-class composition BOs in the "bo" group
@@ -173,15 +171,15 @@ var workflowFeaturingFilters = []struct {
 	{Key: "ten_plus_scouts", Label: "10+ Scouts", Group: "marker", IconKey: "scout", IconLabel: "10+"},
 	{Key: "cliff_drop", Label: "Cliff drop", Group: "marker", IconKey: "dropship", IconLabel: "Cliff drop"},
 	{Key: "muta_hitnrun", Label: "Muta hit-n-run", Group: "marker", IconKey: "mutalisk", IconLabel: "Muta hit-n-run"},
-	{Key: "elevator", Label: "Elevator", Group: "marker", IconKey: "dropship", IconLabel: "Elevator", Labs: true},
-	{Key: "eraser", Label: "Eraser", Group: "marker", IconKey: "sciencevessel", IconLabel: "Eraser", Labs: true},
-	{Key: "defilers_irradiated", Label: "Irradiated Defilers", Group: "marker", IconKey: "defiler", IconLabel: "Irradiated", Labs: true},
-	{Key: "nydus_denied", Label: "Nydus denied", Group: "marker", IconKey: "nyduscanal", IconLabel: "Denied", Labs: true},
-	{Key: "overlord_hunt", Label: "Overlord hunt", Group: "marker", IconKey: "overlord", IconLabel: "Hunt", Labs: true},
-	{Key: "undetected_cloak", Label: "No detection", Group: "marker", IconKey: "darktemplar", IconLabel: "No detection", Labs: true},
-	{Key: "undefended_air_harass", Label: "No anti-air", Group: "marker", IconKey: "mutalisk", IconLabel: "No anti-air", Labs: true},
-	{Key: "lurker_contain", Label: "Lurker contain", Group: "marker", IconKey: "lurker", IconLabel: "Contain", Labs: true},
-	{Key: "overrun", Label: "Overrun", Group: "marker", IconKey: "zergling", IconLabel: "Overrun", Labs: true},
+	{Key: "elevator", Label: "Elevator", Group: "marker", IconKey: "dropship", IconLabel: "Elevator"},
+	{Key: "eraser", Label: "Eraser", Group: "marker", IconKey: "sciencevessel", IconLabel: "Eraser"},
+	{Key: "defilers_irradiated", Label: "Irradiated Defilers", Group: "marker", IconKey: "defiler", IconLabel: "Irradiated"},
+	{Key: "nydus_denied", Label: "Nydus denied", Group: "marker", IconKey: "nyduscanal", IconLabel: "Denied"},
+	{Key: "overlord_hunt", Label: "Overlord hunt", Group: "marker", IconKey: "overlord", IconLabel: "Hunt"},
+	{Key: "undetected_cloak", Label: "No detection", Group: "marker", IconKey: "darktemplar", IconLabel: "No detection"},
+	{Key: "undefended_air_harass", Label: "No anti-air", Group: "marker", IconKey: "mutalisk", IconLabel: "No anti-air"},
+	{Key: "lurker_contain", Label: "Lurker contain", Group: "marker", IconKey: "lurker", IconLabel: "Contain"},
+	{Key: "overrun", Label: "Overrun", Group: "marker", IconKey: "zergling", IconLabel: "Overrun"},
 	// Keys and labels are kept in sync with internal/markers. Suppressed in render
 	// for Money maps on the featuring strips; the BO tab and per-player summary
 	// pills still show them.
@@ -515,7 +513,7 @@ type workflowGameEvent struct {
 	Hallucinated int64 `json:"hallucinated,omitempty"`
 	// Key events are the few the tab shows by default; the rest show on request.
 	Key bool `json:"key"`
-	// Why marks the insight that explains why the loser left (Labs: game_insights).
+	// Why marks the insight that explains why the loser left.
 	Why bool `json:"why,omitempty"`
 	// WhyRoles say which turning point the event is: "you", the viewer's own, and "final", why the game ended.
 	WhyRoles []string `json:"why_roles,omitempty"`
