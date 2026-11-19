@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/marianogappa/screpdb/compare/v2.2.0...v2.2.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* a game's report updates as soon as its further enhancement lands ([#516](https://github.com/marianogappa/screpdb/issues/516)) ([f3dac02](https://github.com/marianogappa/screpdb/commit/f3dac029c75f6f9f5a7823743e9d48d5a9e8933e))
+
 ## [2.2.0](https://github.com/marianogappa/screpdb/compare/v2.1.0...v2.2.0) (2026-11-19)
 
 
