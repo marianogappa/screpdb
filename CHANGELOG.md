@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0](https://github.com/marianogappa/screpdb/compare/v2.1.0...v2.2.0) (2026-11-19)
+
+
+### Features
+
+* Bump scmapanalyzer to watershed base shapes and base chokes ([#504](https://github.com/marianogappa/screpdb/issues/504)) ([d8fed94](https://github.com/marianogappa/screpdb/commit/d8fed9478f79ba70b94f0740c8a417ea106bc3f3))
+* detect bot players and mark them with a bot badge ([#507](https://github.com/marianogappa/screpdb/issues/507)) ([588a4d8](https://github.com/marianogappa/screpdb/commit/588a4d87a812335404a080bd7e2226c7e71e8795))
+* Labs game insights with turning points, event map highlights and holder-aware base names ([#511](https://github.com/marianogappa/screpdb/issues/511)) ([f45521f](https://github.com/marianogappa/screpdb/commit/f45521f25f314103d8382cff73ce44f4e42d9b85))
+
+
+### Bug Fixes
+
+* bump openbw-go to its SC:R desync fixes and recompute engine digests ([#509](https://github.com/marianogappa/screpdb/issues/509)) ([d1a57e0](https://github.com/marianogappa/screpdb/commit/d1a57e0ba3ffb2bc821aa87eaead40806012f3b1))
+
 ## [2.1.0](https://github.com/marianogappa/screpdb/compare/v2.0.0...v2.1.0) (2026-11-14)
 
 
