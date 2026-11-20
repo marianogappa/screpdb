@@ -2,6 +2,8 @@
 
 screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도구입니다.
 
+## 👉 [screpdb 설치 및 소개: **marianogappa.github.io/screpdb**](https://marianogappa.github.io/screpdb/?lang=ko&utm_source=github&utm_medium=readme_ko)
+
 [English](README.md) | [한국어](README.ko.md)
 
 [![Release](https://img.shields.io/github/v/release/marianogappa/screpdb)](https://github.com/marianogappa/screpdb/releases)

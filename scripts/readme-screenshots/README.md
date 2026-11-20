@@ -58,3 +58,23 @@ Capture one shot at a time while iterating:
 ```bash
 node capture.mjs --base http://localhost:8123 --out out --only game-hotkeys
 ```
+
+## Landing page images
+
+`site/images` holds the landing page's own captures, taken from the same staged
+dashboard at 2x and saved as WebP and MP4:
+
+```bash
+node site-capture.mjs  --base http://localhost:8123 --harvest <harvest> --out ../../site/images
+node story-capture.mjs --base http://localhost:8123 --harvest <harvest> --out ../../site/images/story
+```
+
+- `site-capture.mjs` records the hero: one Game Events moment with its map glow,
+  stepped frame by frame into a seamless MP4 loop plus a WebP poster. Pick a
+  different moment with `--event` / `--event-ko`.
+- `story-capture.mjs` captures the "Follow one game" walkthrough: the same game
+  tab by tab, plus `story.json`, which says where each step's highlight ring
+  goes. Iterate on one step with `--only summary --locale en`.
+
+Both write English and Korean. Start the dashboard with `SCREPDB_APPDATA_DIR`
+pointing at a scratch folder so the capture never touches your own settings.
