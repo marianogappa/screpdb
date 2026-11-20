@@ -1,6 +1,6 @@
 # screpdb
 
-screpdb is an advanced Starcraft replay reporting tool.
+screpdb is an advanced Starcraft replay reporting tool. A quiet companion to your SC:R sessions.
 
 ## 👉 [Install screpdb and see what it does at **marianogappa.github.io/screpdb**](https://marianogappa.github.io/screpdb/?utm_source=github&utm_medium=readme)
 
@@ -15,16 +15,6 @@ screpdb is an advanced Starcraft replay reporting tool.
 <!-- load-bench-start -->
 <sub>35.44 ms/replay · corpus: 166 replays · GitHub-hosted 2-core runner · updated automatically on merge to main</sub>
 <!-- load-bench-end -->
-
-**⬇️ Install on Windows:** [download screpdb](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) and open it. If Windows says it protected your PC, click **More info → Run anyway**.
-
-macOS, Linux and other options: see [Installation](#installation).
-
-## Video tour
-
-[![screpdb video tour](https://img.youtube.com/vi/p2KgiVLyyZE/maxresdefault.jpg)](https://www.youtube.com/watch?v=p2KgiVLyyZE)
-
-More videos on [YouTube @screpdb](https://www.youtube.com/@screpdb).
 
 ## Features
 ### Filtering and finding replays by high-level semantic features

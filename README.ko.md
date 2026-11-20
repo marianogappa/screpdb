@@ -1,6 +1,6 @@
 # screpdb
 
-screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도구입니다.
+screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도구입니다. 스타크래프트 리마스터 세션 옆의 조용한 동반자.
 
 ## 👉 [screpdb 설치 및 소개: **marianogappa.github.io/screpdb**](https://marianogappa.github.io/screpdb/?lang=ko&utm_source=github&utm_medium=readme_ko)
 
@@ -11,16 +11,6 @@ screpdb는 스타크래프트 리플레이를 위한 고급 분석 리포팅 도
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
 [![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](scripts/coverage.sh)
 [![Replay load throughput](https://img.shields.io/badge/replay%20load-34.6%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
-
-**⬇️ Windows에 설치:** [screpdb 다운로드](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) 후 실행하세요. Windows가 PC를 보호했다고 표시하면 **추가 정보 → 실행**을 클릭하세요.
-
-macOS, Linux 및 다른 방법은 [설치](#설치)를 참고하세요.
-
-## 영상 투어
-
-[![screpdb 영상 투어](https://img.youtube.com/vi/p2KgiVLyyZE/maxresdefault.jpg)](https://www.youtube.com/watch?v=p2KgiVLyyZE)
-
-더 많은 영상은 [YouTube @screpdb](https://www.youtube.com/@screpdb)에서 볼 수 있습니다.
 
 ## 주요 기능
 ### 고수준 의미 기반 특징으로 리플레이 필터링 및 검색
