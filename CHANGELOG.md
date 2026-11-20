@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.4.0](https://github.com/marianogappa/screpdb/compare/v2.3.0...v2.4.0) (2026-11-20)
+
+
+### Features
+
+* engine Muta arrival, Insights tab, HT and Lurker drops and clearer Game Events ([#523](https://github.com/marianogappa/screpdb/issues/523)) ([f44e3b6](https://github.com/marianogappa/screpdb/commit/f44e3b6bb090250f0388570032323742bef07e03))
+* landing page on GitHub Pages replaces the WASM demo ([#525](https://github.com/marianogappa/screpdb/issues/525)) ([1e11b72](https://github.com/marianogappa/screpdb/commit/1e11b728f9101f83045f9ebc8276d39a020673e3))
+
+
+### Bug Fixes
+
+* localize Game Events base names and Korean word order ([#522](https://github.com/marianogappa/screpdb/issues/522)) ([516d587](https://github.com/marianogappa/screpdb/commit/516d587db52fc2dc94f272ae6fe524922f6acf63))
+
 ## [2.3.0](https://github.com/marianogappa/screpdb/compare/v2.2.1...v2.3.0) (2026-11-19)
 
 
