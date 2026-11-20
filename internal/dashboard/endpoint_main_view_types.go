@@ -447,6 +447,8 @@ type workflowMutaliskTimingSummary struct {
 	ExpertGapMaxSeconds int64 `json:"expert_gap_max_seconds"` // p75 of corpus distribution
 	ActualGapSeconds    int64 `json:"actual_gap_seconds"`     // turret_done - muta_done in this game
 	HasActual           bool  `json:"has_actual"`             // false when one side missing
+	// Engine is when the Mutalisks actually reached the Terran and what they did, for engine games only.
+	Engine *workflowMutaWave `json:"engine,omitempty"`
 }
 
 type workflowMapVisual struct {
@@ -769,6 +771,7 @@ type workflowPlayerOverview struct {
 	Engine *engineCoverage `json:"engine,omitempty"`
 	// Skill averages the player's rated engine games; nil below minSkillGames.
 	Skill               *workflowPlayerSkillSummary   `json:"skill,omitempty"`
+	Insights            []workflowPlayerInsight       `json:"insights,omitempty"`
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
 	PlayerName          string                        `json:"player_name"`

@@ -22,6 +22,7 @@ export const MAIN_PLAYERS_TABS = [
 
 export const MAIN_PLAYER_TABS = [
   'summary',
+  'insights',
   'hotkeys',
   'chat-summary',
 ];

@@ -111,5 +111,12 @@
   "chart.supply.lineUsed": "사용",
   "chart.supply.lineCap": "최대",
   "chart.supply.blockedFor": "보급 막힘 {duration}",
-  "chart.supply.usedOfCap": "보급 {used}/{cap}"
+  "chart.supply.usedOfCap": "보급 {used}/{cap}",
+  "chart.muta.engine.arrive": "뮤탈 도착 {time} ({count})",
+  "chart.muta.engine.flying": "비행 {seconds}초",
+  "chart.muta.engine.turretReady": "터렛 완성 {time}",
+  "chart.muta.engine.turretsUp": "터렛 {up}개 완성",
+  "chart.muta.engine.turretsUpBuilding": "터렛 {up}개 완성, {building}개 건설 중",
+  "chart.muta.engine.readyBefore": "첫 터렛이 뮤탈보다 {seconds}초 먼저",
+  "chart.muta.engine.readyAfter": "첫 터렛이 뮤탈보다 {seconds}초 늦게"
 }

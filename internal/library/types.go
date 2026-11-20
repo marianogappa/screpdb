@@ -5,6 +5,7 @@ package library
 
 import (
 	"errors"
+	"math"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -281,10 +282,19 @@ type EnginePlayer struct {
 	ArmyValue     float32
 	// ArmyStartCadence is macro.ArmyStartCadence: the share of 10-second windows in which army units started.
 	ArmyStartCadence float32
+	// MutaArrivalKnown says the Muta* fields hold a 1v1 TvZ Terran's view of the first Mutalisks reaching
+	// one of their bases: Turrets complete then, and how many seconds earlier the first Turret finished
+	// (NoTurretLead when none finished within a minute of the arrival).
+	MutaArrivalKnown     bool
+	TurretsAtMutaArrival uint8
+	TurretLeadOnMutas    int16
+	WorkersLostToMutas   uint16
 	// Income is minerals plus gas gathered in each full minute; Workers is the workers alive at each minute.
 	Income  []uint16
 	Workers []uint16
 }
+
+const NoTurretLead = math.MinInt16
 
 // Path is the newest file holding this replay.
 func (r *Replay) Path() string {

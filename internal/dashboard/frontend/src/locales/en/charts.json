@@ -111,5 +111,12 @@
   "chart.supply.lineUsed": "used",
   "chart.supply.lineCap": "cap",
   "chart.supply.blockedFor": "Supply blocked for {duration}",
-  "chart.supply.usedOfCap": "{used}/{cap} supply"
+  "chart.supply.usedOfCap": "{used}/{cap} supply",
+  "chart.muta.engine.arrive": "Mutas arrive {time} ({count})",
+  "chart.muta.engine.flying": "flying {seconds}s",
+  "chart.muta.engine.turretReady": "Turret ready at {time}",
+  "chart.muta.engine.turretsUp": "{up} Turrets up",
+  "chart.muta.engine.turretsUpBuilding": "{up} Turrets up, {building} building",
+  "chart.muta.engine.readyBefore": "first Turret {seconds}s before Mutas",
+  "chart.muta.engine.readyAfter": "first Turret {seconds}s after Mutas"
 }
