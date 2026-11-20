@@ -8,10 +8,10 @@ screpdb is an advanced Starcraft replay reporting tool.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
 [![Coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)](scripts/coverage.sh)
-[![Replay load throughput](https://img.shields.io/badge/replay%20load-37.0%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
+[![Replay load throughput](https://img.shields.io/badge/replay%20load-28.2%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
 
 <!-- load-bench-start -->
-<sub>27.03 ms/replay · corpus: 166 replays · GitHub-hosted 2-core runner · updated automatically on merge to main</sub>
+<sub>35.44 ms/replay · corpus: 166 replays · GitHub-hosted 2-core runner · updated automatically on merge to main</sub>
 <!-- load-bench-end -->
 
 **⬇️ Install on Windows:** [download screpdb](https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe) and open it. If Windows says it protected your PC, click **More info → Run anyway**.
