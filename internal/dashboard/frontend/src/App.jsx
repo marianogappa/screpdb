@@ -4,6 +4,7 @@ import { useT, t, getLocale } from './lib/i18nContext';
 import { youTemplate } from './lib/youTemplate';
 import { slugKey } from './lib/i18n';
 import { turningPointSentence } from './lib/turningPoint';
+import { localizeBaseName, localizeOpenField, localizePlace } from './lib/baseNames';
 import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
@@ -594,40 +595,30 @@ const ownedBaseWords = (name, event, { actorFirst = false } = {}) => {
     const who = String(player?.name || '').trim();
     return who && label.startsWith(`${who}'s `) ? label.slice(who.length + 3) : null;
   };
-  const you = label.replace(new RegExp(`^.*${YOU_MARKER}'s `), `${t('you.possessive')} `);
-  if (you !== label) return you;
+  const yours = label.match(new RegExp(`^.*${YOU_MARKER}'s (.+)$`));
+  if (yours) return t('events.place.yours', { place: localizePlace(yours[1], t) });
   const ofTarget = event?.target ? own(event.target) : null;
-  if (ofTarget != null) return `${t('events.their')} ${ofTarget}`;
+  if (ofTarget != null) return t('events.place.their', { place: localizePlace(ofTarget, t) });
   const ofActor = own(event?.actor);
-  if (ofActor != null) return `${t(actorFirst || !event?.target ? 'events.their' : 'events.theirOwn')} ${ofActor}`;
-  return label;
+  if (ofActor != null) return t(actorFirst || !event?.target ? 'events.place.their' : 'events.place.theirOwn', { place: localizePlace(ofActor, t) });
+  return localizeBaseName(label, t);
+};
+
+const withMineralOnly = (text, base) => {
+  const raw = String(base?.name || '').toLowerCase();
+  return text && base?.mineral_only === true && !raw.includes('mineral only') ? t('events.location.mineralOnly', { name: text }) : text;
 };
 
 const gameEventLocationLabel = (event) => {
   const openField = openFieldLabel(event?.base, event);
   if (openField) return openField;
-  const baseName = ownedBaseWords(event?.base?.name, event);
-  if (baseName) {
-    const isMineralOnly = event?.base?.mineral_only === true;
-    if (isMineralOnly && !baseName.toLowerCase().includes('mineral only')) {
-      return t('events.location.mineralOnly', { name: baseName });
-    }
-    return baseName;
-  }
-  return '';
+  if (isOpenFieldLocation(event)) return localizeOpenField(event?.base?.name, t);
+  return withMineralOnly(ownedBaseWords(event?.base?.name, event), event?.base);
 };
 
 // Same mineral-only suffix convention as gameEventLocationLabel. Empty when the
 // event has no target_base, i.e. the destination is unknown.
-const gameEventTargetLocationLabel = (event) => {
-  const baseName = String(event?.target_base?.name || '').trim();
-  if (!baseName) return '';
-  const isMineralOnly = event?.target_base?.mineral_only === true;
-  if (isMineralOnly && !baseName.toLowerCase().includes('mineral only')) {
-    return t('events.location.mineralOnly', { name: baseName });
-  }
-  return baseName;
-};
+const gameEventTargetLocationLabel = (event) => withMineralOnly(localizeBaseName(event?.target_base?.name, t), event?.target_base);
 
 // recallFromLabel is where a recall was cast: the recaller's own base reads "their", as they are named first.
 const recallFromLabel = (event) => openFieldLabel(event?.base, event, { actorFirst: true }) || ownedBaseWords(event?.base?.name, event, { actorFirst: true });
@@ -636,10 +627,11 @@ const recallFromLabel = (event) => openFieldLabel(event?.base, event, { actorFir
 // "TZPNEWB's expa at 3's natural" is TZPNEWB and "expa at 3's natural", so the owner is drawn as a name.
 const recallDestination = (event) => {
   const label = gameEventTargetLocationLabel(event);
+  const raw = String(event?.target_base?.name || '').trim();
   const owner = event?.target_owner;
   const ownerName = String(owner?.name || '').trim();
   if (!label || !ownerName) return { label, owner: null, rest: '' };
-  if (label.startsWith(`${ownerName}'s `)) return { label, owner, rest: label.slice(ownerName.length + 3), named: true };
+  if (raw.startsWith(`${ownerName}'s `)) return { label, owner, rest: withMineralOnly(localizePlace(raw.slice(ownerName.length + 3), t), event.target_base), named: true };
   return { label, owner, rest: '', named: false };
 };
 
@@ -662,7 +654,7 @@ const boOpenerLines = (event) => {
         race: entry?.race || '',
         teamWon: Boolean(entry?.team_won),
         team: entry?.team,
-        startLocation: String(entry?.start_location || '').trim(),
+        startLocation: localizeBaseName(entry?.start_location, t),
         boNames: [],
       });
     }
@@ -821,8 +813,9 @@ const gameEventLeadDescription = (event, registry) => {
     if (!actor) return t('events.recall');
     const fromLabel = recallFromLabel(event);
     const from = fromLabel ? t('events.fragment.from', { location: fromLabel }) : '';
-    const ownerLabel = isYouPlayer(dest.owner) ? t('you.possessive') : `${String(dest.owner?.name || '').trim()}'s`;
-    const params = { actor, icon: '', count, from, owner: String(dest.owner?.name || '').trim(), location: dest.named ? `${ownerLabel} ${dest.rest}` : dest.label };
+    const ownerName = String(dest.owner?.name || '').trim();
+    const ownedPlace = isYouPlayer(dest.owner) ? t('events.place.yours', { place: dest.rest }) : t('events.place.owned', { owner: ownerName, place: dest.rest });
+    const params = { actor, icon: '', count, from, owner: ownerName, location: dest.named ? ownedPlace : dest.label };
     const suffix = recallOutcomeSuffix(event);
     if (dest.label) {
       return (dest.owner && !dest.named ? t('events.sentence.recallsToOwner', params) : t('events.sentence.recallsTo', params)) + suffix;
@@ -1422,8 +1415,8 @@ const renderGameEventLeadDescription = (event, registry, playerRaceByID) => {
     const fromLabel = recallFromLabel(event);
     const from = fromLabel ? t('events.fragment.from', { location: fromLabel }) : '';
     const destination = !dest.named ? dest.label
-      : isYouPlayer(dest.owner) ? `${t('you.possessive')} ${dest.rest}`
-        : <>{targetOwnerSpan}{`'s ${dest.rest}`}</>;
+      : isYouPlayer(dest.owner) ? t('events.place.yours', { place: dest.rest })
+        : fillTemplate(t('events.place.owned'), { owner: targetOwnerSpan, place: dest.rest });
     const parts = { actor: actorSpan, icon: arbiterIcon, count, from, owner: targetOwnerSpan, location: destination };
     const sentence = dest.label
       ? fill(dest.owner && !dest.named ? 'events.sentence.recallsToOwner' : 'events.sentence.recallsTo', parts)
@@ -6812,7 +6805,7 @@ function App() {
                               <span className="workflow-event-map-tooltip-text">
                                 <strong>{mainEventMapHover.ownerName}</strong>
                                 {mainEventMapHover.baseName ? (
-                                  <span className="workflow-event-map-tooltip-base">{mainEventMapHover.baseName}</span>
+                                  <span className="workflow-event-map-tooltip-base">{localizeBaseName(mainEventMapHover.baseName, t)}</span>
                                 ) : null}
                               </span>
                             </div>
