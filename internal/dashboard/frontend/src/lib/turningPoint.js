@@ -4,7 +4,7 @@ import { slugKey } from './i18n.js';
 // the force that did it is described loosely (bigger than the answer, mostly Carriers), never in numbers that
 // a snapshot could get wrong.
 
-const DROP_TYPES = new Set(['drop', 'reaver_drop', 'dt_drop', 'cliff_drop', 'elevator']);
+const DROP_TYPES = new Set(['drop', 'reaver_drop', 'dt_drop', 'ht_drop', 'lurker_drop', 'cliff_drop', 'elevator']);
 const SAME_UNIT = { 'Terran Siege Tank (Siege Mode)': 'Siege Tank', 'Siege Tank (Tank Mode)': 'Siege Tank' };
 
 const samePlayer = (a, b) => a?.player_id != null && a.player_id === b?.player_id;

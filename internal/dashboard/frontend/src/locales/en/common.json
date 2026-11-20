@@ -5,5 +5,5 @@
   "footer.by": " by ",
   "footer.commit": "commit {commit}",
   "footer.reportIssue": "🐞 Report an issue",
-  "marker.betaTooltip": "Beta: we haven't hand-checked this detection against real games yet, so it may be off sometimes."
+  "marker.betaTooltip": "Beta. Expect rough edges."
 }

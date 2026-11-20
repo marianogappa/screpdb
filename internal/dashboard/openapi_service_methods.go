@@ -375,6 +375,7 @@ func (d *Dashboard) PlayerDetail(_ context.Context, request apigen.PlayerDetailR
 		coverage := d.playerEngineCoverage(playerKey)
 		player.Engine = &coverage
 		player.Skill = d.playerSkill(playerKey)
+		player.Insights = d.playerInsights(playerKey, player.Skill)
 	}
 	if err != nil {
 		if errors.Is(err, dashboarddb.ErrNotFound) {

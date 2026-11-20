@@ -55,7 +55,7 @@ var baseWeight = map[string]float64{
 	"proxy_gate": 0.9, "proxy_rax": 0.9, "proxy_factory": 0.85, "proxy_starport": 0.85,
 	"nuke": 0.85, "recall": 0.85, "nydus_attack": 0.85,
 	"became_terran": 0.8, "became_zerg": 0.8,
-	"reaver_drop": 0.75, "dt_drop": 0.75, "drop": 0.55,
+	"reaver_drop": 0.75, "dt_drop": 0.75, "ht_drop": 0.75, "lurker_drop": 0.75, "cliff_drop": 0.7, "drop": 0.55,
 	"manner_pylon": 0.6,
 	"attack":       0.45,
 	"worker_kills": 0.45,
@@ -84,7 +84,7 @@ func Weight(c Candidate) float64 {
 	}
 	m := c.Magnitude
 	switch c.Type {
-	case "attack", "worker_kills", "drop", "reaver_drop", "dt_drop", "recall", "nydus_attack",
+	case "attack", "worker_kills", "drop", "cliff_drop", "reaver_drop", "dt_drop", "ht_drop", "lurker_drop", "recall", "nydus_attack",
 		"elevator", "eraser", "undetected_cloak", "undefended_air_harass", "defilers_irradiated":
 		w += min(0.4, float64(m.Traded)/7500)
 		w += min(0.3, float64(m.Workers)/30)

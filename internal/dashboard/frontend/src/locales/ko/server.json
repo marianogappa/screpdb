@@ -725,5 +725,9 @@
   "server.chip.featuring.reaver_drop.label": "리버 드랍",
   "server.chip.featuring.dt_drop.label": "다크 드랍",
   "server.game_event.reaver_drop.label": "리버 드랍",
-  "server.game_event.dt_drop.label": "다크 드랍"
+  "server.game_event.dt_drop.label": "다크 드랍",
+  "server.chip.featuring.ht_drop.label": "하이템플러 드랍",
+  "server.game_event.ht_drop.label": "하이템플러 드랍",
+  "server.chip.featuring.lurker_drop.label": "럴커 드랍",
+  "server.game_event.lurker_drop.label": "럴커 드랍"
 }

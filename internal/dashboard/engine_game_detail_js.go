@@ -22,3 +22,5 @@ func (d *Dashboard) handlerEngineSnapshot(w http.ResponseWriter, _ *http.Request
 func (d *Dashboard) applyEngineHotkeys(int64, *hotkeyTimelinePayload) {}
 
 func (d *Dashboard) engineHotkeyUnits(int64, int8, []hotkeystream.Event) {}
+
+func (d *Dashboard) applyEngineMutaWave(*workflowGameDetail) {}
