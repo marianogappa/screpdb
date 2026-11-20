@@ -183,3 +183,35 @@ func TestAnArmyInABaseItsOwnerHoldsOverrunsNobodyThere(t *testing.T) {
 		t.Fatalf("Zerglings beside their own Hatchery are at home, not overrunning what is left of the old owner: %+v", e)
 	}
 }
+
+func TestAnArmyAtHomeBesideTheVictimsBaseOverrunsNobody(t *testing.T) {
+	d := lingsAtTheNexus(330)
+	d.Productions = append(d.Productions, engine.Production{Owner: 0, Type: ut(bwgame.UnitTypesZergHatchery), Unit: 50, X: 3100, Y: 3600, Start: f(100), Complete: f(200), Cancel: engine.NoFrame})
+	d.Army = []engine.ArmySnapshot{army(300, 0, bwgame.UnitTypesZergZergling, 12, 3392, 3648)}
+	if e, ok := overrun(DetectInsights(d, testBases, tvz)); ok {
+		t.Fatalf("Zerglings at their own natural, within reach of the next base's Nexus, overran nobody: %+v", e)
+	}
+}
+
+func TestDropKindNamesADropByItsMostDangerousCargo(t *testing.T) {
+	for _, c := range []struct {
+		cargo []bwgame.UnitTypes
+		want  string
+	}{
+		{[]bwgame.UnitTypes{bwgame.UnitTypesProtossHighTemplar, bwgame.UnitTypesProtossHighTemplar, bwgame.UnitTypesProtossZealot}, "ht_drop"},
+		{[]bwgame.UnitTypes{bwgame.UnitTypesProtossHighTemplar, bwgame.UnitTypesProtossDarkTemplar}, "dt_drop"},
+		{[]bwgame.UnitTypes{bwgame.UnitTypesZergLurker, bwgame.UnitTypesZergLurker, bwgame.UnitTypesZergHydralisk}, "lurker_drop"},
+		{[]bwgame.UnitTypes{bwgame.UnitTypesZergHydralisk}, "drop"},
+		{[]bwgame.UnitTypes{bwgame.UnitTypesZergLurker, bwgame.UnitTypesZergLurker, bwgame.UnitTypesZergHydralisk, bwgame.UnitTypesZergHydralisk}, "drop"},
+		{[]bwgame.UnitTypes{bwgame.UnitTypesProtossHighTemplar, bwgame.UnitTypesProtossZealot, bwgame.UnitTypesProtossZealot}, "drop"},
+		{[]bwgame.UnitTypes{bwgame.UnitTypesProtossReaver, bwgame.UnitTypesProtossZealot, bwgame.UnitTypesProtossZealot}, "reaver_drop"},
+	} {
+		var cargo []uint16
+		for _, u := range c.cargo {
+			cargo = append(cargo, ut(u))
+		}
+		if got, _ := dropKind(cargo); got != c.want {
+			t.Errorf("%v is a %s, want %s", c.cargo, got, c.want)
+		}
+	}
+}

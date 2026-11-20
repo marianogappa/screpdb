@@ -29,6 +29,7 @@ import HotkeyTimeline from './components/charts/HotkeyTimeline';
 import HotkeyMaps from './components/charts/HotkeyMaps';
 import HotkeySignature from './components/charts/HotkeySignature';
 import OneRowPills from './components/OneRowPills';
+import PlayerInsights from './components/PlayerInsights';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
 import {
@@ -50,7 +51,7 @@ import {
 const BetaTag = () => {
   const t = useT();
   return (
-    <sup className="workflow-beta-tag" title={betaTooltip()} aria-label={t('marker.betaAria')}>β</sup>
+    <sup className="workflow-beta-tag" data-tip={betaTooltip()} aria-label={t('marker.betaAria')}>β</sup>
   );
 };
 
@@ -154,7 +155,7 @@ const buildPlayersOmnibarStateLabels = (t) => ({
 const PLAYERS_OMNIBAR_STATE_ORDER = ['races', 'apm', 'games', 'lastPlayed'];
 
 
-const DROP_EVENT_TYPES = ['drop', 'cliff_drop', 'reaver_drop', 'dt_drop'];
+const DROP_EVENT_TYPES = ['drop', 'cliff_drop', 'reaver_drop', 'dt_drop', 'ht_drop', 'lurker_drop'];
 const DROP_ACTOR_EVENT_TYPES = DROP_EVENT_TYPES;
 
 // DROP_TEXT names each drop variant: its short label and its event sentence.
@@ -169,6 +170,8 @@ const DROP_TEXT = {
   cliff_drop: { label: 'events.cliffDrop', sentence: 'events.sentence.cliffDrops' },
   reaver_drop: { label: 'events.reaverDrop', sentence: 'events.sentence.reaverDrops' },
   dt_drop: { label: 'events.dtDrop', sentence: 'events.sentence.dtDrops' },
+  ht_drop: { label: 'events.htDrop', sentence: 'events.sentence.htDrops' },
+  lurker_drop: { label: 'events.lurkerDrop', sentence: 'events.sentence.lurkerDrops' },
 };
 
 // playerEventsOfTypes are the events a player did of any of the types, counting events folded into others.
@@ -234,13 +237,13 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
-  for (const [key, unit] of [['reaver_drop', 'reaver'], ['dt_drop', 'darktemplar']]) {
+  for (const [key, unit, transport] of [['reaver_drop', 'reaver', 'shuttle'], ['dt_drop', 'darktemplar', 'shuttle'], ['ht_drop', 'hightemplar', 'shuttle'], ['lurker_drop', 'lurker', 'overlord']]) {
     if (playerIsActorForGameEventTypes(events, pid, [key])) {
       positive.push({
         event: pillEvent(events, pid, [key]),
         key,
         domKey: `ge-${key}-${pid}`,
-        icons: [getUnitIcon('shuttle'), getUnitIcon(unit)].filter(Boolean),
+        icons: [getUnitIcon(transport), getUnitIcon(unit)].filter(Boolean),
         label: t(DROP_TEXT[key].label),
         className: 'workflow-pattern-pill workflow-pattern-pill-strong',
       });
@@ -327,18 +330,6 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
     }
   }
 
-  if (playerIsActorForGameEventTypes(events, pid, ['overrun'])) {
-    const ev = pillEvent(events, pid, ['overrun']);
-    const unit = String(ev?.attack_unit_types?.[0] || '').toLowerCase().replace(/[^a-z]/g, '');
-    positive.push({
-      event: ev,
-      key: `ge-overrun-${pid}`,
-      icon: unit ? getUnitIcon(unit) : null,
-      label: t('insight.overrun'),
-      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
-    });
-  }
-
   return { positive: elideGenericDropPill(positive), noScout: null };
 };
 
@@ -356,10 +347,12 @@ const isStrongPill = (pill) => String(pill?.className || '').includes('workflow-
 const renderGameSummarySignalPill = (pill, openEvent) => {
   // Backwards-compat: older entries use { icon }, drop pills use { icons: [] }.
   const icons = Array.isArray(pill.icons) ? pill.icons : (pill.icon ? [pill.icon] : []);
-  const event = openEvent && pill.event ? pill.event : null;
+  // A pill opens its event only when the events list shows it; a minor event (key false) is not listed.
+  const event = openEvent && pill.event && pill.event.key !== false ? pill.event : null;
+  const timed = pill.event || null;
   const content = (
     <>
-      {event ? <span className="workflow-pill-legend">{formatDuration(Number(event.second) || 0)}</span> : null}
+      {timed ? <span className="workflow-pill-legend">{formatDuration(Number(timed.second) || 0)}</span> : null}
       {icons.map((url, i) => (
         <img key={`${pill.key || pill.domKey}-i${i}`} src={url} alt="" className="workflow-pattern-icon" />
       ))}
@@ -367,7 +360,7 @@ const renderGameSummarySignalPill = (pill, openEvent) => {
     </>
   );
   if (!event) {
-    return <span key={pill.domKey || pill.key} className={pill.className} title={pill.title}>{content}</span>;
+    return <span key={pill.domKey || pill.key} className={`${pill.className}${timed ? ' workflow-pill-legended' : ''}`} title={pill.title}>{content}</span>;
   }
   return (
     <button
@@ -503,7 +496,7 @@ const insightSentence = (event, eventType, hasActor, location) => {
       return locationClause ? { key: `insight.sentence.cloak.${how}`, params: { unit, count, locationClause } } : { fallback };
     }
     case 'undefended_air_harass': {
-      if (!locationClause) return { fallback };
+      if (!locationClause || !hasActor) return { fallback };
       const defenders = Number(event?.defenders || 0);
       return defenders > 0
         ? { key: 'insight.sentence.airHarassFew', params: { unit, count: Number(o.workers || count), locationClause, defenders } }
@@ -533,7 +526,7 @@ const insightSentence = (event, eventType, hasActor, location) => {
 // by the part's type and then the lead's: a pair missing here folds in silently, as a drop into its elevator.
 const COMBINED_CLAUSES = {
   undetected_cloak: {
-    drop: 'after', reaver_drop: 'after', dt_drop: 'after', elevator: 'after', lurker_contain: 'during',
+    drop: 'after', reaver_drop: 'after', dt_drop: 'after', ht_drop: 'after', lurker_drop: 'after', elevator: 'after', lurker_contain: 'during',
   },
 };
 
@@ -715,6 +708,8 @@ const nukeSentence = (event) => {
   return { key: NUKE_SENTENCE_KEYS[event?.result] || 'events.sentence.nukes', count: killed };
 };
 
+const RECALL_WORKERS_WORTH_NAMING = 5;
+
 const RECALL_RESULT_KEYS = {
   razed_base: 'events.recall.razedBase',
   razed: 'events.recall.razed',
@@ -731,8 +726,10 @@ const recallCountFragment = (event) => {
 
 const recallOutcomeSuffix = (event) => {
   const hallucination = Number(event?.hallucinated) > 0 ? t('events.recall.hallucination') : '';
-  const key = RECALL_RESULT_KEYS[event?.result];
-  return hallucination + (key ? t(key, { count: Number(event?.outcome?.buildings) || 0 }) : '');
+  const workers = Number(event?.outcome?.workers) || 0;
+  const razedWithWorkers = event?.result === 'razed' && workers >= RECALL_WORKERS_WORTH_NAMING;
+  const key = razedWithWorkers ? 'events.recall.razedWorkers' : RECALL_RESULT_KEYS[event?.result];
+  return hallucination + (key ? t(key, { count: Number(event?.outcome?.buildings) || 0, workers }) : '');
 };
 
 const gameEventLeadDescription = (event, registry) => {
@@ -1663,7 +1660,7 @@ const collectFeaturingKeysFromMainGame = (mainGame) => {
 // elideGenericDropPill drops the generic "drop" pill when a more specific
 // variant is present. It operates on { key, ... } entries so the same helper
 // serves the featuring strip, per-player signal pills and the games-list column.
-const SPECIFIC_DROP_KEYS = new Set(['cliff_drop', 'reaver_drop', 'dt_drop']);
+const SPECIFIC_DROP_KEYS = new Set(['cliff_drop', 'reaver_drop', 'dt_drop', 'ht_drop', 'lurker_drop']);
 const elideGenericDropPill = (pills) => {
   if (!Array.isArray(pills) || pills.length === 0) return pills;
   const hasSpecific = pills.some((p) => SPECIFIC_DROP_KEYS.has(String(p?.key || '')));
@@ -1893,6 +1890,8 @@ const fallbackOverlayUnitNamesForEvent = (eventType, actorRace) => {
   if (normalized === 'cliff_drop') return ['dropship'];
   if (normalized === 'reaver_drop') return ['shuttle', 'reaver'];
   if (normalized === 'dt_drop') return ['shuttle', 'darktemplar'];
+  if (normalized === 'ht_drop') return ['shuttle', 'hightemplar'];
+  if (normalized === 'lurker_drop') return ['overlord', 'lurker'];
   if (normalized === 'drop') {
     const r = String(actorRace || '').toLowerCase();
     if (r === 'protoss') return ['shuttle'];
@@ -2296,6 +2295,59 @@ const filterSummaryPillPatterns = (patterns, trustGameEventsForDrops = false) =>
   return indexed.map((entry) => entry.pattern);
 };
 
+// findPatternEvent is the game event a marker pill is about: the same kind, by the same player, near its time.
+const findPatternEvent = (events, player, pattern) => {
+  const kinds = PATTERN_EVENT_TYPES[pattern?.event_type] || [normalizeEventType(pattern?.event_type)];
+  const at = Number(pattern?.detected_second);
+  return (events || []).find((e) => kinds.includes(normalizeEventType(e?.type))
+    && Number(e?.actor?.player_id) === Number(player?.player_id)
+    && Math.abs(Number(e?.second) - at) <= 30);
+};
+
+// pendingEventIndex finds, in a freshly opened game, the event a pill elsewhere stood for: one of its kinds,
+// counting folded parts, by the same player, nearest in time.
+const pendingEventIndex = (events, pending) => {
+  const kinds = (pending.kinds || [pending.type]).map(normalizeEventType);
+  const actor = pending.actor?.player_id;
+  let best = -1;
+  let bestGap = Infinity;
+  events.forEach((e, idx) => {
+    const types = [e?.type, ...(Array.isArray(e?.parts) ? e.parts.map((part) => part?.type) : [])].map(normalizeEventType);
+    if (!types.some((type) => kinds.includes(type))) return;
+    if (actor != null && Number(e?.actor?.player_id) !== Number(actor)) return;
+    const gap = pending.second == null ? idx : Math.abs(Number(e?.second) - Number(pending.second));
+    if (gap < bestGap) {
+      best = idx;
+      bestGap = gap;
+    }
+  });
+  return best;
+};
+
+// renderPlayerFeaturingPills is a player's Featuring pills in one game, the same wherever they show: the opener,
+// the game event pills, then the remaining markers and the spellcasts. links say where each pill opens.
+const renderPlayerFeaturingPills = (game, player, registry, links) => {
+  const events = Array.isArray(game?.game_events) ? game.game_events : [];
+  const parts = playerGameSummarySignalParts(player, game?.game_events);
+  const patterns = filterSummaryPillPatterns(player?.detected_patterns, events.length > 0);
+  const bo = patterns.filter((p) => isOpenerEventType(p?.event_type));
+  const shownAsEvent = new Set(parts.positive.map((pill) => pill.key));
+  const rest = patterns.filter((p) => !isOpenerEventType(p?.event_type) && !shownAsEvent.has(p?.event_type));
+  const phases = Array.isArray(game?.unit_composition_markers)
+    ? game.unit_composition_markers.filter((m) => m.player_id === player?.player_id)
+    : [];
+  const prefix = `${game?.replay_id}-${player?.player_id}`;
+  return (
+    <OneRowPills className="workflow-pattern-pills">
+      {bo.map((pattern, idx) => renderPatternPill(pattern, `${prefix}-bo-${idx}`, undefined, registry, links.buildOrder(pattern)))}
+      {parts.positive.filter(isStrongPill).map((pill) => renderGameSummarySignalPill(pill, links.openEvent))}
+      {parts.positive.filter((p) => !isStrongPill(p)).map((pill) => renderGameSummarySignalPill(pill, links.openEvent))}
+      {rest.map((pattern, idx) => renderPatternPill(pattern, `${prefix}-${idx}`, undefined, registry, links.patternEvent(pattern), true))}
+      <SpellcastsPill spells={collectPlayerSpells(phases)} />
+    </OneRowPills>
+  );
+};
+
 // timed puts a pill's time on its top border, the label without it, as the summary does for every pill.
 const renderPatternPill = (pattern, keyPrefix, team, registry, link, timed = false) => {
   if (!registry) return null;
@@ -2577,6 +2629,7 @@ function App() {
   const [mainPlayerHotkeySigLoading, setMainPlayerHotkeySigLoading] = useState(false);
   const [mainPlayerHotkeySigError, setMainPlayerHotkeySigError] = useState('');
   const [mainPlayerLastGames, setMainPlayerLastGames] = useState(null);
+  const [mainPlayerLastGameDetails, setMainPlayerLastGameDetails] = useState({});
   const [mainPlayerLastGamesLoading, setMainPlayerLastGamesLoading] = useState(false);
   const [mainPlayerLastGamesError, setMainPlayerLastGamesError] = useState('');
   const [mainPlayerKnownAliases, setMainPlayerKnownAliases] = useState({});
@@ -2829,6 +2882,7 @@ function App() {
     }
   };
 
+  const pendingGameEventRef = useRef(null);
   const openMainGame = async (replayId, options = {}) => {
     try {
       setMainGameDetailLoading(true);
@@ -2858,6 +2912,8 @@ function App() {
       if (nextTab === 'mutalisk-timing' && !hasMutaliskTiming) {
         nextTab = 'summary';
       }
+      if (options.initialEvent) nextTab = 'events';
+      pendingGameEventRef.current = options.initialEvent || null;
       setMainGameTab(nextTab);
       setMainGameBuildOrder(nextTab === 'build-orders' ? (options.initialBuildOrder || '') : '');
       setMainEventsPlayerEnabledById(
@@ -2916,7 +2972,14 @@ function App() {
       setMainPlayerLastGamesLoading(true);
       setMainPlayerLastGamesError('');
       const data = await api.getPlayerLastGames(normalizedPlayerKey);
-      setMainPlayerLastGames(data?.last_games || []);
+      const games = data?.last_games || [];
+      setMainPlayerLastGames(games);
+      setMainPlayerLastGameDetails({});
+      games.forEach((g) => {
+        api.getGame(g.replay_id)
+          .then((detail) => setMainPlayerLastGameDetails((prev) => ({ ...prev, [g.replay_id]: gameWithShownNames(detail) })))
+          .catch(() => {});
+      });
     } catch (err) {
       setMainPlayerLastGamesError(err.message || t('errors.loadLastGames'));
       setMainPlayerLastGames([]);
@@ -3457,6 +3520,7 @@ function App() {
 
   // The Hotkeys tab only exists for a player with hotkey cards; landing on it without any goes to Summary.
   const mainPlayerHasHotkeys = (mainPlayerHotkeySig?.cards || []).some((card) => card.keys?.length);
+  const mainPlayerInsights = Array.isArray(mainPlayer?.insights) ? mainPlayer.insights : [];
   useEffect(() => {
     if (mainPlayerTab === 'hotkeys' && mainPlayerHotkeySig && !mainPlayerHasHotkeys) setMainPlayerTab('summary');
   }, [mainPlayerTab, mainPlayerHotkeySig, mainPlayerHasHotkeys]);
@@ -4064,7 +4128,7 @@ function App() {
     }
     const renderName = (player) => (linkPlayerNames
       ? renderPlayerLinkLabel(player.name, player.player_key)
-      : renderPlayerLabel(player.name, player.player_key));
+      : <span className="workflow-team-player-name"><PlayerDisplayName name={player.name} /></span>);
     const showFlags = linkPlayerNames || players.length < 8;
     const stackingMarker = game?.team_stacking ? (
       <span
@@ -4451,11 +4515,7 @@ function App() {
   // A marker pill opens the game event it matches, the same kind by the same player near its time, when the
   // events list shows one.
   const patternEventLink = (player, pattern) => {
-    const kinds = PATTERN_EVENT_TYPES[pattern?.event_type] || [normalizeEventType(pattern?.event_type)];
-    const at = Number(pattern?.detected_second);
-    const event = topicFilteredGameEvents.find((e) => kinds.includes(normalizeEventType(e?.type))
-      && Number(e?.actor?.player_id) === Number(player?.player_id)
-      && Math.abs(Number(e?.second) - at) <= 30);
+    const event = findPatternEvent(topicFilteredGameEvents, player, pattern);
     if (!event || !mainGame?.replay_id) return undefined;
     return { href: `?view=game&replay=${mainGame.replay_id}&gameTab=events`, tab: 'events', onOpen: () => openMainGameEvent(event) };
   };
@@ -4470,6 +4530,15 @@ function App() {
     if (topicFilteredGameEvents.length === 0) {
       if (mainSelectedGameEventKey) setMainSelectedGameEventKey('');
       return;
+    }
+    const pending = pendingGameEventRef.current;
+    if (pending) {
+      pendingGameEventRef.current = null;
+      const idx = pendingEventIndex(topicFilteredGameEvents, pending);
+      if (idx >= 0) {
+        setMainSelectedGameEventKey(gameEventTopicKey(idx));
+        return;
+      }
     }
     const phase = parseGamePhaseKey(mainSelectedGameEventKey);
     if (phase && mainPhaseSnapshots[phase]) return;
@@ -6297,13 +6366,6 @@ function App() {
                       </div>
                       {(mainGame.players || []).map((player) => {
                         const raceIcon = getRaceIcon(player.race);
-                        const gameSummaryParts = playerGameSummarySignalParts(player, mainGame?.game_events);
-                        const trustGameEventsForDrops = Array.isArray(mainGame?.game_events) && mainGame.game_events.length > 0;
-                        const patterns = filterSummaryPillPatterns(player.detected_patterns, trustGameEventsForDrops);
-                        // BO/opener pill always leads, then game-event signal pills
-                        // (Drop / Bunker rush / Proxy …), then the remaining markers.
-                        const boPatterns = patterns.filter((p) => isOpenerEventType(p?.event_type));
-                        const restPatterns = patterns.filter((p) => !isOpenerEventType(p?.event_type));
                         const playerPhases = Array.isArray(mainGame?.unit_composition_markers)
                           ? mainGame.unit_composition_markers.filter((m) => m.player_id === player.player_id)
                           : [];
@@ -6362,13 +6424,11 @@ function App() {
                               </div>
                             ) : null}
                             <div className="wpt-cell wpt-featuring">
-                              <OneRowPills className="workflow-pattern-pills">
-                                {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-bo-${idx}`, undefined, markerRegistry, buildOrderLinkFor(player, pattern)))}
-                                {gameSummaryParts.positive.filter(isStrongPill).map((pill) => renderGameSummarySignalPill(pill, openMainGameEvent))}
-                                {gameSummaryParts.positive.filter((p) => !isStrongPill(p)).map((pill) => renderGameSummarySignalPill(pill, openMainGameEvent))}
-                                {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `player-${player.player_id}-${idx}`, undefined, markerRegistry, patternEventLink(player, pattern), true))}
-                                <SpellcastsPill spells={collectPlayerSpells(playerPhases)} />
-                              </OneRowPills>
+                              {renderPlayerFeaturingPills(mainGame, player, markerRegistry, {
+                                buildOrder: (pattern) => buildOrderLinkFor(player, pattern),
+                                openEvent: openMainGameEvent,
+                                patternEvent: (pattern) => patternEventLink(player, pattern),
+                              })}
                             </div>
                             <div className="wpt-cell wpt-comp">
                               {playerPhases.length > 0 ? (
@@ -7244,6 +7304,13 @@ function App() {
                       onClick={() => { setMainPlayerTab('summary'); setMainPlayerSubtab(''); }}>
                       {t('tabs.summary')}
                     </button>
+                    {mainPlayerInsights.length > 0 ? (
+                      <button type="button" role="tab" aria-selected={mainPlayerTab === 'insights'}
+                        className={`workflow-production-tab ${mainPlayerTab === 'insights' ? 'workflow-production-tab-active' : ''}`}
+                        onClick={() => { setMainPlayerTab('insights'); setMainPlayerSubtab(''); }}>
+                        {t('player.tabs.insights')} <BetaTag />
+                      </button>
+                    ) : null}
                     {mainPlayerHasHotkeys || mainPlayerTab === 'hotkeys' ? (
                       <button type="button" role="tab" aria-selected={mainPlayerTab === 'hotkeys'}
                         className={`workflow-production-tab ${mainPlayerTab === 'hotkeys' ? 'workflow-production-tab-active' : ''}`}
@@ -7482,19 +7549,20 @@ function App() {
                               const cp = g.current_player;
                               const patterns = filterSummaryPillPatterns(cp?.detected_patterns || [], false);
                               const boPatterns = patterns.filter((pt) => isOpenerEventType(pt?.event_type));
-                              const restPatterns = patterns.filter((pt) => !isOpenerEventType(pt?.event_type));
                               const phases = Array.isArray(cp?.composition) ? cp.composition : [];
                               const winnerKnown = (g.players || []).some((player) => player.team_won);
                               const resultEmoji = !winnerKnown ? '❓' : (cp?.disconnected ? '🔌' : (cp?.team_won ? '✅' : '❌'));
                               const resultTitle = !winnerKnown ? t('player.result.undetermined') : (cp?.disconnected ? t('player.result.disconnected') : (cp?.team_won ? t('player.result.win') : t('player.result.loss')));
                               const raceIcon = getWorkerIconForRace(cp?.race);
+                              const detail = mainPlayerLastGameDetails[g.replay_id];
+                              const detailPlayer = (detail?.players || []).find((p) => p.player_id === cp?.player_id);
                               return (
                                 <div
                                   key={g.replay_id}
                                   className="workflow-last-game-row"
                                   role="button"
                                   tabIndex={0}
-                                  onClick={() => openMainGame(g.replay_id)}
+                                  onClick={(e) => { if (!e.target.closest('.workflow-pill-link')) openMainGame(g.replay_id); }}
                                   onKeyDown={(e) => { if (e.key === 'Enter') openMainGame(g.replay_id); }}
                                 >
                                   <span className="wlg-race">
@@ -7520,11 +7588,24 @@ function App() {
                                   <span className="wlg-result" title={resultTitle}>{resultEmoji}</span>
                                   <span className="wlg-apm" title="APM">{cp?.apm ?? ''}</span>
                                   <span className="wlg-featuring">
-                                    <div className="workflow-pattern-pills">
-                                      {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `lg-${g.replay_id}-bo-${idx}`, undefined, markerRegistry))}
-                                      {restPatterns.map((pattern, idx) => renderPatternPill(pattern, `lg-${g.replay_id}-${idx}`, undefined, markerRegistry))}
-                                      <SpellcastsPill spells={collectPlayerSpells(phases)} />
-                                    </div>
+                                    {detail && detailPlayer ? renderPlayerFeaturingPills(detail, detailPlayer, markerRegistry, {
+                                      buildOrder: (pattern) => {
+                                        const bo = (detail.build_orders || []).find((b) => b.player_id === detailPlayer.player_id && b.feature_key === pattern?.event_type);
+                                        if (!bo) return undefined;
+                                        const key = buildOrderKey(bo);
+                                        return { href: `?view=game&replay=${g.replay_id}&gameTab=build-orders`, tab: 'build-orders', onOpen: () => openMainGame(g.replay_id, { initialGameTab: 'build-orders', initialBuildOrder: key }) };
+                                      },
+                                      openEvent: (event) => openMainGame(g.replay_id, { initialEvent: event }),
+                                      patternEvent: (pattern) => {
+                                        const event = findPatternEvent(detail.game_events, detailPlayer, pattern);
+                                        if (!event) return undefined;
+                                        return { href: `?view=game&replay=${g.replay_id}&gameTab=events`, tab: 'events', onOpen: () => openMainGame(g.replay_id, { initialEvent: event }) };
+                                      },
+                                    }) : (
+                                      <OneRowPills className="workflow-pattern-pills">
+                                        {boPatterns.map((pattern, idx) => renderPatternPill(pattern, `lg-${g.replay_id}-bo-${idx}`, undefined, markerRegistry))}
+                                      </OneRowPills>
+                                    )}
                                   </span>
                                   <span className="wlg-comp">
                                     {phases.length > 0 ? <CompositionZones phases={phases} /> : null}
@@ -7542,6 +7623,10 @@ function App() {
                       </div>
                     );
                   })()}
+
+                  {mainPlayerTab === 'insights' && mainPlayerInsights.length > 0 ? (
+                    <PlayerInsights insights={mainPlayerInsights} registry={markerRegistry} onOpenGame={(replayId, tab) => openMainGame(replayId, tab ? { initialGameTab: tab } : {})} />
+                  ) : null}
 
                   {mainPlayerTab === 'hotkeys' && (
                     <div className="workflow-card">

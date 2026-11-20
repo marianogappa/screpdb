@@ -3,6 +3,8 @@
 package dashboard
 
 import (
+	"github.com/marianogappa/openbw-go/bwgame"
+	"github.com/marianogappa/screpdb/internal/utils"
 	"math"
 	"runtime/debug"
 	"slices"
@@ -97,7 +99,7 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 	var toEvent func(m moments.Event) (workflowGameEvent, bool)
 	toEvent = func(m moments.Event) (workflowGameEvent, bool) {
 		e := workflowGameEvent{
-			Type:   m.Type,
+			Type:   momentEventType(m, rec),
 			Second: int64(m.Second),
 			Actor:  player(m.Actor),
 			Target: player(m.Target),
@@ -135,7 +137,7 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 			e.UnitCount = int64(m.Count)
 		}
 		switch m.Type {
-		case "drop", "reaver_drop", "dt_drop":
+		case "drop", "reaver_drop", "dt_drop", "ht_drop", "lurker_drop":
 			e.UnitCount = 0
 			if m.Count > 1 {
 				e.DropCount = int64(m.Count)
@@ -200,7 +202,7 @@ func (d *Dashboard) applyEngineEvents(detail *workflowGameDetail, layout *models
 // plainEventsTold are the plain events an insight already tells when it happened at the same base, by the
 // same player, in its window: the Eraser's worker kills, the elevator's drop.
 var plainEventsTold = map[string]map[string]bool{
-	moments.InsightElevator:        {"drop": true, "reaver_drop": true, "dt_drop": true, "attack": true, "worker_kills": true},
+	moments.InsightElevator:        {"drop": true, "reaver_drop": true, "dt_drop": true, "ht_drop": true, "lurker_drop": true, "attack": true, "worker_kills": true},
 	moments.InsightEraser:          {"worker_kills": true, "attack": true},
 	moments.InsightUndefendedAir:   {"worker_kills": true, "attack": true},
 	moments.InsightUndetectedCloak: {"worker_kills": true, "attack": true, "dt_drop": true},
@@ -352,7 +354,7 @@ func withChokes(bases []moments.Base, layout *models.MapContextLayout) []moments
 }
 
 // listedEngineEvents are the engine's game events that the games list shows and filters on.
-var listedEngineEvents = map[string]bool{"drop": true, "reaver_drop": true, "dt_drop": true}
+var listedEngineEvents = map[string]bool{"drop": true, "reaver_drop": true, "dt_drop": true, "ht_drop": true, "lurker_drop": true}
 
 // engineFeatures runs the game-event detectors on a fresh digest for the games list. Bases come from the
 // layout the library already holds, so no replay file is read.
@@ -374,9 +376,9 @@ func (d *Dashboard) engineFeatures(checksum [32]byte, dg *engine.Digest) (featur
 	seen := map[string]bool{}
 	bases, players := libraryBases(rec.Layout), momentPlayers(rec)
 	for _, m := range moments.Detect(dg, bases, players) {
-		if listedEngineEvents[m.Type] && !seen[m.Type] {
-			seen[m.Type] = true
-			features = append(features, m.Type)
+		if t := momentEventType(m, rec); listedEngineEvents[m.Type] && !seen[t] {
+			seen[t] = true
+			features = append(features, t)
 		}
 	}
 	for _, m := range moments.DetectInsights(dg, bases, players).Events {
@@ -559,4 +561,17 @@ func (d *Dashboard) youSlot(rec *library.Replay) int8 {
 		}
 	}
 	return moments.NoPlayer
+}
+
+// momentEventType is a moment's event type, with a Dropship drop that lands on one of Big Game Hunters' corner
+// cliffs named a cliff drop: the engine knows where every unload landed but has no notion of a cliff.
+func momentEventType(m moments.Event, rec *library.Replay) string {
+	if m.Type != "drop" || len(m.Units) == 0 || m.Units[0] != uint16(bwgame.UnitTypesTerranDropship) {
+		return m.Type
+	}
+	if !utils.IsBigGameHuntersMap(library.Strings.Name(rec.Map)) ||
+		!utils.IsCliffDropPosition(int(m.X), int(m.Y), int(rec.MapWidth)*32, int(rec.MapHeight)*32) {
+		return m.Type
+	}
+	return "cliff_drop"
 }

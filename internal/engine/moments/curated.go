@@ -802,13 +802,26 @@ var dangerousCargo = map[bwgame.UnitTypes]bool{
 
 // drops are unloads into a base an enemy holds. A drop is kept when it carried something dangerous (a
 // Reaver, Dark Templar, High Templar, tank, Lurker), 4 or more units, or killed something within 30 s.
-// dropKind names a drop after the cargo that decides it: Reavers, else Dark Templar, else a plain drop.
+// dropKind names a drop after the cargo that decides it: Reavers, else Dark Templar, else High Templar, else
+// Lurkers, else a plain drop. A Reaver or a Dark Templar makes the drop whatever came with it; High Templar and
+// Lurkers name it only when they are most of what landed, since a few beside as many Zealots or Hydralisks are
+// part of an army drop, not the point of it.
 func dropKind(cargo []uint16) (string, uint16) {
 	for _, k := range []struct {
-		kind string
-		unit bwgame.UnitTypes
-	}{{"reaver_drop", bwgame.UnitTypesProtossReaver}, {"dt_drop", bwgame.UnitTypesProtossDarkTemplar}} {
-		if slices.Contains(cargo, ut(k.unit)) {
+		kind     string
+		unit     bwgame.UnitTypes
+		majority bool
+	}{
+		{"reaver_drop", bwgame.UnitTypesProtossReaver, false}, {"dt_drop", bwgame.UnitTypesProtossDarkTemplar, false},
+		{"ht_drop", bwgame.UnitTypesProtossHighTemplar, true}, {"lurker_drop", bwgame.UnitTypesZergLurker, true},
+	} {
+		n := 0
+		for _, t := range cargo {
+			if t == ut(k.unit) {
+				n++
+			}
+		}
+		if n > 0 && (!k.majority || 2*n > len(cargo)) {
 			return k.kind, ut(k.unit)
 		}
 	}
@@ -1635,7 +1648,7 @@ func fighter(t uint16) uint16 {
 	return t
 }
 
-var hitsBase = map[string]bool{"attack": true, "worker_kills": true, "drop": true, "reaver_drop": true, "dt_drop": true, "cliff_drop": true}
+var hitsBase = map[string]bool{"attack": true, "worker_kills": true, "drop": true, "reaver_drop": true, "dt_drop": true, "ht_drop": true, "lurker_drop": true, "cliff_drop": true}
 
 // rebuiltAfter is when the target's town hall at the event's base last fell, if the target started another
 // there afterwards that still stood when the event began; 0 when the event hits a base that never fell.

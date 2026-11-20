@@ -725,5 +725,9 @@
   "server.chip.featuring.reaver_drop.label": "Reaver drop",
   "server.chip.featuring.dt_drop.label": "DT drop",
   "server.game_event.reaver_drop.label": "Reaver drop",
-  "server.game_event.dt_drop.label": "DT drop"
+  "server.game_event.dt_drop.label": "DT drop",
+  "server.chip.featuring.ht_drop.label": "HT drop",
+  "server.game_event.ht_drop.label": "HT drop",
+  "server.chip.featuring.lurker_drop.label": "Lurker drop",
+  "server.game_event.lurker_drop.label": "Lurker drop"
 }

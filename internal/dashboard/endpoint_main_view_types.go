@@ -155,6 +155,8 @@ var workflowFeaturingFilters = []struct {
 	{Key: "drop", Label: "Drop", Group: "marker", IconKey: "shuttle"},
 	{Key: "reaver_drop", Label: "Reaver drop", Group: "marker", IconKey: "reaver", IconLabel: "Drop"},
 	{Key: "dt_drop", Label: "DT drop", Group: "marker", IconKey: "darktemplar", IconLabel: "Drop"},
+	{Key: "ht_drop", Label: "HT drop", Group: "marker", IconKey: "hightemplar", IconLabel: "Drop"},
+	{Key: "lurker_drop", Label: "Lurker drop", Group: "marker", IconKey: "lurker", IconLabel: "Drop"},
 	{Key: "mind_control", Label: "Mind Control", Group: "marker", IconKey: "darkarchon", IconLabel: "Mind Control"},
 	{Key: "made_maelstrom", Label: "Maelstrom", Group: "marker", IconKey: "darkarchon", IconLabel: "Maelstrom"},
 	{Key: "crazy_zerg", Label: "Crazy Zerg", Group: "marker", IconKey: "ultralisk", IconLabel: "Crazy Zerg"},
@@ -179,7 +181,6 @@ var workflowFeaturingFilters = []struct {
 	{Key: "undetected_cloak", Label: "No detection", Group: "marker", IconKey: "darktemplar", IconLabel: "No detection"},
 	{Key: "undefended_air_harass", Label: "No anti-air", Group: "marker", IconKey: "mutalisk", IconLabel: "No anti-air"},
 	{Key: "lurker_contain", Label: "Lurker contain", Group: "marker", IconKey: "lurker", IconLabel: "Contain"},
-	{Key: "overrun", Label: "Overrun", Group: "marker", IconKey: "zergling", IconLabel: "Overrun"},
 	// Keys and labels are kept in sync with internal/markers. Suppressed in render
 	// for Money maps on the featuring strips; the BO tab and per-player summary
 	// pills still show them.
@@ -447,6 +448,8 @@ type workflowMutaliskTimingSummary struct {
 	ExpertGapMaxSeconds int64 `json:"expert_gap_max_seconds"` // p75 of corpus distribution
 	ActualGapSeconds    int64 `json:"actual_gap_seconds"`     // turret_done - muta_done in this game
 	HasActual           bool  `json:"has_actual"`             // false when one side missing
+	// Engine is when the Mutalisks actually reached the Terran and what they did, for engine games only.
+	Engine *workflowMutaWave `json:"engine,omitempty"`
 }
 
 type workflowMapVisual struct {
@@ -769,6 +772,7 @@ type workflowPlayerOverview struct {
 	Engine *engineCoverage `json:"engine,omitempty"`
 	// Skill averages the player's rated engine games; nil below minSkillGames.
 	Skill               *workflowPlayerSkillSummary   `json:"skill,omitempty"`
+	Insights            []workflowPlayerInsight       `json:"insights,omitempty"`
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
 	PlayerName          string                        `json:"player_name"`

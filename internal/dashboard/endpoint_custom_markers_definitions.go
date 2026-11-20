@@ -70,6 +70,8 @@ var staticGameEventFeatures = []gameEventFeature{
 	{Key: "drop", Label: "Drop", IconKey: "shuttle"},
 	{Key: "reaver_drop", Label: "Reaver drop", IconKey: "reaver"},
 	{Key: "dt_drop", Label: "DT drop", IconKey: "darktemplar"},
+	{Key: "ht_drop", Label: "HT drop", IconKey: "hightemplar"},
+	{Key: "lurker_drop", Label: "Lurker drop", IconKey: "lurker"},
 	{Key: "mind_control", Label: "Mind control", IconKey: "darkarchon"},
 }
 
@@ -89,6 +91,8 @@ var staticFeaturingOrder = []string{
 	"drop",
 	"reaver_drop",
 	"dt_drop",
+	"ht_drop",
+	"lurker_drop",
 	"mind_control",
 	// late-game custom-evaluator markers
 	"threw_nukes",

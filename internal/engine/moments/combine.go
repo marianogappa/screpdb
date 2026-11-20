@@ -11,7 +11,7 @@ type Combination struct {
 	Eligible   func(lead, part Event) bool
 }
 
-var dropTypes = []string{"drop", "reaver_drop", "dt_drop"}
+var dropTypes = []string{"drop", "reaver_drop", "dt_drop", "ht_drop", "lurker_drop"}
 
 // Combinations is applied in order, so a drop folds into its elevator before kills fold into either.
 var Combinations = []Combination{

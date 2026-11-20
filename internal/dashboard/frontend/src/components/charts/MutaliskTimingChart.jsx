@@ -76,6 +76,17 @@ const LANE_Z_TINT = 'rgba(99, 175, 237, 0.06)';
 const LANE_Z_BORDER = 'rgba(99, 175, 237, 0.20)';
 const LANE_T_TINT = 'rgba(245, 158, 66, 0.06)';
 const LANE_T_BORDER = 'rgba(245, 158, 66, 0.20)';
+const ARRIVAL = 'rgba(167, 139, 250, 0.95)';
+const AMBER = 'rgba(251, 146, 60, 0.95)';
+
+// Engine games know when the Mutalisks reached a Terran base, so the turret verdict reads the first
+// Turret against that arrival, judged by how far ahead of it progamers' first Turret lands.
+const engineVerdict = (lead, [p25, , p75]) => {
+  if (lead < 0) return 'baseAtRisk';
+  if (lead > p75) return 'earlyWaste';
+  if (lead < p25) return 'perfect';
+  return 'withinRange';
+};
 
 function MutaliskTimingChart({ zSide, tSide, summary }) {
   const t = useT();
@@ -84,6 +95,10 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
 
   const zEvents = useMemo(() => pickLane(zSide), [zSide]);
   const tEvents = useMemo(() => pickLane(tSide), [tSide]);
+  const wave = summary?.engine || null;
+  const turretIcon = getUnitIcon('Missile Turret');
+  const arrival = wave?.arrived ? Number(wave.arrival_second) : null;
+  const turretsReady = useMemo(() => (Array.isArray(wave?.turret_ready_seconds) ? wave.turret_ready_seconds.map(Number) : []), [wave]);
 
   const domain = useMemo(() => {
     const all = [...zEvents, ...tEvents];
@@ -96,12 +111,13 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
         max = Math.max(max, builtSecond(e));
       }
     });
+    if (arrival !== null) max = Math.max(max, arrival + 12);
     if (!Number.isFinite(min)) min = 0;
     if (!Number.isFinite(max)) max = Math.max(600, min + 60);
     const span = Math.max(1, max - min);
     const pad = Math.max(8, Math.round(span * 0.06));
     return { min: Math.max(0, min - pad), max: max + pad };
-  }, [zEvents, tEvents]);
+  }, [zEvents, tEvents, arrival]);
 
   const chartWidth = 1040;
   const leftPadding = 80;
@@ -305,7 +321,31 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
   // Gap connector + expert overlay
   let gapNode = null;
   let verdictNode = null;
-  if (zEvents.length >= 2 && tEvents.length >= 2 && zEvents[1].found && tEvents[1].found) {
+  if (arrival !== null && turretsReady.length > 0) {
+    const firstReady = Math.min(...turretsReady);
+    const lead = arrival - firstReady;
+    const band = Array.isArray(wave.pro_turret_lead_seconds) ? wave.pro_turret_lead_seconds : [18, 36, 78];
+    const verdict = engineVerdict(lead, band);
+    const color = verdict === 'baseAtRisk' ? RED : (verdict === 'earlyWaste' ? AMBER : GREEN);
+    const yTop = zLaneTop + laneMid;
+    const yBot = tLaneTop + laneMid;
+    const yMid = (yTop + yBot) / 2;
+    const xReady = xAt(firstReady);
+    const xArrive = xAt(arrival);
+    gapNode = (
+      <g>
+        <line x1={xReady} y1={yMid} x2={xReady} y2={yBot - 9} stroke={color} strokeWidth="1" strokeDasharray="2,3" opacity="0.7" />
+        <line x1={xReady} y1={yMid} x2={xArrive} y2={yMid} stroke={color} strokeWidth="2.5" />
+        <line x1={xReady} y1={yMid - 5} x2={xReady} y2={yMid + 5} stroke={color} strokeWidth="2" />
+        <text x={(xReady + xArrive) / 2} y={yMid - 10} textAnchor="middle" fill={color} fontSize="11">
+          {lead >= 0 ? t('chart.muta.engine.readyBefore', { seconds: lead }) : t('chart.muta.engine.readyAfter', { seconds: -lead })}
+        </text>
+        <text x={(xReady + xArrive) / 2} y={yMid + 18} textAnchor="middle" fill={color} fontSize="10">
+          {t(`chart.muta.verdict.${verdict}`)}
+        </text>
+      </g>
+    );
+  } else if (zEvents.length >= 2 && tEvents.length >= 2 && zEvents[1].found && tEvents[1].found) {
     const mutaBuilt = builtSecond(zEvents[1]);
     const turretBuilt = builtSecond(tEvents[1]);
     const actualGap = turretBuilt - mutaBuilt;
@@ -401,12 +441,14 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
             terran: tSide?.name ? t('chart.muta.terranSide', { name: tSide.name }) : t('chart.muta.terran'),
           })}
         </span>
-        <span
-          style={{ marginLeft: 'auto', color: GOLDEN, cursor: 'help', fontSize: '11px' }}
-          title={t('chart.muta.legendTooltip')}
-        >
-          {t('chart.muta.legend')}
-        </span>
+        {arrival === null ? (
+          <span
+            style={{ marginLeft: 'auto', color: GOLDEN, cursor: 'help', fontSize: '11px' }}
+            title={t('chart.muta.legendTooltip')}
+          >
+            {t('chart.muta.legend')}
+          </span>
+        ) : null}
       </div>
       <div ref={wrapperRef} className="workflow-timing-chart-wrap">
         <svg className="workflow-timing-scatter" viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="xMinYMin meet">
@@ -474,6 +516,45 @@ function MutaliskTimingChart({ zSide, tSide, summary }) {
 
           {gapNode}
           {verdictNode}
+          {arrival !== null ? (
+            <g>
+              {Number(wave.first_hatch_second) < arrival ? (
+                <>
+                  <line x1={xAt(wave.first_hatch_second)} y1={zLaneTop + laneMid + 18} x2={xAt(arrival)} y2={zLaneTop + laneMid + 18} stroke={ARRIVAL} strokeWidth="1.5" strokeDasharray="4,3" />
+                  <text x={(xAt(wave.first_hatch_second) + xAt(arrival)) / 2} y={zLaneTop + laneMid + 32} textAnchor="middle" fill={ARRIVAL} fontSize="10">
+                    {t('chart.muta.engine.flying', { seconds: arrival - Number(wave.first_hatch_second) })}
+                  </text>
+                </>
+              ) : null}
+              <line x1={xAt(arrival)} y1={zLaneTop + 2} x2={xAt(arrival)} y2={tLaneTop + laneHeight - 2} stroke={ARRIVAL} strokeWidth="2" />
+              <text x={xAt(arrival)} y={zLaneTop - 8} textAnchor="middle" fill={ARRIVAL} fontSize="11">
+                {t('chart.muta.engine.arrive', { time: formatTime(arrival), count: wave.mutas_at_arrival })}
+              </text>
+              {turretsReady.map((sec, i) => {
+                const payload = {
+                  title: t.server('server.name.missile_turret', 'Missile Turret'),
+                  line1: t('chart.muta.engine.turretReady', { time: formatTime(sec) }),
+                };
+                return (
+                  <g
+                    key={`tr-${i}`}
+                    opacity={sec <= arrival ? 1 : 0.4}
+                    onMouseEnter={(ev) => updateHover(ev, payload)}
+                    onMouseMove={(ev) => updateHover(ev, payload)}
+                    onMouseLeave={() => setHover(null)}
+                  >
+                    <circle cx={xAt(sec)} cy={tLaneTop + 15} r="8" fill="rgba(9,10,16,0.95)" stroke={NEUTRAL} strokeWidth="1" />
+                    {turretIcon ? <image href={turretIcon} x={xAt(sec) - 7} y={tLaneTop + 8} width={14} height={14} /> : null}
+                  </g>
+                );
+              })}
+              <text x={xAt(arrival) - 6} y={tLaneTop + laneHeight - 10} textAnchor="end" fill={ARRIVAL} fontSize="11">
+                {wave.turrets_building > 0
+                  ? t('chart.muta.engine.turretsUpBuilding', { up: wave.turrets_up, building: wave.turrets_building })
+                  : t('chart.muta.engine.turretsUp', { up: wave.turrets_up })}
+              </text>
+            </g>
+          ) : null}
         </svg>
         {hover ? (
           <div

@@ -257,7 +257,7 @@ func bestWhy(events []Event, team []int8, end int) (Why, int32, bool) {
 	return Why{Loser: loser, Event: best}, bestScore, best >= 0
 }
 
-var winningAttacks = map[string]bool{"attack": true, "drop": true, "reaver_drop": true, "dt_drop": true, "cliff_drop": true, "nydus_attack": true, "recall": true}
+var winningAttacks = map[string]bool{"attack": true, "drop": true, "reaver_drop": true, "dt_drop": true, "ht_drop": true, "lurker_drop": true, "cliff_drop": true, "nydus_attack": true, "recall": true}
 
 var rushes = map[string]bool{"zergling_rush": true, "cannon_rush": true, "bunker_rush": true}
 

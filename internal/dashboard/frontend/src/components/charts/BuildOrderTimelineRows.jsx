@@ -135,7 +135,7 @@ function BuildOrderTimelineRows({ group, beta, id, href, focused, onOpen }) {
         {beta ? (
           <sup
             className="workflow-beta-tag"
-            title={t('marker.betaTooltip')}
+            data-tip={t('marker.betaTooltip')}
             aria-label={t('chart.bo.betaAria')}
           >β</sup>
         ) : null}

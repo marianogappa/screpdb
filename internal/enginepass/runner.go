@@ -14,6 +14,7 @@ import (
 	"math"
 	"runtime"
 	"runtime/debug"
+	"slices"
 	"sync"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/engine"
 	"github.com/marianogappa/screpdb/internal/engine/digestcache"
 	"github.com/marianogappa/screpdb/internal/engine/macro"
+	"github.com/marianogappa/screpdb/internal/engine/moments"
 	"github.com/marianogappa/screpdb/internal/gamedata"
 	"github.com/marianogappa/screpdb/internal/iofacade"
 	"github.com/marianogappa/screpdb/internal/library"
@@ -707,6 +709,7 @@ func Summarize(d *engine.Digest, moneyMap bool) *library.EngineData {
 			banked[p.Slot] = float32(p.FloatSeconds) / float32(max(1, p.Seconds))
 		}
 	}
+	terran, wave := mutaWaveOf(d)
 	for _, p := range macro.Compute(d) {
 		ep := enginePlayer(p)
 		ep.BankedShare = float32(p.FloatSeconds) / float32(max(1, p.Seconds))
@@ -724,6 +727,9 @@ func Summarize(d *engine.Digest, moneyMap bool) *library.EngineData {
 		use := macro.ArmyUseOf(d, p.Slot)
 		ep.IdleArmyShare, ep.ArmyValue = float32(use.IdleShare), float32(use.Value)
 		ep.ArmyStartCadence = float32(macro.ArmyStartCadence(d, p.Slot, p.Seconds))
+		if p.Slot == terran {
+			setMutaArrival(&ep, wave)
+		}
 		data.Players = append(data.Players, ep)
 	}
 	return data
@@ -781,5 +787,26 @@ func enginePlayer(p macro.Player) library.EnginePlayer {
 		FloatSeconds:         uint16(min(p.FloatSeconds, math.MaxUint16)),
 		Income:               clampU16s(p.Income),
 		Workers:              clampU16s(p.Workers),
+	}
+}
+
+func mutaWaveOf(d *engine.Digest) (int8, *moments.MutaWave) {
+	zerg, terran, ok := moments.OneVsOneTvZ(d)
+	if !ok {
+		return -1, nil
+	}
+	return terran, moments.DetectMutaWave(d, zerg, terran)
+}
+
+func setMutaArrival(ep *library.EnginePlayer, w *moments.MutaWave) {
+	if w == nil || w.Arrival == engine.NoFrame {
+		return
+	}
+	ep.MutaArrivalKnown = true
+	ep.TurretsAtMutaArrival = uint8(min(w.TurretsUp, math.MaxUint8))
+	ep.WorkersLostToMutas = uint16(min(w.Game.Workers, math.MaxUint16))
+	ep.TurretLeadOnMutas = library.NoTurretLead
+	if len(w.TurretsReady) > 0 {
+		ep.TurretLeadOnMutas = int16((w.Arrival - slices.Min(w.TurretsReady)) * 42 / 1000)
 	}
 }

@@ -15,7 +15,7 @@ const InsightOverrun = "overrun"
 // the force. A victim with an army elsewhere is not unprepared, so a lone harasser is no overrun. The force must
 // be worth 100 resources and twice the answer, within 90 s of the victim leaving. A victim's building in a base
 // the attacker holds a town hall in does not count: that army is at home, beside a ruin or a building the
-// victim lifted away long ago.
+// victim lifted away long ago, and neither does a force standing in a base the attacker holds.
 const (
 	overrunReach      = 10 * tile
 	overrunFightReach = 25 * tile
@@ -201,6 +201,9 @@ func (g *game) overrunAt(snap engine.ArmySnapshot, standing []standingBuilding, 
 		e.Seconds = end - sec
 		e.Count = len(f.units)
 		e.Defenders = defenders
+		if halls[attacker][g.baseOf(x, y)] {
+			continue
+		}
 		e.Outcome = g.outcome(attacker, g.fightNear(attacker, victim, sec-10, end, x, y, overrunFightReach))
 		e.Region = around(x, y, overrunFightReach)
 		return e, true

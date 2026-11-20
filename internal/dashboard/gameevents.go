@@ -22,6 +22,7 @@ func (d *Dashboard) populateGameEvents(detail *workflowGameDetail, mapLayout *mo
 		return err
 	}
 	d.applyEngineEvents(detail, mapLayout, startClockByPlayerID)
+	markCliffDrops(detail)
 	detail.GameEvents = resolveNaturalOwnerLabels(detail.GameEvents, detail.Players, startClockByPlayerID)
 	return nil
 }
@@ -87,4 +88,41 @@ func steadyRegion(r workflowEngineRegion, mapW, mapH int64) *workflowEngineRegio
 		y = math.Max(0, math.Min(y, float64(mapH)-h))
 	}
 	return &workflowEngineRegion{X: int64(math.Round(x)), Y: int64(math.Round(y)), W: int64(math.Round(w)), H: int64(math.Round(h))}
+}
+
+// cliffDropWithin is how far apart a cliff drop marker and a drop event can be and still be one drop: the
+// marker times the unload click, the engine times the units landing.
+const cliffDropWithin = 20
+
+// markCliffDrops names a drop a cliff drop when the player's cliff drop marker times it. The engine sees the
+// drop but has no notion of a cliff; the marker knows the cliff but is no event, so on its own it would
+// show a second pill for the same drop that opens nothing.
+func markCliffDrops(detail *workflowGameDetail) {
+	for _, p := range detail.Players {
+		for _, m := range p.DetectedPatterns {
+			if m.EventType != "cliff_drop" {
+				continue
+			}
+			best := -1
+			for i, e := range detail.GameEvents {
+				if e.Type != "drop" || e.Actor == nil || e.Actor.PlayerID != p.PlayerID {
+					continue
+				}
+				gap := absInt64(e.Second - int64(m.DetectedSecond))
+				if gap <= cliffDropWithin && (best < 0 || gap < absInt64(detail.GameEvents[best].Second-int64(m.DetectedSecond))) {
+					best = i
+				}
+			}
+			if best >= 0 {
+				detail.GameEvents[best].Type = "cliff_drop"
+			}
+		}
+	}
+}
+
+func absInt64(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }

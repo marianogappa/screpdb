@@ -129,6 +129,7 @@ func (d *Dashboard) buildWorkflowGameDetail(replayID int64) (workflowGameDetail,
 	if err := d.populateMutaliskTimingForGameDetail(&detail); err != nil {
 		return detail, err
 	}
+	d.applyEngineMutaWave(&detail)
 	if err := d.populatePhaseMarkersForGameDetail(&detail); err != nil {
 		return detail, err
 	}

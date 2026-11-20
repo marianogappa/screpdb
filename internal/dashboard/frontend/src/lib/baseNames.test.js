@@ -63,8 +63,8 @@ test('Game Events sentences read in natural Korean, with the drop landing on the
   assert.equal(mineralOnly(ko, 'expa 5'), 'K_BishOp, 5시 멀티 (미네랄 전용)에 확장');
 });
 
-test('the same Game Events sentences are unchanged in English', () => {
-  assert.equal(drop(en, 'main base'), 'K_BishOp drops 4 on JSA_Larva at their main base');
+test('the same Game Events sentences read naturally in English', () => {
+  assert.equal(drop(en, 'main base'), 'K_BishOp drops with 4 on JSA_Larva at their main base');
   assert.equal(expands(en, "11's main base"), "JSA_Larva expands to 11's main base");
   assert.equal(attack(en, "expa at 11's natural"), "K_BishOp attacks JSA_Larva at their expa at 11's natural");
   assert.equal(mineralOnly(en, 'expa 5'), 'K_BishOp expands to expa 5 (mineral only)');
