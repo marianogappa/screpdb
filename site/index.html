@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="meta.title">screpdb · Replay analysis for StarCraft: Remastered</title>
+  <meta name="description" data-i18n-content="meta.description" content="Free and open source replay analysis for StarCraft: Remastered. Build orders, game events on the map, skill estimates, hotkeys and player identity, all on your own computer.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#090911">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="screpdb · Replay analysis for StarCraft: Remastered">
+  <meta property="og:description" content="Free and open source. Build orders, game events on the map, skill, hotkeys and player identity, all on your own computer.">
+  <meta property="og:image" content="https://marianogappa.github.io/screpdb/og.png">
+  <meta property="og:url" content="https://marianogappa.github.io/screpdb/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    if (location.hostname === "marianogappa.github.io") {
+      var ga = document.createElement("script");
+      ga.async = true;
+      ga.src = "https://www.googletagmanager.com/gtag/js?id=G-SMBH4M85HZ";
+      document.head.appendChild(ga);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { dataLayer.push(arguments); };
+      gtag("js", new Date());
+      gtag("config", "G-SMBH4M85HZ");
+    }
+  </script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-row">
+      <a class="logo" href="./" aria-label="screpdb">screp<b>db</b></a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#learn" data-i18n="nav.learn">Learn</a>
+        <a href="#author" data-i18n="nav.about">About</a>
+        <a href="https://github.com/marianogappa/screpdb">GitHub</a>
+      </nav>
+      <button class="lang" type="button" id="lang-toggle" lang="ko">한국어</button>
+      <a class="btn btn-sm btn-primary" href="#install" data-i18n="nav.install">Install</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="grid-bg" aria-hidden="true"></div>
+      <div class="wrap hero-copy">
+        <h1 data-i18n="hero.title">Keep playing.<br><span class="accent">screpdb keeps track.</span></h1>
+        <p class="lede" data-i18n="hero.lede">A quiet companion to your StarCraft: Remastered sessions.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#learn" data-i18n="cta.how">See how it works</a>
+          <a class="btn btn-ghost" href="#tour" data-i18n="cta.tour">Watch the tour</a>
+        </div>
+        <ul class="facts">
+          <li data-i18n="fact.free">Free and open source</li>
+          <li data-i18n="fact.noads">No ads</li>
+          <li class="fact-lock" data-i18n="fact.account">No account, nothing uploaded</li>
+          <li class="fact-shield" data-i18n="fact.local">Your replays stay on your computer</li>
+          <li id="version-fact" data-i18n="fact.platforms">Windows, macOS, Linux</li>
+        </ul>
+      </div>
+      <div class="wrap">
+        <figure class="shot shot-hero">
+          <div class="shot-bar" aria-hidden="true"><i></i><i></i><i></i><span data-i18n="hero.bar">localhost · Game Events</span></div>
+          <video class="shot-video" autoplay muted loop playsinline preload="auto" width="2840" height="1802" poster="images/game-events-glow.webp" src="images/game-events-glow.mp4" data-i18n-aria="alt.events" aria-label="Game Events: a drop into a Zerg main, the dropships glowing on the map, next to a timeline of the game's key moments"></video>
+        </figure>
+      </div>
+    </section>
+
+    <section class="steps" aria-label="How it works">
+      <div class="wrap steps-row">
+        <div class="step">
+          <span class="step-n">1</span>
+          <div>
+            <h4 data-i18n="step1.t">Install it</h4>
+            <p data-i18n="step1.b">One download on Windows, one command on macOS and Linux.</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-n">2</span>
+          <div>
+            <h4 data-i18n="step2.t">It finds your replays</h4>
+            <p data-i18n="step2.b">screpdb locates your StarCraft replays folder and reads every game you've saved.</p>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-n">3</span>
+          <div>
+            <h4 data-i18n="step3.t">Keep playing</h4>
+            <p data-i18n="step3.b">Each game shows up, already analysed, a moment after it ends.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="strip">
+      <div class="wrap strip-row">
+        <span class="strip-k" data-i18n="strip.giants">Built on the shoulders of giants</span>
+        <a href="https://github.com/icza/screp">screp</a>
+        <a href="https://github.com/OpenBW/openbw">OpenBW</a>
+        <span class="strip-sep" aria-hidden="true"></span>
+        <span class="strip-k" data-i18n="strip.mit">MIT license</span>
+      </div>
+    </section>
+
+    <section id="learn" class="story">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="eyebrow" data-i18n="story.eyebrow">How it works</p>
+          <h2 data-i18n="story.title">Follow one game</h2>
+          <p class="section-sub" data-i18n="story.sub">Say you are Action, the Zerg progamer, and tonight's session is not going well. Between games, you alt-tab to screpdb.</p>
+        </header>
+        <ol class="path">
+          <span class="path-progress" aria-hidden="true"></span>
+          <li class="path-step">
+            <span class="path-n" aria-hidden="true">1</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="story.games.eyebrow">Last session</p>
+              <h3 data-i18n="story.games.title">Two games, two losses</h3>
+              <p data-i18n="story.games.body">The session is already there, updated as each game ends: the record, the games and who you played. Both losses were to the same account. The last one was a ZvT on Octagon.</p>
+            </div>
+            <figure class="shot path-shot" data-step="list"><img loading="lazy" src="images/story/list.webp" width="2880" height="760" data-i18n-alt="story.games.title" alt="A game ends, and it is already here"></figure>
+          </li>
+          <li class="path-step">
+            <span class="path-n" aria-hidden="true">2</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="story.summary.eyebrow">Summary</p>
+              <h3 data-i18n="story.summary.title">One look at the game</h3>
+              <p data-i18n="story.summary.body">Both openers and what stood out. Your Mutalisks were out at 6:34. Did they do any damage?</p>
+            </div>
+            <figure class="shot path-shot" data-step="summary"><img loading="lazy" src="images/story/summary.webp" width="2880" height="1336" data-i18n-alt="story.summary.title" alt="One look tells the story"></figure>
+          </li>
+          <li class="path-step">
+            <span class="path-n" aria-hidden="true">3</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="story.muta.eyebrow">Mutalisk timing</p>
+              <h3 data-i18n="story.muta.title">The Mutas got there first</h3>
+              <p data-i18n="story.muta.body">Six Mutalisks reach the Terran base at 7:09, and the first turret finishes 22 seconds later. The window was there.</p>
+            </div>
+            <figure class="shot path-shot" data-step="muta"><img loading="lazy" src="images/story/muta.webp" width="2880" height="1280" data-i18n-alt="story.muta.title" alt="Two seconds too late"></figure>
+          </li>
+          <li class="path-step">
+            <span class="path-n" aria-hidden="true">4</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="story.turning.eyebrow">Game events</p>
+              <h3 data-i18n="story.turning.title">Where it ended</h3>
+              <p data-i18n="story.turning.body">At 10:01 the Terran army walks into your natural. screpdb ran the game through the StarCraft engine, so every unit in that push lights up on the map.</p>
+            </div>
+            <figure class="shot path-shot" data-step="turning"><video class="story-video" muted loop playsinline preload="none" width="2840" height="1800" poster="images/story/turning.webp" src="images/story/turning.mp4" data-i18n-aria="story.turning.title" aria-label="Where the game was decided"></video></figure>
+          </li>
+          <li class="path-step">
+            <span class="path-n" aria-hidden="true">5</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="story.bo.eyebrow">Build orders</p>
+              <h3 data-i18n="story.bo.title">Was the opening on time?</h3>
+              <p data-i18n="story.bo.body">CC First against your ~11 Hatch, each charted against the timings progamers usually hit.</p>
+            </div>
+            <figure class="shot path-shot" data-step="build-orders"><img loading="lazy" src="images/story/build-orders.webp" width="2880" height="1280" data-i18n-alt="story.bo.title" alt="Was the rush on time?"></figure>
+          </li>
+          <li class="path-step">
+            <span class="path-n" aria-hidden="true">6</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="story.skill.eyebrow">Skill</p>
+              <h3 data-i18n="story.skill.title">Who played better?</h3>
+              <p data-i18n="story.skill.body">Both of you rate as Pro. Metric by metric, you can see where each player was sharper.</p>
+            </div>
+            <figure class="shot path-shot" data-step="skill"><img loading="lazy" src="images/story/skill.webp" width="2880" height="860" data-i18n-alt="story.skill.title" alt="Who played better?"></figure>
+          </li>
+          <li class="path-step">
+            <span class="path-n" aria-hidden="true">7</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="story.hk.eyebrow">Hotkeys</p>
+              <h3 data-i18n="story.hk.title">What was on every key</h3>
+              <p data-i18n="story.hk.body">Not just when each hotkey was pressed, but which units were on it at the time, for both players, all game long.</p>
+            </div>
+            <figure class="shot path-shot" data-step="hotkeys"><img loading="lazy" src="images/story/hotkeys.webp" width="2880" height="1520" data-i18n-alt="story.hk.title" alt="How they played it"></figure>
+          </li>
+          <li class="path-step">
+            <span class="path-n" aria-hidden="true">8</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="story.player.eyebrow">Players</p>
+              <h3 data-i18n="story.player.title">And who was kimsabuho?</h3>
+              <p data-i18n="story.player.body">Two losses to the same account. screpdb recognises it as Light's.</p>
+            </div>
+            <figure class="shot path-shot" data-step="player"><img loading="lazy" src="images/story/player.webp" width="2880" height="940" data-i18n-alt="story.player.title" alt="And who was that barcode?"></figure>
+          </li>
+          <li class="path-step path-end" id="tour">
+            <span class="path-n" aria-hidden="true">▶</span>
+            <div class="path-copy">
+              <p class="eyebrow" data-i18n="tour.eyebrow">Video tour</p>
+              <h3 data-i18n="tour.title">Prefer to watch?</h3>
+              <p data-i18n="tour.more">There is a ten minute tour, and more videos on <a href="https://www.youtube.com/@screpdb">YouTube @screpdb</a>.</p>
+            </div>
+            <div class="video" id="video">
+              <button class="video-facade" type="button" data-i18n-aria="tour.play" aria-label="Play the screpdb video tour">
+                <img loading="lazy" src="https://i.ytimg.com/vi/p2KgiVLyyZE/maxresdefault.jpg" alt="">
+                <span class="play" aria-hidden="true"></span>
+              </button>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="install" class="install">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="eyebrow" data-i18n="install.eyebrow">Install</p>
+          <h2 data-i18n="install.title">Installing it</h2>
+          <p class="section-sub" data-i18n="install.sub">screpdb finds your replays folder and opens in your browser. Updates are one click from inside the app.</p>
+        </header>
+
+        <div class="tabs" role="tablist" aria-label="Operating system">
+          <button role="tab" id="tab-windows" aria-controls="pane-windows" aria-selected="true">Windows</button>
+          <button role="tab" id="tab-macos" aria-controls="pane-macos" aria-selected="false">macOS</button>
+          <button role="tab" id="tab-linux" aria-controls="pane-linux" aria-selected="false">Linux</button>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-windows" aria-labelledby="tab-windows">
+          <a class="btn btn-primary btn-lg" href="https://github.com/marianogappa/screpdb/releases/latest/download/screpdb-gui-windows-amd64.exe" data-i18n="cta.windows">Download for Windows</a>
+          <p class="note" data-i18n="install.win.note">Open the file. If Windows says it protected your PC, click <b>More info</b>, then <b>Run anyway</b>. screpdb moves itself out of Downloads and adds Start Menu and Desktop shortcuts.</p>
+          <p class="note" data-i18n="install.win.why">Curious why Windows warns about it? <a href="https://www.youtube.com/watch?v=p5fUvRRv-Rc">There's a short video on that</a>.</p>
+          <details>
+            <summary data-i18n="install.win.scoop">Prefer Scoop? (no warnings this way)</summary>
+            <pre class="cmd"><code>scoop install git
+scoop bucket add screpdb https://github.com/marianogappa/screpdb
+scoop install screpdb</code></pre>
+          </details>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-macos" aria-labelledby="tab-macos" hidden>
+          <p class="note" data-i18n="install.withbrew">With Homebrew:</p>
+          <pre class="cmd"><code>brew install marianogappa/screpdb/screpdb</code></pre>
+          <p class="note" data-i18n="install.nobrew">Or without it:</p>
+          <pre class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh</code></pre>
+          <p class="note" data-i18n="install.mac.note">Then run <code>screpdb</code>. Neither way triggers the Gatekeeper warning.</p>
+        </div>
+
+        <div class="pane" role="tabpanel" id="pane-linux" aria-labelledby="tab-linux" hidden>
+          <pre class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/marianogappa/screpdb/main/install.sh | sh</code></pre>
+          <p class="note" data-i18n="install.orbrew">Or with Homebrew:</p>
+          <pre class="cmd"><code>brew install marianogappa/screpdb/screpdb</code></pre>
+          <p class="note" data-i18n="install.linux.note">Then run <code>screpdb</code>. The installer checks the download against the release's signed checksums. <a href="https://github.com/marianogappa/screpdb/blob/main/install.sh">Read it first</a>.</p>
+        </div>
+
+        <p class="install-foot" data-i18n="install.foot">All downloads on <a href="https://github.com/marianogappa/screpdb/releases">GitHub Releases</a>.</p>
+      </div>
+    </section>
+
+    <section id="author" class="author">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="eyebrow" data-i18n="author.eyebrow">About</p>
+          <h2 data-i18n="author.title">Who makes this</h2>
+        </header>
+        <div class="author-grid">
+          <div class="author-card">
+            <div class="author-id">
+              <img src="mariano.jpg" width="72" height="72" alt="Mariano Gappa">
+              <div>
+                <h3 data-i18n="author.hi">Hi, I'm Mariano Gappa</h3>
+                <p class="author-role"><svg class="flag" viewBox="0 0 9 6" aria-label="Argentina" role="img"><rect width="9" height="6" fill="#74acdf"/><rect y="2" width="9" height="2" fill="#fff"/><circle cx="4.5" cy="3" r=".6" fill="#f6b40e"/></svg><span data-i18n="author.role">Software Engineer</span></p>
+              </div>
+            </div>
+            <blockquote class="author-quote"><p data-i18n="author.bio1">I met my best mate at a LAN party in Buenos Aires when I was 15, right as Brood War was taking off. We now live on opposite ends of the world and still play almost every weekend. screpdb started as a way to talk about those games.</p></blockquote>
+            <h4 class="facts-title" data-i18n="author.factsTitle">A few things about me</h4>
+            <ul class="fun-facts">
+              <li data-i18n="author.fact1">I used to lead iCCup's Counter Abuse team</li>
+              <li data-i18n="author.fact2">I post on TL.net as <a href="https://tl.net/forum/profile.php?user=iCCup.Trent">iCCup.Trent</a></li>
+              <li data-i18n="author.fact3">I've never been very good at the game: my best ladder rating is 1801 (B)</li>
+            </ul>
+            <ul class="author-links">
+              <li><a href="https://marianogappa.github.io/thoughts/building-an-advanced-starcraft-reporting-tool/" data-i18n="author.post1">Blog post: How screpdb was built</a></li>
+              <li><a href="https://marianogappa.github.io/software/player-fingerprinting-in-the-age-of-ai-bots/" data-i18n="author.post2">Blog post: Player fingerprinting in the age of AI bots</a></li>
+              <li><a href="https://marianogappa.github.io/inside-brood-war/" data-i18n="author.post3">Explainer: Inside Brood War</a></li>
+              <li><a href="https://marianogappa.github.io/" data-i18n="author.blog">My blog</a></li>
+            </ul>
+          </div>
+          <div class="author-note">
+            <h3 data-i18n="note.title">Why it's free</h3>
+            <p data-i18n="note.p1">screpdb isn't a business. There are no ads, no paid tier and nothing to donate to. I build it because I love this game, and it only exists thanks to people who came before me, like <a href="https://github.com/icza">icza</a> with the <a href="https://github.com/icza/screp">screp</a> parser and <a href="https://github.com/tscmoo">tscmoo</a> with the <a href="https://github.com/OpenBW/openbw">OpenBW</a> engine.</p>
+            <p data-i18n="note.p2">So everything is open source, including the libraries I wrote along the way. Each one is built to stand on its own, so other StarCraft projects can use them too:</p>
+            <ul class="libs">
+              <li><a href="https://github.com/marianogappa/scmapanalyzer">scmapanalyzer</a><span data-i18n="dep.scmap">Map intelligence: base polygons, naturals, mineral only bases, chokes and o'clock base names, plus the map imagery.</span></li>
+              <li><a href="https://github.com/marianogappa/scfingerprint">scfingerprint</a><span data-i18n="dep.scfp">Recognises players by how they play rather than by the name they use. <a href="https://marianogappa.github.io/software/player-fingerprinting-in-the-age-of-ai-bots/">How it works</a>.</span></li>
+              <li><a href="https://github.com/marianogappa/openbw-go">openbw-go</a><span data-i18n="dep.openbw">A Go port of OpenBW, so the real credit goes to <a href="https://github.com/tscmoo">tscmoo</a>. It replays a game and reports what actually happened in it.</span></li>
+            </ul>
+            <p data-i18n="note.p3">If something looks wrong, or you just want to say hi, <a href="https://github.com/marianogappa/screpdb/issues">open an issue</a> or post in the <a href="https://tl.net/forum/brood-war/645718-screpdb-new-starcraft-reporting-tool">screpdb thread on TL.net</a>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="closer">
+      <div class="wrap closer-row">
+        <div>
+          <h2 data-i18n="closer.title">GL HF</h2>
+          <p class="section-sub" data-i18n="closer.sub">If you give screpdb a try, I'd love to hear how it goes.</p>
+        </div>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#install" data-i18n="cta.install">Install screpdb</a>
+          <a class="btn btn-ghost" href="https://tl.net/forum/brood-war/645718-screpdb-new-starcraft-reporting-tool" data-i18n="cta.tl">Say hi on the TL.net post</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-row">
+      <a class="logo logo-sm" href="./">screp<b>db</b></a>
+      <nav aria-label="Links">
+        <a href="https://github.com/marianogappa/screpdb">GitHub</a>
+        <a href="https://www.youtube.com/@screpdb">YouTube</a>
+        <a href="https://github.com/marianogappa/screpdb/blob/main/CHANGELOG.md" data-i18n="footer.changelog">Changelog</a>
+        <a href="https://tl.net/forum/brood-war/645718-screpdb-new-starcraft-reporting-tool" data-i18n="footer.tl">TL.net thread</a>
+        <a href="https://github.com/marianogappa/screpdb/issues" data-i18n="footer.issue">Report an issue</a>
+      </nav>
+      <p class="footer-k" data-i18n="footer.legal">MIT license. Made by Mariano Gappa. StarCraft is a trademark of Blizzard Entertainment; screpdb is not affiliated with Blizzard.</p>
+    </div>
+  </footer>
+
+  <script src="i18n.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

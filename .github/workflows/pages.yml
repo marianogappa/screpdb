@@ -1,0 +1,60 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - Makefile
+      - .github/workflows/pages.yml
+  pull_request:
+    paths:
+      - site/**
+      - Makefile
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the landing page
+        run: make pages
+
+      # GitHub Pages serves the site from the /screpdb/ subpath, so any root-absolute
+      # reference 404s. Catch a regression here rather than on the live site.
+      - name: Check the site has no root-absolute references
+        run: |
+          if grep -nE '(href|src)="/[^/]' dist/pages/*.html; then
+            echo "::error::root-absolute reference found; it will 404 under /screpdb/"
+            exit 1
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/pages
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

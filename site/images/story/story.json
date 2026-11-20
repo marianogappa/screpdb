@@ -1,0 +1,148 @@
+{
+  "list": {
+    "width": 2880,
+    "height": 760,
+    "loop": false,
+    "highlight": {
+      "x": 0.0028,
+      "y": 0.6701,
+      "w": 0.9944,
+      "h": 0.1479
+    }
+  },
+  "summary": {
+    "width": 2880,
+    "height": 1336,
+    "loop": false,
+    "highlight": {
+      "x": 0.4345,
+      "y": 0.8411,
+      "w": 0.1184,
+      "h": 0.0928
+    }
+  },
+  "player": {
+    "width": 2880,
+    "height": 940,
+    "loop": false,
+    "highlight": {
+      "x": 0.1435,
+      "y": 0.1213,
+      "w": 0.0447,
+      "h": 0.0851
+    }
+  },
+  "list.ko": {
+    "width": 2880,
+    "height": 760,
+    "loop": false,
+    "highlight": {
+      "x": 0.0028,
+      "y": 0.6806,
+      "w": 0.9944,
+      "h": 0.1479
+    }
+  },
+  "summary.ko": {
+    "width": 2880,
+    "height": 1344,
+    "loop": false,
+    "highlight": {
+      "x": 0.437,
+      "y": 0.8406,
+      "w": 0.0965,
+      "h": 0.0923
+    }
+  },
+  "player.ko": {
+    "width": 2880,
+    "height": 940,
+    "loop": false,
+    "highlight": {
+      "x": 0.1435,
+      "y": 0.1213,
+      "w": 0.0447,
+      "h": 0.0851
+    }
+  },
+  "muta": {
+    "width": 2880,
+    "height": 1280,
+    "loop": false,
+    "highlight": {
+      "x": 0.8331,
+      "y": 0.5857,
+      "w": 0.1421,
+      "h": 0.0469
+    }
+  },
+  "muta.ko": {
+    "width": 2880,
+    "height": 1280,
+    "loop": false,
+    "highlight": {
+      "x": 0.8381,
+      "y": 0.5873,
+      "w": 0.1322,
+      "h": 0.0469
+    }
+  },
+  "turning": {
+    "width": 2840,
+    "height": 1800,
+    "loop": true,
+    "highlight": null
+  },
+  "build-orders": {
+    "width": 2880,
+    "height": 1280,
+    "loop": false,
+    "highlight": null
+  },
+  "skill": {
+    "width": 2880,
+    "height": 860,
+    "loop": false,
+    "highlight": null
+  },
+  "hotkeys": {
+    "width": 2880,
+    "height": 1520,
+    "loop": false,
+    "highlight": {
+      "x": 0.4719,
+      "y": 0.1182,
+      "w": 0.0633,
+      "h": 0.0553
+    }
+  },
+  "turning.ko": {
+    "width": 2840,
+    "height": 1800,
+    "loop": true,
+    "highlight": null
+  },
+  "build-orders.ko": {
+    "width": 2880,
+    "height": 1280,
+    "loop": false,
+    "highlight": null
+  },
+  "skill.ko": {
+    "width": 2880,
+    "height": 860,
+    "loop": false,
+    "highlight": null
+  },
+  "hotkeys.ko": {
+    "width": 2880,
+    "height": 1520,
+    "loop": false,
+    "highlight": {
+      "x": 0.3817,
+      "y": 0.1182,
+      "w": 0.0537,
+      "h": 0.0566
+    }
+  }
+}
