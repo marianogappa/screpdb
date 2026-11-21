@@ -147,6 +147,8 @@ func skillValues(p *library.Player) map[string]float64 {
 	if p.Flags.Has(library.PlayerHasSkillCommands) {
 		values[skill.UsedRecalls] = float64(p.UsedRecalls)
 		values[skill.CheckRecalls] = float64(p.CheckRecalls)
+		values[skill.ArmyRecalls] = float64(p.ArmyRecalls)
+		values[skill.ProdRecalls] = float64(p.ProductionRecalls)
 		values[skill.ArmyCadence] = float64(p.ArmyCadence)
 		values[skill.MicroActions] = float64(p.MicroActions)
 	}

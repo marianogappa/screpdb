@@ -13,6 +13,11 @@ type Commands struct {
 	UsedRecalls float64
 	// CheckRecalls are the other recalls per minute: cycling through groups to look at them.
 	CheckRecalls float64
+	// ArmyRecalls and ProductionRecalls split UsedRecalls by the command that followed: moving or fighting with
+	// the group, or training, researching or rallying from it. Recalls followed by anything else, like a worker
+	// build, are in neither.
+	ArmyRecalls       float64
+	ProductionRecalls float64
 	// ArmyCadence is the share of 10-second windows in which the player started army production.
 	ArmyCadence float64
 	// MicroActions are the 15-second windows per minute in which the player used a unit ability: Hold
@@ -52,13 +57,19 @@ func CommandsOf(cmds []repcmd.Cmd, endFrame int32) map[byte]Commands {
 	bins := int(endFrame-fromFrame)/cadenceBinFrames + 1
 	out := map[byte]Commands{}
 	for id, own := range byPlayer {
-		used, checks := recalls(own)
-		out[id] = Commands{UsedRecalls: used / minutes, CheckRecalls: checks / minutes, ArmyCadence: armyCadence(own, bins), MicroActions: microActions(own) / minutes}
+		r := recalls(own)
+		out[id] = Commands{
+			UsedRecalls: r.used / minutes, CheckRecalls: r.checks / minutes,
+			ArmyRecalls: r.army / minutes, ProductionRecalls: r.production / minutes,
+			ArmyCadence: armyCadence(own, bins), MicroActions: microActions(own) / minutes,
+		}
 	}
 	return out
 }
 
-func recalls(cmds []repcmd.Cmd) (used, checks float64) {
+type recallCounts struct{ used, checks, army, production float64 }
+
+func recalls(cmds []repcmd.Cmd) (out recallCounts) {
 	for i := 0; i < len(cmds); i++ {
 		h, ok := hotkeySelect(cmds[i])
 		if !ok || int32(cmds[i].BaseCmd().Frame) < fromFrame {
@@ -73,24 +84,60 @@ func recalls(cmds []repcmd.Cmd) (used, checks float64) {
 			}
 			last = cmds[j].BaseCmd().Frame
 		}
-		if actsBeforeReselecting(cmds[j:]) {
-			used++
-		} else {
-			checks++
+		action, ok := actionBeforeReselecting(cmds[j:])
+		switch {
+		case !ok:
+			out.checks++
+		case productionAction(action):
+			out.used++
+			out.production++
+		case armyAction(action):
+			out.used++
+			out.army++
+		default:
+			out.used++
 		}
 		i = j - 1
 	}
-	return used, checks
+	return out
 }
 
-func actsBeforeReselecting(cmds []repcmd.Cmd) bool {
+func actionBeforeReselecting(cmds []repcmd.Cmd) (repcmd.Cmd, bool) {
 	for _, c := range cmds {
 		if selectionChanger(c) {
-			return false
+			return nil, false
 		}
 		if isAction(c) {
-			return true
+			return c, true
 		}
+	}
+	return nil, false
+}
+
+func productionAction(c repcmd.Cmd) bool {
+	switch c.BaseCmd().Type.ID {
+	case repcmd.TypeIDTrain, repcmd.TypeIDTrainFighter, repcmd.TypeIDUnitMorph, repcmd.TypeIDBuildingMorph,
+		repcmd.TypeIDTech, repcmd.TypeIDUpgrade, repcmd.TypeIDCancelTrain:
+		return true
+	}
+	return rallyOrder(c)
+}
+
+func rallyOrder(c repcmd.Cmd) bool {
+	t, ok := c.(*repcmd.TargetedOrderCmd)
+	return ok && t.Order != nil && (t.Order.ID == repcmd.OrderIDRallyPointUnit || t.Order.ID == repcmd.OrderIDRallyPointTile)
+}
+
+func armyAction(c repcmd.Cmd) bool {
+	switch c.BaseCmd().Type.ID {
+	case repcmd.TypeIDTargetedOrder, repcmd.TypeIDTargetedOrder121:
+		return !rallyOrder(c)
+	case repcmd.TypeIDRightClick, repcmd.TypeIDRightClick121, repcmd.TypeIDStop, repcmd.TypeIDHoldPosition,
+		repcmd.TypeIDStim, repcmd.TypeIDSiege, repcmd.TypeIDUnsiege, repcmd.TypeIDBurrow, repcmd.TypeIDUnburrow,
+		repcmd.TypeIDCloack, repcmd.TypeIDDecloack, repcmd.TypeIDUnload, repcmd.TypeIDUnload121,
+		repcmd.TypeIDUnloadAll, repcmd.TypeIDMergeArchon, repcmd.TypeIDMergeDarkArchon,
+		repcmd.TypeIDCarrierStop, repcmd.TypeIDReaverStop:
+		return true
 	}
 	return false
 }

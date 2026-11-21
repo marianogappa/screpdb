@@ -3521,6 +3521,9 @@ function App() {
   // The Hotkeys tab only exists for a player with hotkey cards; landing on it without any goes to Summary.
   const mainPlayerHasHotkeys = (mainPlayerHotkeySig?.cards || []).some((card) => card.keys?.length);
   const mainPlayerInsights = Array.isArray(mainPlayer?.insights) ? mainPlayer.insights : [];
+  const mainPlayerInsightsImproved = Array.isArray(mainPlayer?.insights_improved) ? mainPlayer.insights_improved : [];
+  const mainPlayerInsightsStrengths = Array.isArray(mainPlayer?.insights_strengths) ? mainPlayer.insights_strengths : [];
+  const mainPlayerHasInsights = mainPlayerInsights.length > 0;
   useEffect(() => {
     if (mainPlayerTab === 'hotkeys' && mainPlayerHotkeySig && !mainPlayerHasHotkeys) setMainPlayerTab('summary');
   }, [mainPlayerTab, mainPlayerHotkeySig, mainPlayerHasHotkeys]);
@@ -7304,7 +7307,7 @@ function App() {
                       onClick={() => { setMainPlayerTab('summary'); setMainPlayerSubtab(''); }}>
                       {t('tabs.summary')}
                     </button>
-                    {mainPlayerInsights.length > 0 ? (
+                    {mainPlayerHasInsights ? (
                       <button type="button" role="tab" aria-selected={mainPlayerTab === 'insights'}
                         className={`workflow-production-tab ${mainPlayerTab === 'insights' ? 'workflow-production-tab-active' : ''}`}
                         onClick={() => { setMainPlayerTab('insights'); setMainPlayerSubtab(''); }}>
@@ -7624,8 +7627,8 @@ function App() {
                     );
                   })()}
 
-                  {mainPlayerTab === 'insights' && mainPlayerInsights.length > 0 ? (
-                    <PlayerInsights insights={mainPlayerInsights} registry={markerRegistry} onOpenGame={(replayId, tab) => openMainGame(replayId, tab ? { initialGameTab: tab } : {})} />
+                  {mainPlayerTab === 'insights' && mainPlayerHasInsights ? (
+                    <PlayerInsights insights={mainPlayerInsights} improved={mainPlayerInsightsImproved} strengths={mainPlayerInsightsStrengths} registry={markerRegistry} onOpenGame={(replayId, tab) => openMainGame(replayId, tab ? { initialGameTab: tab } : {})} />
                   ) : null}
 
                   {mainPlayerTab === 'hotkeys' && (

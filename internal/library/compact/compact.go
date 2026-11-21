@@ -246,6 +246,7 @@ func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 			lp.Flags |= library.PlayerHasSkillCommands
 			lp.UsedRecalls, lp.CheckRecalls, lp.ArmyCadence = float32(c.UsedRecalls), float32(c.CheckRecalls), float32(c.ArmyCadence)
 			lp.MicroActions = float32(c.MicroActions)
+			lp.ArmyRecalls, lp.ProductionRecalls = float32(c.ArmyRecalls), float32(c.ProductionRecalls)
 		}
 		if !p.IsObserver && lp.IsHuman() {
 			lp.BotSignals = data.BotSignals[p.PlayerID]
