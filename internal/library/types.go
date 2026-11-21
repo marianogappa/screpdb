@@ -412,16 +412,18 @@ type Player struct {
 	LeaveSec            uint16
 	LeaveReason         uint16
 	Viewport            float32
-	// UsedRecalls, CheckRecalls, ArmyCadence and MicroActions are skill.Commands, set with
+	// UsedRecalls, CheckRecalls, ArmyRecalls, ProductionRecalls, ArmyCadence and MicroActions are skill.Commands, set with
 	// PlayerHasSkillCommands.
-	UsedRecalls  float32
-	CheckRecalls float32
-	ArmyCadence  float32
-	MicroActions float32
-	HotkeyStream []byte
-	Fingerprint  *Fingerprint
-	Cadence      *Cadence
-	BotSignals   botdetect.Signal
+	UsedRecalls       float32
+	CheckRecalls      float32
+	ArmyRecalls       float32
+	ProductionRecalls float32
+	ArmyCadence       float32
+	MicroActions      float32
+	HotkeyStream      []byte
+	Fingerprint       *Fingerprint
+	Cadence           *Cadence
+	BotSignals        botdetect.Signal
 }
 
 func (p *Player) IsObserver() bool { return p.Flags.Has(PlayerObserver) }

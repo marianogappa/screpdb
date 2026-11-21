@@ -37,6 +37,8 @@ const (
 	EAPM             = "eapm"
 	UsedRecalls      = "used_recalls_per_min"
 	CheckRecalls     = "check_recalls_per_min"
+	ArmyRecalls      = "army_recalls_per_min"
+	ProdRecalls      = "production_recalls_per_min"
 	ArmyCadence      = "army_cadence"
 	UnspentPerIncome = "unspent_per_income"
 	ProductionIdle   = "production_idle_share"
@@ -91,6 +93,20 @@ type MetricCuts struct {
 	// Medians are, per race, each tier's median value: the middle of its band on the axis, so a typical
 	// player of a tier sits mid-band and the band's edges are for players past the tier's middle.
 	Medians map[string][4]float64 `json:"medians,omitempty"`
+}
+
+// Scale is the key of the cuts, ends and medians a game of race against opponent ("" in team games) is placed on.
+func (mc MetricCuts) Scale(race, opponent string) string {
+	scale := AllRaces
+	if _, ok := mc.Cuts[scale]; !ok || mc.PerRace {
+		scale = race
+	}
+	if matchup := race + "v" + opponent; mc.PerMatchup && opponent != "" {
+		if _, ok := mc.Cuts[matchup]; ok {
+			scale = matchup
+		}
+	}
+	return scale
 }
 
 type Combined struct {
@@ -302,15 +318,7 @@ func (m *Model) Evaluate(race, opponent, context string, values map[string]float
 		adjusted[key] = v + m.ContextShift[AdjustKey(context, race)][key]
 	}
 	for key, mc := range m.Metrics {
-		scale := AllRaces
-		if _, ok := mc.Cuts[scale]; !ok || mc.PerRace {
-			scale = race
-		}
-		if matchup := race + "v" + opponent; mc.PerMatchup && opponent != "" {
-			if _, ok := mc.Cuts[matchup]; ok {
-				scale = matchup
-			}
-		}
+		scale := mc.Scale(race, opponent)
 		cuts, ok := mc.Cuts[scale]
 		v, has := values[key]
 		if !ok || !has {

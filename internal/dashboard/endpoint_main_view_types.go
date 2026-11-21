@@ -773,6 +773,8 @@ type workflowPlayerOverview struct {
 	// Skill averages the player's rated engine games; nil below minSkillGames.
 	Skill               *workflowPlayerSkillSummary   `json:"skill,omitempty"`
 	Insights            []workflowPlayerInsight       `json:"insights,omitempty"`
+	InsightsImproved    []workflowPlayerInsight       `json:"insights_improved,omitempty"`
+	InsightsStrengths   []workflowPlayerInsight       `json:"insights_strengths,omitempty"`
 	SummaryVersion      string                        `json:"summary_version"`
 	PlayerKey           string                        `json:"player_key"`
 	PlayerName          string                        `json:"player_name"`

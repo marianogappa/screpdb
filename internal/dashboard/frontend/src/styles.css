@@ -8187,19 +8187,37 @@ button.skill-compare-marker:hover { color: #fff; }
 
 .insight-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-items: start; }
 .insight-card {
-  display: flex; gap: 14px; padding: 16px 18px; border-radius: 12px;
+  display: flex; gap: 16px; padding: 22px 24px; border-radius: 12px;
   background: var(--insight-bg); border: 1px solid var(--insight-line);
 }
 .insight-card--bank { --insight-bg: rgba(251, 191, 36, 0.08); --insight-line: rgba(251, 191, 36, 0.28); --insight-accent: rgba(251, 191, 36, 0.95); }
 .insight-card--opener { --insight-bg: rgba(239, 68, 68, 0.08); --insight-line: rgba(239, 68, 68, 0.28); --insight-accent: rgba(248, 113, 113, 0.95); }
 .insight-card--turrets { --insight-bg: rgba(96, 165, 250, 0.08); --insight-line: rgba(96, 165, 250, 0.28); --insight-accent: rgba(147, 197, 253, 0.95); }
+.insight-card--hotkeys { --insight-bg: rgba(167, 139, 250, 0.08); --insight-line: rgba(167, 139, 250, 0.28); --insight-accent: rgba(196, 181, 253, 0.95); }
+.insight-card--production { --insight-bg: rgba(251, 191, 36, 0.08); --insight-line: rgba(251, 191, 36, 0.28); --insight-accent: rgba(251, 191, 36, 0.95); }
+.insight-card--army { --insight-bg: rgba(96, 165, 250, 0.08); --insight-line: rgba(96, 165, 250, 0.28); --insight-accent: rgba(147, 197, 253, 0.95); }
+.insight-card--improved { --insight-bg: rgba(74, 222, 128, 0.06); --insight-line: rgba(74, 222, 128, 0.22); --insight-accent: rgba(134, 239, 172, 0.95); padding: 12px 16px; }
+.insight-card-emoji { font-size: 30px; line-height: 40px; width: 40px; text-align: center; flex: none; }
+.insight-card--improved .insight-card-emoji { font-size: 22px; line-height: 28px; width: 28px; }
+.insight-card--improved .insight-card-title { font-size: 14px; }
+.insight-trend { align-self: flex-start; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.insight-trend--better { color: rgba(134, 239, 172, 0.95); background: rgba(74, 222, 128, 0.12); }
+.insight-card--strength { --insight-bg: rgba(45, 212, 191, 0.06); --insight-line: rgba(45, 212, 191, 0.22); --insight-accent: rgba(94, 234, 212, 0.95); padding: 14px 18px; align-items: center; }
+.insight-card--strength .insight-card-emoji { font-size: 22px; line-height: 28px; width: 28px; }
+.insight-card--strength .insight-card-title { font-size: 14px; }
+.insight-learn { white-space: nowrap; color: var(--insight-accent); text-decoration: none; }
+.insight-learn:hover { text-decoration: underline; }
+.insight-trend--worse { color: rgba(248, 113, 113, 0.95); background: rgba(239, 68, 68, 0.12); }
+.insight-sections { display: flex; flex-direction: column; gap: 22px; }
+.insight-improved { display: flex; flex-direction: column; gap: 10px; }
+.insight-improved-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--e-quiet); }
 .insight-card-icon { width: 40px; height: 40px; object-fit: contain; flex: none; }
-.insight-card-main { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.insight-card-main { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .insight-card-title { font-size: 16px; font-weight: 650; color: var(--insight-accent); }
 .insight-card-body { font-size: 13px; line-height: 1.45; color: var(--e-base); }
 .insight-card-stat {
   display: flex; align-items: flex-start; gap: 8px; align-self: flex-start;
-  padding: 6px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.2);
   font-size: 12px; line-height: 1.4; color: var(--e-strong); font-variant-numeric: tabular-nums;
 }
 .insight-card-stat-emoji { font-size: 14px; line-height: 1.2; }
