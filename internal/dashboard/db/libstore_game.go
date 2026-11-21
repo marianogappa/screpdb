@@ -80,14 +80,15 @@ func (s *LibStore) ListReplayPlayersForDetail(ctx context.Context, replayID int6
 			continue
 		}
 		row := ReplayPlayerDetailRow{
-			PlayerID: rowPlayerID(r, uint8(i)),
-			Name:     p.Name,
-			Color:    library.Strings.Name(p.Color),
-			Race:     p.Race.String(),
-			Team:     int64(p.Team),
-			TeamWon:  p.TeamOutcome() == models.OutcomeWon,
-			APM:      int64(p.APM),
-			EAPM:     int64(p.EAPM),
+			PlayerID:  rowPlayerID(r, uint8(i)),
+			PlayerKey: p.Key,
+			Name:      p.Name,
+			Color:     library.Strings.Name(p.Color),
+			Race:      p.Race.String(),
+			Team:      int64(p.Team),
+			TeamWon:   p.TeamOutcome() == models.OutcomeWon,
+			APM:       int64(p.APM),
+			EAPM:      int64(p.EAPM),
 		}
 		row.BotSignals = p.BotSignals
 		if p.Flags.Has(library.PlayerHasStartLocation) {

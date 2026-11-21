@@ -77,6 +77,11 @@ type Dashboard struct {
 	// the enrichment worker fetches the user's own profile against when the
 	// monitor has not learned a gateway.
 	youGateway atomic.Int64
+	// sbYou caches the user's ShieldBattery account per library version (see sbYouKey).
+	sbYou atomic.Pointer[sbYouCache]
+	// sbProfiles serves ShieldBattery players' profiles; nil without a library.
+	sbProfiles *sbProfiles
+	presence   atomic.Pointer[serverPresence]
 	// featuredExcl caches which built-in progamer profiles are the user (see
 	// excludedProIDs); refreshed after featuredExclusionTTL.
 	featuredExclMu sync.Mutex
@@ -130,6 +135,7 @@ func New(ctx context.Context, opts Options) (*Dashboard, error) {
 		return nil, fmt.Errorf("failed to open the replay library: %w", err)
 	}
 	dashboard.library = runtime
+	dashboard.sbProfiles = newSBProfiles(runtime.root)
 	dashboard.dbStore = runtime.store
 	dashboard.sampleSetAutoLoaded = runtime.sampleSetAutoLoaded
 	dashboard.refreshYouKeysBestEffort(ctx)
@@ -417,6 +423,7 @@ func (d *Dashboard) StartAsync(port int) <-chan error {
 		d.startBnetMonitor(d.ctx)
 		d.startBnetEnrich(d.ctx)
 		d.startBnetOutcomes(d.ctx)
+		d.startSBOutcomes(d.ctx)
 		d.startBnetCacheMaintenance(d.ctx)
 		d.startFeaturedProSweep(d.ctx)
 		select {

@@ -103,6 +103,7 @@ func FromReplayData(data *models.ReplayData, file FileMeta) (*library.Replay, er
 	if data.SaverDisconnect != nil {
 		r.Flags |= library.FlagSaverDisconnect
 	}
+	r.ShieldBattery = data.ShieldBattery
 
 	ords := newOrdinals(data.Players)
 	r.Players = compactPlayers(data, ords)
@@ -207,13 +208,22 @@ func (o *ordinals) fromPlayer(p *models.Player) (uint8, bool) {
 	return o.fromPID(&p.PlayerID)
 }
 
+func playerKey(data *models.ReplayData, p *models.Player) string {
+	if data.ShieldBattery != nil {
+		if id := data.ShieldBattery.UserIDs[p.PlayerID]; id != 0 {
+			return library.SBPlayerKey(id)
+		}
+	}
+	return library.PlayerKey(p.Name)
+}
+
 func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 	players := make([]library.Player, len(data.Players))
 	streamClaimed := map[byte]bool{}
 	for i, p := range data.Players {
 		lp := library.Player{
 			Name:           p.Name,
-			Key:            library.PlayerKey(p.Name),
+			Key:            playerKey(data, p),
 			Race:           library.ParseRace(p.Race),
 			Type:           library.ParsePlayerType(p.Type),
 			Team:           p.Team,
