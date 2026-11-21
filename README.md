@@ -304,7 +304,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-21  OK. Merging a complete copy's chat with the user's own copy treats a line from the same speaker with the same text within two seconds as one message, so the chat summary stops counting lines twice; no paths, network calls or allowlists change.
+2026-11-21  OK. A complete copy of a game shows only the chat from the user's own copy, re-attributed by player name, instead of merging both files' chat; no paths, network calls or allowlists change.
 ```
 
 <details>
