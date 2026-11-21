@@ -304,18 +304,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-21  OK. ShieldBattery support rebased onto main: internal/sbfacade stays the only new network path (anonymous paced GETs of shieldbattery.net/api/1 with the checks listed below) and its caches live under app-data through iofacade; the user's CSettings battle tags now only ever mark Battle.net players, never a ShieldBattery account of the same name; no other paths, network calls or allowlists change.
+2026-11-21  OK. The user's other profiles are recognised from what is already loaded: names on the same cached Battle.net account as two CSettings names, and the recorder of the user's own AutoSave replays (never downloaded complete copies), with fingerprints able to veto a recorder; a "You also play as" row lists them on the user's own pages; no new paths, network calls or allowlist changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-21  OK. ShieldBattery support rebased onto main: internal/sbfacade stays the only new network path (anonymous paced GETs of shieldbattery.net/api/1 with the checks listed below) and its caches live under app-data through iofacade; the user's CSettings battle tags now only ever mark Battle.net players, never a ShieldBattery account of the same name; no other paths, network calls or allowlists change.
 2026-11-16  OK. ShieldBattery outcomes: a new sanctioned facade, internal/sbfacade, makes anonymous paced GETs of https://shieldbattery.net/api/1/games/<uuid> (game id format checked, no redirects, 1 MB read cap, no credentials or cookies) for ShieldBattery replays whose winner is undecided, and caches settled records at <app-data>/shieldbattery/games.json through iofacade; the enforcement test skips internal/sbfacade alongside the other facades.
 2026-11-16  OK. ShieldBattery profiles and replays: internal/sbfacade also makes anonymous GETs of https://shieldbattery.net/api/1/users/<id>/profile and /api/1/users/batch-info (at most 50 ids a request), and downloads replays only from https://cdn.shieldbattery.net/replays/ (https only, exact host, no redirects, 16 MB cap, kept only when the sha256 matches the game record and the seRS magic is present); every request shares the existing 2 second pacer and 429 pause, and profiles are cached at <app-data>/shieldbattery/profiles.json through iofacade; no allowlist or enforcement test changes.
 2026-11-16  OK. ShieldBattery pro accounts: a dev and CI only script, scripts/sb-pros (not in the shipped binary), GETs a public TeamLiquid post and ShieldBattery's public users/batch-info API and writes internal/propack/data/shieldbattery.json, which the app only reads as embedded data to attach confirmed ShieldBattery accounts to built-in pros; no runtime paths, network calls or allowlists change.
 2026-11-16  OK. ShieldBattery profiles and replays: internal/sbfacade also makes anonymous GETs of https://shieldbattery.net/api/1/users/<id>/profile and /api/1/users/batch-info (at most 50 ids a request), and downloads replays only from https://cdn.shieldbattery.net/replays/ (https only, exact host, no redirects, 16 MB cap, kept only when the sha256 matches the game record and the seRS magic is present); every request shares the existing 2 second pacer and 429 pause, and profiles are cached at <app-data>/shieldbattery/profiles.json through iofacade; the pacer also counts the day's requests in memory for the status pill; no allowlist or enforcement test changes.
-2026-11-20  OK. GitHub Pages serves a static landing page from site/ instead of the WASM demo, which is removed along with its WASM-only dashboard hooks, and the README links to it first; no paths, network calls or allowlists change.
 ```
 
 </details>

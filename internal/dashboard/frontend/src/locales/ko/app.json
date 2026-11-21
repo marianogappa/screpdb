@@ -373,6 +373,7 @@
   "player.bnet.gamesLastWeek": "지난 한 주 {count}판",
   "player.bnet.allTimeApm": "통산 APM",
   "player.bnet.outdated": "오래된 정보",
+  "player.youAlsoPlayAs": "내 다른 아이디",
   "player.bnet.alsoPlaysAs": "다른 계정",
   "player.bnet.recentGames": "🏁 최근 게임",
   "player.bnet.playersCount": "{count}명",
