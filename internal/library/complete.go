@@ -2,7 +2,7 @@ package library
 
 import (
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -41,52 +41,31 @@ func CompletePathFor(path string) string {
 	return path[:len(path)-len(ext)] + CompleteSuffix + ext
 }
 
-// MergeChat returns dst's chat with src's lines folded in. Both records hold
-// the same game, but the two files may disagree on player order, so src lines
-// are re-attributed by player name; lines whose speaker is not in dst are
-// dropped. The merge is idempotent: changed is false when dst already holds
-// every src line.
-func MergeChat(dst, src *Replay) (merged []ChatLine, changed bool) {
-	ordinalByName := make(map[string]uint8, len(dst.Players))
-	for i := range dst.Players {
-		if _, ok := ordinalByName[dst.Players[i].Name]; !ok {
-			ordinalByName[dst.Players[i].Name] = uint8(i)
+// OwnChat returns the own copy's chat re-attributed to the complete record's
+// player order, which may differ, by player name. The complete copy was
+// recorded by someone else, so its own chat is never shown; lines whose speaker
+// is not in complete are dropped. changed is false when complete already holds
+// exactly that chat.
+func OwnChat(complete, own *Replay) (chat []ChatLine, changed bool) {
+	ordinalByName := make(map[string]uint8, len(complete.Players))
+	for i := range complete.Players {
+		if _, ok := ordinalByName[complete.Players[i].Name]; !ok {
+			ordinalByName[complete.Players[i].Name] = uint8(i)
 		}
 	}
-	type chatKey struct {
-		player uint8
-		sec    uint16
-		text   string
-	}
-	seen := make(map[chatKey]struct{}, len(dst.Chat))
-	merged = append(merged, dst.Chat...)
-	for _, line := range merged {
-		seen[chatKey{line.Player, line.Sec, line.Text}] = struct{}{}
-	}
-	for _, line := range src.Chat {
-		if int(line.Player) >= len(src.Players) {
+	chat = make([]ChatLine, 0, len(own.Chat))
+	for _, line := range own.Chat {
+		if int(line.Player) >= len(own.Players) {
 			continue
 		}
-		ord, ok := ordinalByName[src.Players[line.Player].Name]
+		ord, ok := ordinalByName[own.Players[line.Player].Name]
 		if !ok {
 			continue
 		}
-		key := chatKey{ord, line.Sec, line.Text}
-		if _, dup := seen[key]; dup {
-			continue
-		}
-		seen[key] = struct{}{}
-		merged = append(merged, ChatLine{Player: ord, Sec: line.Sec, Text: line.Text})
-		changed = true
+		chat = append(chat, ChatLine{Player: ord, Sec: line.Sec, Text: line.Text})
 	}
-	if !changed {
-		return dst.Chat, false
+	if slices.Equal(chat, complete.Chat) {
+		return complete.Chat, false
 	}
-	sort.SliceStable(merged, func(i, j int) bool {
-		if merged[i].Sec != merged[j].Sec {
-			return merged[i].Sec < merged[j].Sec
-		}
-		return merged[i].Player < merged[j].Player
-	})
-	return merged, true
+	return chat, true
 }
