@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseWorkflowGamesListFilters(t *testing.T) {
-	req := httptest.NewRequest("GET", "/?player=Bisu,Flash&map=Fighting+Spirit&duration=short&featuring=cheese&matchup=pvz&map_kind=regular", nil)
+	req := httptest.NewRequest("GET", "/?player=Bisu,Flash&map=Fighting+Spirit&duration=short&featuring=cheese&matchup=pvz&map_kind=regular&name=+Bisu+", nil)
 	got := parseWorkflowGamesListFilters(req)
 	if !reflect.DeepEqual(got.PlayerKeys, []string{"bisu", "flash"}) {
 		t.Errorf("PlayerKeys = %v", got.PlayerKeys)
@@ -23,6 +23,9 @@ func TestParseWorkflowGamesListFilters(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got.MapKindKeys, []string{"regular"}) {
 		t.Errorf("MapKindKeys = %v", got.MapKindKeys)
+	}
+	if got.NameContains != "Bisu" {
+		t.Errorf("NameContains = %q", got.NameContains)
 	}
 
 	empty := parseWorkflowGamesListFilters(httptest.NewRequest("GET", "/", nil))

@@ -17,6 +17,7 @@ type GamesQuery struct {
 	Featuring       []string
 	MatchupKeys     []string
 	MapKindKeys     []string
+	NameContains    string
 }
 
 // PlayersQuery is the players-list selection, including its sort, because the
