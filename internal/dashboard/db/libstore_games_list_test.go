@@ -139,6 +139,10 @@ func TestLibStoreGamesFilterAxes(t *testing.T) {
 		{"player", GamesQuery{PlayerKeys: []string{"flash"}}, []int64{flashTvZ.ID}},
 		{"player or", GamesQuery{PlayerKeys: []string{"flash", "bisu"}}, []int64{flashTvZ.ID, bisuPvP.ID}},
 		{"player miss", GamesQuery{PlayerKeys: []string{"nobody"}}, nil},
+		{"name substring", GamesQuery{NameContains: "las"}, []int64{flashTvZ.ID}},
+		{"name ignores case and spaces", GamesQuery{NameContains: "  BIS "}, []int64{bisuPvP.ID}},
+		{"name miss", GamesQuery{NameContains: "nobody"}, nil},
+		{"name ANDs with player", GamesQuery{NameContains: "flash", PlayerKeys: []string{"bisu"}}, nil},
 		{"map", GamesQuery{MapNames: []string{"polypoid"}}, []int64{bisuPvP.ID}},
 		{"map or", GamesQuery{MapNames: []string{"polypoid", "fighting spirit"}}, []int64{flashTvZ.ID, bisuPvP.ID}},
 		{"duration under", GamesQuery{DurationBuckets: []string{"under_10m"}}, []int64{flashTvZ.ID}},
@@ -192,6 +196,9 @@ func TestLibStoreGamesFilterIgnoresObserverSlots(t *testing.T) {
 
 	if got := listedIDs(t, s, GamesQuery{PlayerKeys: []string{"artosis"}}); len(got) != 0 {
 		t.Fatalf("observer slot matched the player axis: %v", got)
+	}
+	if got := listedIDs(t, s, GamesQuery{NameContains: "artosis"}); len(got) != 0 {
+		t.Fatalf("observer slot matched the name filter: %v", got)
 	}
 	if got := listedIDs(t, s, GamesQuery{PlayerKeys: []string{"flash"}}); len(got) != 1 {
 		t.Fatalf("player axis missed a real slot: %v", got)
