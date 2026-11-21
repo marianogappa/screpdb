@@ -31,6 +31,12 @@
         "name": "K_BishOp"
       }
     ],
+    "bisu": [
+      {
+        "id": 19701,
+        "name": "Bisu89"
+      }
+    ],
     "effort": [
       {
         "id": 18384,
@@ -153,6 +159,12 @@
         "name": "gnsl418"
       }
     ],
+    "sai": [
+      {
+        "id": 15513,
+        "name": "Jat"
+      }
+    ],
     "scan": [
       {
         "id": 766,
@@ -168,7 +180,7 @@
     "shine": [
       {
         "id": 18444,
-        "name": "StimmedGhost062"
+        "name": "Shine"
       }
     ],
     "shinee": [
@@ -179,6 +191,12 @@
       {
         "id": 17981,
         "name": "SHinee."
+      }
+    ],
+    "shuttle": [
+      {
+        "id": 18962,
+        "name": "jk890202"
       }
     ],
     "snow": [
@@ -221,6 +239,12 @@
       {
         "id": 17405,
         "name": "Stork"
+      }
+    ],
+    "tyson": [
+      {
+        "id": 18732,
+        "name": "jihoonpark"
       }
     ],
     "zelot": [
