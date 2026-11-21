@@ -41,11 +41,18 @@ func CompletePathFor(path string) string {
 	return path[:len(path)-len(ext)] + CompleteSuffix + ext
 }
 
+// chatEchoToleranceSec bounds how far apart two recordings of one game log the
+// same chat line: each client records it on the frame it arrived, so the copies
+// drift by a few frames and can straddle a second boundary.
+const chatEchoToleranceSec = 2
+
 // MergeChat returns dst's chat with src's lines folded in. Both records hold
 // the same game, but the two files may disagree on player order, so src lines
 // are re-attributed by player name; lines whose speaker is not in dst are
-// dropped. The merge is idempotent: changed is false when dst already holds
-// every src line.
+// dropped. A src line is the same message as an unmatched dst line from the
+// same speaker with the same text within chatEchoToleranceSec, so repeated
+// messages are kept once per repetition. The merge is idempotent: changed is
+// false when dst already holds every src line.
 func MergeChat(dst, src *Replay) (merged []ChatLine, changed bool) {
 	ordinalByName := make(map[string]uint8, len(dst.Players))
 	for i := range dst.Players {
@@ -55,13 +62,13 @@ func MergeChat(dst, src *Replay) (merged []ChatLine, changed bool) {
 	}
 	type chatKey struct {
 		player uint8
-		sec    uint16
 		text   string
 	}
-	seen := make(map[chatKey]struct{}, len(dst.Chat))
+	unmatched := make(map[chatKey][]int, len(dst.Chat))
 	merged = append(merged, dst.Chat...)
-	for _, line := range merged {
-		seen[chatKey{line.Player, line.Sec, line.Text}] = struct{}{}
+	for i, line := range merged {
+		key := chatKey{line.Player, line.Text}
+		unmatched[key] = append(unmatched[key], i)
 	}
 	for _, line := range src.Chat {
 		if int(line.Player) >= len(src.Players) {
@@ -71,11 +78,22 @@ func MergeChat(dst, src *Replay) (merged []ChatLine, changed bool) {
 		if !ok {
 			continue
 		}
-		key := chatKey{ord, line.Sec, line.Text}
-		if _, dup := seen[key]; dup {
+		key := chatKey{ord, line.Text}
+		candidates := unmatched[key]
+		best, bestDiff := -1, chatEchoToleranceSec+1
+		for c, idx := range candidates {
+			diff := int(merged[idx].Sec) - int(line.Sec)
+			if diff < 0 {
+				diff = -diff
+			}
+			if diff < bestDiff {
+				best, bestDiff = c, diff
+			}
+		}
+		if best >= 0 {
+			unmatched[key] = append(candidates[:best], candidates[best+1:]...)
 			continue
 		}
-		seen[key] = struct{}{}
 		merged = append(merged, ChatLine{Player: ord, Sec: line.Sec, Text: line.Text})
 		changed = true
 	}

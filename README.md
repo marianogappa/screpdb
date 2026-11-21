@@ -304,18 +304,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-20  OK. GitHub Pages serves a static landing page from site/ instead of the WASM demo, which is removed along with its WASM-only dashboard hooks, and the README links to it first; no paths, network calls or allowlists change.
+2026-11-21  OK. Merging a complete copy's chat with the user's own copy treats a line from the same speaker with the same text within two seconds as one message, so the chat summary stops counting lines twice; no paths, network calls or allowlists change.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-20  OK. GitHub Pages serves a static landing page from site/ instead of the WASM demo, which is removed along with its WASM-only dashboard hooks, and the README links to it first; no paths, network calls or allowlists change.
 2026-11-20  OK. Game events: engine drops that land on Big Game Hunters' corner cliffs are cliff drops, High Templar and Lurker drops are named like Reaver and DT drops when they are most of what landed, everywhere drops are listed or filtered, and the overrun pill and games list chip are gone while the overrun event stays; a pill whose event the list hides is no longer a link; an army standing in a base its owner holds overruns nobody; drops read "drops with", air harass reads from the attacker's side and a razing Recall names the workers it killed; dashboard and detectors only, no new paths, network calls or allowlist changes.
 2026-11-20  OK. Game Events base names (main base, natural, expa N, owner and clock forms) and the Korean drop, scout, nydus and nuke word order are localized in the frontend catalogs; no new paths, network calls or allowlist changes.
 2026-11-20  OK. Engine games time when the first Mutalisks reach a Terran base and count the Turrets up then, shown on the Mutalisk timing tab; an Insights (Beta) tab for the viewer's own Advanced player lists strict, example-backed advice from their Terran games; the player's last games show the same pills as the game summary, opening the event or build order they name; the beta mark's hint shows on hover at once; reads digests and library data already in memory over the dashboard's own API, no new paths, network calls or allowlist changes.
 2026-11-19  OK. Game insights leave Labs and are on for everyone: the game_insights flag is removed and the Labs tab hides again; no new paths, network calls or allowlist changes.
-2026-11-19  OK. Labs turning points take the viewer's side: the user's own turning point (an ally's when the user followed a beaten ally out) and, with a complete recording, why the game ended, each with its stage button and told to the user as "you" with the force that did it measured from engine army snapshots already in memory; exact engine snapshots start when a game opens and the last few games stay decoded in memory, with seconds past a game's end remembered so they are not replayed on every request; Game Events rows say "you" for the user, name main bases after their owner, fold an overrun's own worker kills into it and match bases to players by the layout clock of where each started; a crushing rush can be a turning point, the openers title wraps narrower and games with no complete copy say just "Turning point" , the openers map draws bases like the engine event maps , what an event is about glows on its map, a base is named after whoever holds it, a player's own base reads "their" or "their own" , hits that keep coming at one base read as one push , an army in a base its owner holds is no overrun, a game redone on a newer engine says so and a complete copy the engine cannot run falls back to the own recording, the force a turning point names is covered by tests and a game redone on a newer engine reads its new digest at once; reads the user's battle tags the dashboard already loads, no new paths, network calls or allowlist changes.
 ```
 
 </details>

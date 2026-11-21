@@ -169,3 +169,54 @@ func TestMergeChatIdempotent(t *testing.T) {
 		t.Fatal("second merge reported a change")
 	}
 }
+
+func TestMergeChatDedupesLinesLoggedAcrossASecondBoundary(t *testing.T) {
+	date := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	own := librarytest.Replay(
+		librarytest.WithDate(date),
+		librarytest.WithPlayer("Flash"),
+		librarytest.WithPlayer("Bisu"),
+		librarytest.WithChat(0, 463, "do something"),
+		librarytest.WithChat(1, 595, "5"),
+		librarytest.WithChat(1, 596, "5"),
+		librarytest.WithChat(1, 596, "5"),
+	)
+	complete := librarytest.Replay(
+		librarytest.WithDate(date),
+		librarytest.WithPlayer("Bisu"),
+		librarytest.WithPlayer("Flash"),
+		librarytest.WithChat(1, 464, "do something"),
+		librarytest.WithChat(0, 595, "5"),
+		librarytest.WithChat(0, 595, "5"),
+		librarytest.WithChat(0, 597, "5"),
+	)
+	merged, changed := library.MergeChat(complete, own)
+	if changed {
+		t.Fatalf("merge added echoes of lines already present: %v", merged)
+	}
+	if len(merged) != 4 {
+		t.Fatalf("chat lines: got %v want 4", merged)
+	}
+}
+
+func TestMergeChatKeepsRepeatsBeyondTheEchoTolerance(t *testing.T) {
+	date := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	own := librarytest.Replay(
+		librarytest.WithDate(date),
+		librarytest.WithPlayer("Flash"),
+		librarytest.WithChat(0, 10, "gg"),
+		librarytest.WithChat(0, 900, "gg"),
+	)
+	complete := librarytest.Replay(
+		librarytest.WithDate(date),
+		librarytest.WithPlayer("Flash"),
+		librarytest.WithChat(0, 11, "gg"),
+	)
+	merged, changed := library.MergeChat(complete, own)
+	if !changed || len(merged) != 2 {
+		t.Fatalf("chat lines: got %v changed=%v want 2 lines", merged, changed)
+	}
+	if merged[1].Sec != 900 {
+		t.Fatalf("late repeat lost: %v", merged)
+	}
+}
