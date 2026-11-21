@@ -29,6 +29,7 @@ import HotkeyTimeline from './components/charts/HotkeyTimeline';
 import HotkeyMaps from './components/charts/HotkeyMaps';
 import HotkeySignature from './components/charts/HotkeySignature';
 import OneRowPills from './components/OneRowPills';
+import YouAlsoPlayAs from './components/YouAlsoPlayAs';
 import PlayerInsights from './components/PlayerInsights';
 import AllianceTimeline from './components/charts/AllianceTimeline';
 import { getUnitIcon, getWorkerIconForRace, normalizeUnitName } from './lib/gameAssets';
@@ -7404,6 +7405,7 @@ function App() {
                     ) : null}
                   </div>
                 </div>
+                {!isFeaturedPlayer ? <YouAlsoPlayAs profiles={mainPlayer?.you_profiles} onOpenPlayer={openMainPlayer} /> : null}
                 {mainPlayerLoading ? (
                   <div className="workflow-meta">
                     <span className="workflow-subtle-note">{t('player.loadingOverview')}</span>
@@ -7505,7 +7507,7 @@ function App() {
                             {!bnetHasAnswer ? (
                               <div className="chart-empty">{bnetAbsenceMessage}</div>
                             ) : (<>
-                            {aliases.length ? (
+                            {aliases.length && !isYou ? (
                               <div className="wps-aliases">
                                 <span className="wps-aliases-label">{t('player.bnet.alsoPlaysAs')}</span>
                                 <div className="wps-aliases-list">
