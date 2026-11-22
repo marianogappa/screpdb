@@ -22,8 +22,6 @@
   "omnibar.total.games": "{total} games",
   "omnibar.total.players": "{total} players",
   "omnibar.clear": "clear",
-  "omnibar.textFilterEmpty.games": "No filter options match. Showing games whose name contains {query}.",
-  "omnibar.textFilterEmpty.players": "No filter options match. Showing players whose name contains {query}.",
   "omnibar.empty": "Nothing matches {query}. Try a build order ({buildOrder}), a tactic ({tactic}), a map, or a player.",
   "omnibar.exampleBuildOrder": "9 Pool",
   "omnibar.exampleTactic": "Cannon Rush",

@@ -247,6 +247,7 @@ func parseWorkflowGamesListFilters(r *http.Request) workflowGamesListFilters {
 		FeaturingKeys:   parseCSVQueryValues(r.URL.Query()["featuring"], true),
 		MatchupKeys:     parseCSVQueryValues(r.URL.Query()["matchup"], true),
 		MapKindKeys:     parseCSVQueryValues(r.URL.Query()["map_kind"], true),
+		NameContains:    strings.TrimSpace(r.URL.Query().Get("name")),
 	}
 }
 
@@ -280,6 +281,7 @@ func buildGamesQuery(filters workflowGamesListFilters) dashboarddb.GamesQuery {
 		Featuring:       filters.FeaturingKeys,
 		MatchupKeys:     filters.MatchupKeys,
 		MapKindKeys:     filters.MapKindKeys,
+		NameContains:    filters.NameContains,
 	}
 }
 
