@@ -13,12 +13,9 @@ import (
 	"github.com/marianogappa/screpdb/internal/skill"
 )
 
-// Insights are advice drawn from the viewer's own games against what progamers do. They are shown only to
-// Advanced players: a progamer needs no advice, and a beginner's games have bigger problems. Every rule is
-// strict, so an insight that shows is one the numbers say plainly.
-//
-// Pro references come from 2026 ladder games of 18 Korean progamer Terrans (549 games, cwal.gg), so every
-// insight is about the viewer's Terran games for now.
+// Insights are advice drawn from the viewer's own games, never shown to a progamer. The tiered rules
+// (player_insights_tiered.go) compare a player with the next tier up; Advanced players also get the Terran rules
+// below, whose references come from 2026 ladder games of 18 Korean progamer Terrans (549 games, cwal.gg).
 type workflowPlayerInsight struct {
 	Key      string                   `json:"key"`
 	Games    int                      `json:"games"`
@@ -26,6 +23,14 @@ type workflowPlayerInsight struct {
 	Examples []workflowInsightExample `json:"examples"`
 	// From is the date of the oldest game the insight reads.
 	From string `json:"from"`
+	// Reliability is how far the insight can be trusted: how closely its metric followed MMR on the ladder,
+	// times the share of the player's games that show it at 95% confidence.
+	Reliability float64 `json:"reliability"`
+	// Trend is "better" or "worse" when the newest games differ reliably from the ones before them.
+	Trend string `json:"trend,omitempty"`
+	// Learn is a page that teaches the technique the insight asks for.
+	Learn  string `json:"learn,omitempty"`
+	family string
 }
 
 // workflowInsightExample is a recent game that shows an insight, opened on Tab.
@@ -71,21 +76,24 @@ type insightGame struct {
 	duration int
 }
 
-func (d *Dashboard) playerInsights(playerKey string, s *workflowPlayerSkillSummary) []workflowPlayerInsight {
-	if d.library == nil || s == nil || s.Combined.Tier != skill.TierAdvanced {
-		return nil
+func (d *Dashboard) playerInsights(playerKey string, s *workflowPlayerSkillSummary) (shown, improved, strengths []workflowPlayerInsight) {
+	if d.library == nil || s == nil || s.Combined.Tier >= skill.TierPro {
+		return nil, nil, nil
 	}
 	if !d.isYouKey(playerKey) {
-		return nil
+		return nil, nil, nil
+	}
+	shown, improved, strengths = d.tieredInsights(playerKey, s)
+	if s.Combined.Tier != skill.TierAdvanced {
+		return shown, improved, strengths
 	}
 	games := insightGames(d.library.lib.View().PlayerGames(playerKey))
-	var out []workflowPlayerInsight
 	for _, rule := range []func([]insightGame) *workflowPlayerInsight{floatingInsight, openerInsight, earlyTurretsInsight} {
-		if in := rule(games); in != nil {
-			out = append(out, *in)
+		if in := rule(games); in != nil && len(shown) < maxShownInsights {
+			shown = append(shown, *in)
 		}
 	}
-	return out
+	return shown, improved, strengths
 }
 
 // insightGames are the player's decided 1v1 Terran games against a human, from the skill window.
