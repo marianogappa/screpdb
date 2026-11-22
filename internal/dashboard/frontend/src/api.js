@@ -158,6 +158,8 @@ export const api = {
     mapKindFilters.forEach((value) => {
       if (String(value || '').trim()) params.append('map_kind', String(value).trim());
     });
+    const name = String(filters.name || '').trim();
+    if (name) params.set('name', name);
     const response = await fetch(`${API_BASE}/games?${params.toString()}`);
     if (!response.ok) {
       const text = await response.text();

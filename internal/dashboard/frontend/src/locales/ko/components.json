@@ -22,8 +22,6 @@
   "omnibar.total.games": "게임 {total}판",
   "omnibar.total.players": "플레이어 {total}명",
   "omnibar.clear": "초기화",
-  "omnibar.textFilterEmpty.games": "일치하는 필터 옵션이 없습니다. 이름에 {query}이(가) 포함된 게임을 표시합니다.",
-  "omnibar.textFilterEmpty.players": "일치하는 필터 옵션이 없습니다. 이름에 {query}이(가) 포함된 플레이어를 표시합니다.",
   "omnibar.empty": "{query}과(와) 일치하는 항목이 없습니다. 빌드 오더({buildOrder}), 전술({tactic}), 맵 또는 플레이어 이름을 입력해 보세요.",
   "omnibar.exampleBuildOrder": "9풀",
   "omnibar.exampleTactic": "캐논 러시",
