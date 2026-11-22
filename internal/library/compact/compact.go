@@ -236,6 +236,9 @@ func compactPlayers(data *models.ReplayData, ords *ordinals) []library.Player {
 		if p.IsObserver {
 			lp.Flags |= library.PlayerObserver
 		}
+		if data.SaverPlayerID != nil && *data.SaverPlayerID == p.PlayerID {
+			lp.Flags |= library.PlayerSaver
+		}
 		lp.PlayerOutcomeReason = p.PlayerOutcomeReason
 		lp.Flags |= library.OutcomeFlags(p.PlayerOutcome, library.PlayerResultWon, library.PlayerResultLost)
 		lp.Flags |= library.OutcomeFlags(p.TeamOutcome, library.TeamResultWon, library.TeamResultLost)
