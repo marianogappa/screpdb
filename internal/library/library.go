@@ -649,7 +649,7 @@ func (w *workingSet) mutate(r *Replay, apply func(*Replay)) *Replay {
 // reconcileComplete keeps the "-complete" pairing (issue #341) consistent
 // around any change to path: when both the user's own copy and a complete copy
 // of one game are present, the own copy is superseded (hidden by the global
-// filter) and its chat is folded into the complete record; when the pair is
+// filter) and its chat replaces the complete record's; when the pair is
 // broken the own copy is reinstated.
 func (w *workingSet) reconcileComplete(path string) {
 	basePath, completePath := path, CompletePathFor(path)
@@ -662,8 +662,8 @@ func (w *workingSet) reconcileComplete(path string) {
 		if !base.Flags.Has(FlagSuperseded) {
 			base = w.mutate(base, func(r *Replay) { r.Flags |= FlagSuperseded })
 		}
-		if merged, changed := MergeChat(complete, base); changed {
-			w.mutate(complete, func(r *Replay) { r.Chat = merged })
+		if chat, changed := OwnChat(complete, base); changed {
+			w.mutate(complete, func(r *Replay) { r.Chat = chat })
 		}
 		return
 	}
