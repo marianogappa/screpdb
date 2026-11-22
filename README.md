@@ -311,11 +311,11 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-21  OK. The downloadable Skill card's tier medal is a little larger and its label shrinks to fit inside it, so Intermediate no longer runs over the circle; dashboard rendering only, no new paths, network calls or allowlist changes.
 2026-11-21  OK. The user's other profiles are recognised from what is already loaded: names on the same cached Battle.net account as two CSettings names, and the recorder of the user's own AutoSave replays (never downloaded complete copies), with fingerprints able to veto a recorder; a "You also play as" row lists them on the user's own pages; no new paths, network calls or allowlist changes.
 2026-11-21  OK. ShieldBattery support rebased onto main: internal/sbfacade stays the only new network path (anonymous paced GETs of shieldbattery.net/api/1 with the checks listed below) and its caches live under app-data through iofacade; the user's CSettings battle tags now only ever mark Battle.net players, never a ShieldBattery account of the same name; no other paths, network calls or allowlists change.
 2026-11-21  OK. A complete copy of a game shows only the chat from the user's own copy, re-attributed by player name, instead of merging both files' chat; no paths, network calls or allowlists change.
 2026-11-21  OK. The games list gains a player-name substring filter (`name` query parameter, matched in memory against the loaded library), and the omnibar stops covering results while typing a name; no paths, network calls or allowlists change.
-2026-11-20  OK. Game events: engine drops that land on Big Game Hunters' corner cliffs are cliff drops, High Templar and Lurker drops are named like Reaver and DT drops when they are most of what landed, everywhere drops are listed or filtered, and the overrun pill and games list chip are gone while the overrun event stays; a pill whose event the list hides is no longer a link; an army standing in a base its owner holds overruns nobody; drops read "drops with", air harass reads from the attacker's side and a razing Recall names the workers it killed; dashboard and detectors only, no new paths, network calls or allowlist changes.
 ```
 
 </details>
