@@ -481,7 +481,9 @@ export function SkillCard({ summary, name, races, apm, onDownload }) {
   const ICON = 18;
   const identityWidth = races.length * (ICON + 4) + (apmText ? (races.length ? 6 : 0) + textWidth(apmText, 12) : 0);
   let identityX = mid - identityWidth / 2;
-  const medalY = 128, medalR = 50;
+  const medalY = 134, medalR = 56;
+  const tierText = tierLabel(t, summary);
+  const tierSize = Math.min(16, (16 * (2 * medalR - 18)) / textWidth(tierText, 16, 600));
   let y = medalY + medalR + 22;
   const sparkTop = y;
   if (charted) y += 46 + 16;
@@ -505,7 +507,7 @@ export function SkillCard({ summary, name, races, apm, onDownload }) {
         })}
         {apmText ? <text x={identityX + (races.length ? 2 : 0)} y="61" fill={CARD.muted} fontSize="12" dominantBaseline="middle">{apmText}</text> : null}
         <circle cx={mid} cy={medalY} r={medalR} fill={TIER_COLORS[combined.tier]} fillOpacity="0.1" stroke={TIER_COLORS[combined.tier]} strokeOpacity="0.65" strokeWidth="3" />
-        <text x={mid} y={direction ? medalY - 3 : medalY + 5} fill={TIER_TEXT[combined.tier]} fontSize="16" fontWeight="600" textAnchor="middle">{tierLabel(t, summary)}</text>
+        <text x={mid} y={direction ? medalY - 3 : medalY + 5} fill={TIER_TEXT[combined.tier]} fontSize={tierSize} fontWeight="600" textAnchor="middle">{tierText}</text>
         {direction ? <text x={mid} y={medalY + 16} fill={TREND_COLORS[direction]} fontSize="11" fontWeight="600" textAnchor="middle">{t(`skill.trend.${direction}`)}</text> : null}
         {charted ? <Sparkline timeline={timeline} windowFrom={summary.window_from} top={sparkTop} height={46} /> : null}
         {metrics.map((m, i) => (
