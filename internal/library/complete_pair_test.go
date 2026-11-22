@@ -84,13 +84,12 @@ func TestCompletePairSupersedesAndMergesChat(t *testing.T) {
 				t.Fatal("complete record hidden by the filter")
 			}
 
-			// Chat is the union of both files, re-attributed by name: the
+			// Chat is the own copy's only, re-attributed by name: the
 			// complete file lists Bisu first, so Flash's "gl hf" maps to
-			// ordinal 1 and the shared "u2" line dedupes.
+			// ordinal 1, and the complete copy's own "gg" is dropped.
 			want := []library.ChatLine{
 				{Player: 1, Sec: 10, Text: "gl hf"},
 				{Player: 0, Sec: 12, Text: "u2"},
-				{Player: 1, Sec: 900, Text: "gg"},
 			}
 			if len(completeRec.Chat) != len(want) {
 				t.Fatalf("chat lines: got %v want %v", completeRec.Chat, want)
@@ -158,14 +157,14 @@ func TestCompletePairIdenticalContentDoesNotSelfPair(t *testing.T) {
 	}
 }
 
-func TestMergeChatIdempotent(t *testing.T) {
+func TestOwnChatIdempotent(t *testing.T) {
 	own, complete := pairFixtures(time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
-	merged, changed := library.MergeChat(complete, own)
+	chat, changed := library.OwnChat(complete, own)
 	if !changed {
-		t.Fatal("first merge reported no change")
+		t.Fatal("first call reported no change")
 	}
-	complete.Chat = merged
-	if _, changed = library.MergeChat(complete, own); changed {
-		t.Fatal("second merge reported a change")
+	complete.Chat = chat
+	if _, changed = library.OwnChat(complete, own); changed {
+		t.Fatal("second call reported a change")
 	}
 }
