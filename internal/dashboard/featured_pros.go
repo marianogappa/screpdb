@@ -159,7 +159,7 @@ func (d *Dashboard) featuredPro(playerKey string) *propack.Pro {
 // signals, any of which suffices: one of the user's account names is a known
 // toon of the pro; a cached Battle.net profile of a user account carries one of
 // the pro's aurora IDs; or the user's own replays fingerprint-match the pro at
-// high confidence. Only the CSettings-derived "you" accounts are ever tested.
+// high confidence. Every profile the app recognises as the user is tested.
 func (d *Dashboard) excludedProIDs(pack *propack.Pack) map[string]bool {
 	d.featuredExclMu.Lock()
 	defer d.featuredExclMu.Unlock()
