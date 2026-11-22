@@ -186,3 +186,20 @@ func TestBnetLossNamesTheWinnerOfAOneOnOne(t *testing.T) {
 	got, _ := lib.Snapshot().ByChecksum(r.Checksum)
 	assertOutcomes(t, got, lost, won)
 }
+
+func TestShieldBatteryRecordsNameTheirService(t *testing.T) {
+	lib := newTestLibrary(t, library.Options{})
+	r := librarytest.Replay(librarytest.WithPlayer("me"), librarytest.WithPlayer("foe"))
+	r.ShieldBattery = &models.ShieldBatteryGame{GameID: "g", UserIDs: map[byte]uint32{0: 1, 1: 2}}
+	lib.Add(0, r)
+	lib.SetBnetResults(r.Checksum, []library.BnetResult{{Key: "me", Outcome: models.OutcomeWon}}, "game g")
+	lib.Flush()
+	got, _ := lib.Snapshot().ByChecksum(r.Checksum)
+	assertOutcomes(t, got, won, lost)
+	if got.TeamOutcomeReason != "ShieldBattery names me as winning" {
+		t.Errorf("reason %q", got.TeamOutcomeReason)
+	}
+	if got.Players[0].PlayerOutcomeReason != "ShieldBattery records a win for them" {
+		t.Errorf("player reason %q", got.Players[0].PlayerOutcomeReason)
+	}
+}

@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"github.com/marianogappa/scfingerprint"
+	"github.com/marianogappa/screpdb/internal/library"
 )
 
 const (
@@ -40,6 +41,9 @@ func fingerprintBadge(m *workflowFingerprintMatch) *IdentityBadge {
 }
 
 func (d *Dashboard) accountBadge(playerKey string) *IdentityBadge {
+	if library.IsSBKey(playerKey) {
+		return d.sbAccountBadge(playerKey)
+	}
 	reg := d.fingerprintRegistry()
 	if reg == nil {
 		return nil
@@ -66,6 +70,31 @@ func (d *Dashboard) accountBadge(playerKey string) *IdentityBadge {
 	}
 
 	return d.accountBadgeWithoutConfirmation(playerKey, reg)
+}
+
+// sbAccountBadge confirms a ShieldBattery account from the pro list, which names accounts, never names: on
+// ShieldBattery anyone can take a pro's name.
+func (d *Dashboard) sbAccountBadge(playerKey string) *IdentityBadge {
+	userID, ok := library.SBUserIDFromKey(playerKey)
+	if !ok {
+		return nil
+	}
+	pack := d.loadProPack()
+	if pack == nil {
+		return nil
+	}
+	pro, ok := pack.ProBySBUserID(userID)
+	if !ok {
+		return nil
+	}
+	return &IdentityBadge{
+		Kind:         badgeKindAccount,
+		Tier:         fingerprintTierConfirmed,
+		Label:        pro.Label,
+		Liquipedia:   pro.Liquipedia,
+		EvidenceKey:  "identity.badge.accountConfirmedEvidence",
+		EvidenceArgs: []string{pro.Label, "ShieldBattery"},
+	}
 }
 
 func (d *Dashboard) accountBadgeWithoutConfirmation(playerKey string, reg *scfingerprint.Registry) *IdentityBadge {

@@ -75,7 +75,7 @@ func (d *Dashboard) playerInsights(playerKey string, s *workflowPlayerSkillSumma
 	if d.library == nil || s == nil || s.Combined.Tier != skill.TierAdvanced {
 		return nil
 	}
-	if name, err := d.playerNameForKey(playerKey); err != nil || !d.isYouPlayer(name) {
+	if !d.isYouKey(playerKey) {
 		return nil
 	}
 	games := insightGames(d.library.lib.View().PlayerGames(playerKey))

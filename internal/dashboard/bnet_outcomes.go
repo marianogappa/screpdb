@@ -87,7 +87,7 @@ func (d *Dashboard) resolveBnetOutcomes(ctx context.Context) {
 	byMD5 := gamesByOwnReplayMD5(games, persist.NewEnrichQueue(d.library.root))
 	lib := d.library.lib
 	for _, r := range lib.Snapshot().Replays {
-		if !r.WinnerUndecided() && r.BnetResults() == nil {
+		if r.ShieldBattery != nil || (!r.WinnerUndecided() && r.BnetResults() == nil) {
 			continue
 		}
 		g, ok := d.bnetGameByMD5(r, byMD5)

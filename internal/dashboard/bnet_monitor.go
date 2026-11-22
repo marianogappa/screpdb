@@ -37,6 +37,9 @@ type bnetStatus struct {
 	CooldownUntil  string                 `json:"cooldown_until,omitempty"`
 	Gateway        int                    `json:"gateway,omitempty"`
 	GatewayName    string                 `json:"gateway_name,omitempty"`
+	// BnetGames lets a user who only plays on ShieldBattery never see the Battle.net pill.
+	BnetGames     int       `json:"bnet_games"`
+	ShieldBattery *sbStatus `json:"shieldbattery,omitempty"`
 }
 
 // bnetMonitor holds the monitor loop's own state. Only the loop goroutine
@@ -184,6 +187,8 @@ func (d *Dashboard) getBnetStatus() bnetStatus {
 		s.Gateway = gw
 		s.GatewayName = bnetfacade.GatewayNames[gw]
 	}
+	s.BnetGames = d.serverPresence().bnetGames
+	s.ShieldBattery = d.sbStatus(time.Now())
 	return s
 }
 
