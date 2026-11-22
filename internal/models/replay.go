@@ -233,6 +233,7 @@ type ReplayData struct {
 	PatternOrchestrator any                       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
 	SaverDisconnect     *SaverDisconnect          `json:"-"` // Set when the replay ended because the saver's connection died. Not persisted.
 	ShieldBattery       *ShieldBatteryGame        `json:"-"` // Set for games played on ShieldBattery. Not persisted.
+	SaverPlayerID       *byte                     `json:"-"` // Replay player ID of whoever recorded the file, when chat reveals it. Not persisted.
 }
 
 // ShieldBatteryGame names a ShieldBattery game the way its server does: the game's id, and each player's
