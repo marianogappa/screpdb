@@ -2666,6 +2666,7 @@ function App() {
     featuring: [],
     matchup: [],
     mapKind: [],
+    name: '',
   });
   const mainGamesTableRef = useRef(null);
   const [mainGameDetailLoading, setMainGameDetailLoading] = useState(false);
@@ -2708,6 +2709,8 @@ function App() {
   const loadGamingSessionRef = useRef(null);
   const activeViewRef = useRef(null);
   const mainGamesFiltersRef = useRef(null);
+  const mainGamesRequestSeqRef = useRef(0);
+  const mainPlayersRequestSeqRef = useRef(0);
   const mainGamesPageRef = useRef(null);
   const mainGamesRef = useRef([]);
   const mainGameRef = useRef(null);
@@ -2795,6 +2798,11 @@ function App() {
   // replaced and briefly highlighted — so an enrichment landing reads as "that
   // one game updated", not as the whole list flickering.
   const loadMainGames = async ({ page = mainGamesPage, filters = mainGamesFilters, silent = false } = {}) => {
+    // Typing a name fires one request per keystroke; only the newest may land.
+    // A silent refresh never supersedes a visible load, or its spinner would stick.
+    if (!silent) mainGamesRequestSeqRef.current += 1;
+    const seq = mainGamesRequestSeqRef.current;
+    const stale = () => seq !== mainGamesRequestSeqRef.current;
     try {
       if (!silent) {
         setMainGamesLoading(true);
@@ -2807,6 +2815,7 @@ function App() {
         offset,
         filters,
       });
+      if (stale()) return;
       const items = data?.items || [];
       if (silent) {
         mergeMainGamesSilently(items);
@@ -2819,10 +2828,10 @@ function App() {
       }
       if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
-      if (silent) return;
+      if (silent || stale()) return;
       setError(err.message);
     } finally {
-      if (!silent) setMainGamesLoading(false);
+      if (!silent && !stale()) setMainGamesLoading(false);
     }
   };
 
@@ -2927,6 +2936,9 @@ function App() {
     sortBy = mainPlayersSortBy,
     sortDir = mainPlayersSortDir,
   } = {}) => {
+    mainPlayersRequestSeqRef.current += 1;
+    const seq = mainPlayersRequestSeqRef.current;
+    const stale = () => seq !== mainPlayersRequestSeqRef.current;
     try {
       setMainPlayersLoading(true);
       const safePage = Math.max(1, Number(page) || 1);
@@ -2938,6 +2950,7 @@ function App() {
         sortDir,
         filters,
       });
+      if (stale()) return;
       setMainPlayers(data?.items || []);
       setMainPlayersFeatured(Array.isArray(data?.featured_players) ? data.featured_players : []);
       setMainPlayersTotal(Number(data?.total) || 0);
@@ -2946,9 +2959,10 @@ function App() {
       }
       if (data?.corpus) setResponseCorpus(data.corpus);
     } catch (err) {
+      if (stale()) return;
       setError(err.message);
     } finally {
-      setMainPlayersLoading(false);
+      if (!stale()) setMainPlayersLoading(false);
     }
   };
 
@@ -4063,6 +4077,7 @@ function App() {
       featuring: [],
       matchup: [],
       mapKind: [],
+      name: '',
     });
   };
 
@@ -6014,6 +6029,14 @@ function App() {
               onToggle={toggleMainGameMultiFilter}
               onClear={clearMainGamesFilters}
               loading={libraryLoading}
+              textFilter={{
+                value: mainGamesFilters.name,
+                onChange: (value) => {
+                  setMainGamesPage(1);
+                  setMainGamesFilters((prev) => ({ ...prev, name: value }));
+                },
+                placeholder: t('games.filterPlaceholder'),
+              }}
             />
             {mainGamesLoading ? (
               <div className="loading">{t('games.loading')}</div>

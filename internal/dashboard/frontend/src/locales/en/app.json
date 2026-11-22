@@ -90,6 +90,7 @@
   "bnet.pill.offline": "SC:R offline",
   "sb.tip.recent": "Recently played on ShieldBattery",
   "sb.tip.idle": "No recent ShieldBattery games",
+  "games.filterPlaceholder": "Filter games by player name or pick a filter...",
   "games.loading": "Loading games...",
   "games.table.played": "Played",
   "games.table.players": "Players",

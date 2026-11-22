@@ -89,6 +89,7 @@ type workflowGamesListFilters struct {
 	FeaturingKeys   []string
 	MatchupKeys     []string
 	MapKindKeys     []string
+	NameContains    string
 }
 
 type workflowGamesListFilterOption struct {
