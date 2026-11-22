@@ -75,8 +75,8 @@ github.com/marianogappa/scfingerprint v0.0.0-20260912102954-40ec8770aef7 h1:eIuv
 github.com/marianogappa/scfingerprint v0.0.0-20260912102954-40ec8770aef7/go.mod h1:uUQmrde5X68Cced105VwuUAvGrgE+8VLQHKTH3CGlRE=
 github.com/marianogappa/scmapanalyzer v0.0.0-20261117151706-ab7ce4d82977 h1:16zJ4M3o4n5SJC9hN+1cKzrhWgJLKgd76s2so1nofTY=
 github.com/marianogappa/scmapanalyzer v0.0.0-20261117151706-ab7ce4d82977/go.mod h1:TDo4B2VtqLUXXXcv4Yn3BuBKXlSEi0grWqbAQl3pOv4=
-github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c h1:0JS8YGQLHH0A88qZ8gDX7a2VpJk9l2D+0J6TWV1jyf8=
-github.com/marianogappa/screp v0.0.0-20250930085841-44d5f5ad657c/go.mod h1:p5nCDcfboNnOOqPZPYENWj1v3WQm6mEFbxruAztKIz8=
+github.com/marianogappa/screp v1.1.1-0.20261116110130-cbf054fe769c h1:K5Qk61rshuF1zYVpQNw5/cRgVaX9bVIl8toF9soe/fU=
+github.com/marianogappa/screp v1.1.1-0.20261116110130-cbf054fe769c/go.mod h1:XE8rsn19JbZwIPCFxpsgYcKGUiOoy3CDmOfyH1mcYqU=
 github.com/marianogappa/screpsim v0.0.0-20261018092744-6d34c91770f5 h1:xnsOje38J1Bek4ZPENArCi0B1dbhGodRkTa6RtTGIms=
 github.com/marianogappa/screpsim v0.0.0-20261018092744-6d34c91770f5/go.mod h1:GEgN/3SDkhu0raSNTMWXU5GVy8P9LznPMJd1E5g3Lhg=
 github.com/mark3labs/mcp-go v0.55.1 h1:GLYqNm9qdMGPhCtK4g1t1y1vhAPfayOBuaibDi4mrSA=

@@ -13,6 +13,7 @@ import (
 	"github.com/marianogappa/screpdb/internal/crashreport"
 	dashboarddb "github.com/marianogappa/screpdb/internal/dashboard/db"
 	"github.com/marianogappa/screpdb/internal/hotkeystream"
+	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/persist"
 	"github.com/marianogappa/screpdb/internal/propack"
 )
@@ -178,6 +179,13 @@ func (d *Dashboard) excludedProIDs(pack *propack.Pack) map[string]bool {
 		if ids, err := d.dbStore.ListBnetAuroraIDsByPlayerKeys(d.ctx, keys); err == nil {
 			for _, id := range ids {
 				auroraIDs[id] = true
+			}
+		}
+		for key := range youKeys {
+			if id, ok := library.SBUserIDFromKey(key); ok {
+				if pro, ok := pack.ProBySBUserID(id); ok {
+					excluded[pro.ID] = true
+				}
 			}
 		}
 		for i := range pack.Pros {

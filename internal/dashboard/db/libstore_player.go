@@ -32,22 +32,20 @@ func playerMatchupOpponent(r *library.Replay, ordinal uint8) (uint8, bool) {
 }
 
 func (s *LibStore) GetPlayerNameByKey(_ context.Context, playerKey string) (string, error) {
-	name := ""
+	var name shownName
 	for _, ref := range s.playerGames(playerKey) {
 		p := ref.Player()
 		if !humanNonObserver(p) {
 			continue
 		}
-		if name == "" || p.Name < name {
-			name = p.Name
-		}
+		name.offer(p.Key, p.Name, ref.Replay.Date)
 	}
-	return strings.TrimSpace(name), nil
+	return strings.TrimSpace(name.name), nil
 }
 
 func (s *LibStore) GetPlayerOverviewSummary(_ context.Context, playerKey string) (*PlayerOverviewSummaryRow, error) {
 	out := &PlayerOverviewSummaryRow{}
-	name := ""
+	var name shownName
 	var apmSum, eapmSum float64
 	var apmGames, eapmGames int64
 	for _, ref := range s.playerGames(playerKey) {
@@ -55,9 +53,7 @@ func (s *LibStore) GetPlayerOverviewSummary(_ context.Context, playerKey string)
 		if !humanNonObserver(p) {
 			continue
 		}
-		if name == "" || p.Name < name {
-			name = p.Name
-		}
+		name.offer(p.Key, p.Name, ref.Replay.Date)
 		if p.PlayerOutcome() == models.OutcomeNotScored {
 			continue
 		}
@@ -79,7 +75,7 @@ func (s *LibStore) GetPlayerOverviewSummary(_ context.Context, playerKey string)
 			eapmGames++
 		}
 	}
-	out.PlayerName = name
+	out.PlayerName = name.name
 	if apmGames > 0 {
 		out.AverageAPM = apmSum / float64(apmGames)
 	}

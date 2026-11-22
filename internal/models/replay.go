@@ -232,6 +232,15 @@ type ReplayData struct {
 	MapContext          *ReplayMapContext         `json:"-"` // Runtime-only map context (not persisted)
 	PatternOrchestrator any                       `json:"-"` // Pattern orchestrator (type *patterns.Orchestrator), not serialized
 	SaverDisconnect     *SaverDisconnect          `json:"-"` // Set when the replay ended because the saver's connection died. Not persisted.
+	ShieldBattery       *ShieldBatteryGame        `json:"-"` // Set for games played on ShieldBattery. Not persisted.
+}
+
+// ShieldBatteryGame names a ShieldBattery game the way its server does: the game's id, and each player's
+// account keyed by replay player ID. Account names can change, so the ids are what ties a replay player to
+// the server's records.
+type ShieldBatteryGame struct {
+	GameID  string
+	UserIDs map[byte]uint32
 }
 
 // SaverDisconnect records that this replay ended when the player who saved it
