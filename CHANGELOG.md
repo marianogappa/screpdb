@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.5.0](https://github.com/marianogappa/screpdb/compare/v2.4.0...v2.5.0) (2026-11-22)
+
+
+### Features
+
+* **dashboard:** hotkey habits, tempo and closest layout on built-in players' Hotkeys tab ([#536](https://github.com/marianogappa/screpdb/issues/536)) ([4d92325](https://github.com/marianogappa/screpdb/commit/4d923252709e974fdd4b838141c8f5db791f193b))
+* recognise all your profiles and link them with "You also play as" ([#532](https://github.com/marianogappa/screpdb/issues/532)) ([841965b](https://github.com/marianogappa/screpdb/commit/841965b4c930700550925b4eff594bf144392bf5))
+* search the games list by player name ([#530](https://github.com/marianogappa/screpdb/issues/530)) ([0ff1006](https://github.com/marianogappa/screpdb/commit/0ff100655c61e6713b76fd597c9e7300fa1a888c))
+* ShieldBattery support ([#531](https://github.com/marianogappa/screpdb/issues/531)) ([5bcbc54](https://github.com/marianogappa/screpdb/commit/5bcbc54efd4169ddb202e9374d5d8741202c26ba))
+* skill-tiered insights for Beginner and Intermediate players ([#535](https://github.com/marianogappa/screpdb/issues/535)) ([d7cf8f7](https://github.com/marianogappa/screpdb/commit/d7cf8f7446b87797dd60539d0341c1abbcc4410c))
+* You button opens the profile of your latest game ([#543](https://github.com/marianogappa/screpdb/issues/543)) ([d9009f5](https://github.com/marianogappa/screpdb/commit/d9009f5745d350fe14164e8684fc2dcf082ae8cd))
+
+
+### Bug Fixes
+
+* completed replays show only the user's own copy's chat ([#533](https://github.com/marianogappa/screpdb/issues/533)) ([4b3c252](https://github.com/marianogappa/screpdb/commit/4b3c2529edbbf5d4e862745b8fd96cab65d9268f))
+* find ShieldBattery players by name in the games list, and tidy the I/O audit ([#542](https://github.com/marianogappa/screpdb/issues/542)) ([8d8f0d3](https://github.com/marianogappa/screpdb/commit/8d8f0d31aa0def920dfd3cb2ea4c5469bb05e298))
+* fit the Skill card tier label inside its medal ([#534](https://github.com/marianogappa/screpdb/issues/534)) ([c3c31f2](https://github.com/marianogappa/screpdb/commit/c3c31f2507d9c0dbbebba427b8d35bca91b34b6c))
+
 ## [2.4.0](https://github.com/marianogappa/screpdb/compare/v2.3.0...v2.4.0) (2026-11-20)
 
 
