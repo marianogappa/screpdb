@@ -109,8 +109,9 @@ export default function FilterOmnibar({
   stateOrder = STATE_ORDER,
   noun = 'games',
   // When set, the typed text is itself a live filter (e.g. player name):
-  // { value, onChange, placeholder }. The same text still narrows the option
-  // menu, so picking an option stays one keystroke away.
+  // { value, onChange, placeholder }. Typing closes the option menu, because
+  // the rows it would cover are the result being typed for; the menu still
+  // opens on an empty box or on ArrowDown.
   textFilter = null,
   // Entities the typed text matches outside the option vocabulary, listed first in the menu:
   // { label, items: [{ id, label, iconUrl, onPick }] }.
@@ -129,6 +130,7 @@ export default function FilterOmnibar({
     else setInternalQuery(value);
   };
   const [open, setOpen] = useState(false);
+  const openUnlessTyping = (value) => setOpen(!textFilter || !String(value || '').trim());
   const [cursor, setCursor] = useState(0);
   const [openAxis, setOpenAxis] = useState('');
   const inputRef = useRef(null);
@@ -407,7 +409,7 @@ export default function FilterOmnibar({
         className="wf-ob-box"
         onClick={(e) => {
           if (e.target.closest('button')) return;
-          setOpen(true);
+          openUnlessTyping(query);
           if (inputRef.current) inputRef.current.focus();
         }}
       >
@@ -449,8 +451,8 @@ export default function FilterOmnibar({
           spellCheck="false"
           placeholder={textFilter?.placeholder || (activeCount ? t('omnibar.addFilter') : t(`omnibar.placeholder.${noun}`))}
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
+          onChange={(e) => { setQuery(e.target.value); openUnlessTyping(e.target.value); }}
+          onFocus={() => openUnlessTyping(query)}
           onKeyDown={onKeyDown}
         />
 
@@ -464,19 +466,17 @@ export default function FilterOmnibar({
         ) : null}
       </div>
 
-      {open ? (
+      {open && !(textFilter && flatShown.length === 0) ? (
         <div className="wf-ob-menu" id="wf-ob-menu" role="listbox" ref={menuRef}>
           {flatShown.length === 0 ? (
             <>
             {menuNodes}
             <div className="wf-ob-empty">
-              {textFilter
-                ? renderRich(t(`omnibar.textFilterEmpty.${noun}`), { query: <b>{query}</b> })
-                : renderRich(t('omnibar.empty'), {
-                  query: <b>{query}</b>,
-                  buildOrder: <b>{t('omnibar.exampleBuildOrder')}</b>,
-                  tactic: <b>{t('omnibar.exampleTactic')}</b>,
-                })}
+              {renderRich(t('omnibar.empty'), {
+                query: <b>{query}</b>,
+                buildOrder: <b>{t('omnibar.exampleBuildOrder')}</b>,
+                tactic: <b>{t('omnibar.exampleTactic')}</b>,
+              })}
             </div>
             </>
           ) : (
