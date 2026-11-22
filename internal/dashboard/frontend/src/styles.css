@@ -7342,6 +7342,12 @@ span[data-tip],
   font-weight: 600; cursor: pointer;
 }
 .wps-alias-known:hover { background: rgba(224, 184, 76, 0.1); }
+.you-aliases { display: flex; align-items: center; gap: 10px; min-width: 0; margin: -4px 0 10px; }
+.you-aliases .wps-aliases-label { flex: none; }
+.you-aliases-list { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.you-alias { cursor: pointer; }
+.you-alias:hover { border-color: var(--e-strong); color: var(--e-strong); }
+.you-alias--stale { opacity: 0.45; border-style: dashed; }
 
 /* Last games: a table, one hairline between rows. */
 .workflow-last-games { display: flex; flex-direction: column; margin-top: 6px; }

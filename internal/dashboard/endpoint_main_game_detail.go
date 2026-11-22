@@ -263,6 +263,7 @@ func (d *Dashboard) buildWorkflowPlayerOverview(playerKey string) (workflowPlaye
 		}
 	}
 	result.SBProfile = d.sbProfileDetail(d.ctx, playerKey)
+	result.YouProfiles = d.otherYouProfiles(playerKey)
 	if bnetGames, err := d.dbStore.CountPlayerBnetGames(d.ctx, playerKey); err == nil {
 		result.BnetGames = bnetGames
 	}

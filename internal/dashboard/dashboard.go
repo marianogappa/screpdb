@@ -79,6 +79,9 @@ type Dashboard struct {
 	youGateway atomic.Int64
 	// sbYou caches the user's ShieldBattery account per library version (see sbYouKey).
 	sbYou atomic.Pointer[sbYouCache]
+	// youSetCache holds every key that is the user, with its evidence (see youSet).
+	youSetCache atomic.Pointer[youSetCache]
+	youSetMu    sync.Mutex
 	// sbProfiles serves ShieldBattery players' profiles; nil without a library.
 	sbProfiles *sbProfiles
 	presence   atomic.Pointer[serverPresence]
