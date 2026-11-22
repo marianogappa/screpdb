@@ -339,3 +339,32 @@ func (d *Dashboard) corpusView() *library.View {
 	}
 	return d.dbStore.CorpusView()
 }
+
+// latestPlayedKey is the key among keys that played the newest game. Observing
+// is not playing, so a game the user only watched does not count.
+func latestPlayedKey(snap *library.Snapshot, keys map[string]struct{}) string {
+	if snap == nil {
+		return ""
+	}
+	var best string
+	var bestReplay *library.Replay
+	for key := range keys {
+		for _, ref := range snap.PlayerGames(key) {
+			if ref.Player().IsObserver() {
+				continue
+			}
+			if r := ref.Replay; bestReplay == nil || newerReplay(r, bestReplay) || (r == bestReplay && key < best) {
+				best, bestReplay = key, r
+			}
+			break
+		}
+	}
+	return best
+}
+
+func newerReplay(a, b *library.Replay) bool {
+	if !a.Date.Equal(b.Date) {
+		return a.Date.After(b.Date)
+	}
+	return a.ID > b.ID
+}
