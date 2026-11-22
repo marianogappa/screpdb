@@ -311,11 +311,11 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-21  OK. A complete copy of a game shows only the chat from the user's own copy, re-attributed by player name, instead of merging both files' chat; no paths, network calls or allowlists change.
 2026-11-21  OK. The games list gains a player-name substring filter (`name` query parameter, matched in memory against the loaded library), and the omnibar stops covering results while typing a name; no paths, network calls or allowlists change.
 2026-11-20  OK. GitHub Pages serves a static landing page from site/ instead of the WASM demo, which is removed along with its WASM-only dashboard hooks, and the README links to it first; no paths, network calls or allowlists change.
 2026-11-20  OK. Game events: engine drops that land on Big Game Hunters' corner cliffs are cliff drops, High Templar and Lurker drops are named like Reaver and DT drops when they are most of what landed, everywhere drops are listed or filtered, and the overrun pill and games list chip are gone while the overrun event stays; a pill whose event the list hides is no longer a link; an army standing in a base its owner holds overruns nobody; drops read "drops with", air harass reads from the attacker's side and a razing Recall names the workers it killed; dashboard and detectors only, no new paths, network calls or allowlist changes.
 2026-11-20  OK. Game Events base names (main base, natural, expa N, owner and clock forms) and the Korean drop, scout, nydus and nuke word order are localized in the frontend catalogs; no new paths, network calls or allowlist changes.
-2026-11-20  OK. Engine games time when the first Mutalisks reach a Terran base and count the Turrets up then, shown on the Mutalisk timing tab; an Insights (Beta) tab for the viewer's own Advanced player lists strict, example-backed advice from their Terran games; the player's last games show the same pills as the game summary, opening the event or build order they name; the beta mark's hint shows on hover at once; reads digests and library data already in memory over the dashboard's own API, no new paths, network calls or allowlist changes.
 ```
 
 </details>
