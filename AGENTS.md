@@ -81,6 +81,14 @@ Changing marker firing rules, game-event composition, or a `FeatureKey` does
 carry marker data. Renaming a `FeatureKey` or `event_type` is still a breaking
 change across the API, the frontend pill registry and the locale catalogs.
 
+# ShieldBattery pro list check
+
+The `shieldbattery-pros` CI job runs `go run ./scripts/sb-pros -check`, which re-scrapes the TeamLiquid post of
+progamers' ShieldBattery accounts. When it says the list changed, run `go run ./scripts/sb-pros` and commit
+the refreshed `internal/propack/data/shieldbattery.json`. When it says the post format changed, fetch the post
+again, save its first post over `scripts/sb-pros/testdata/post.html`, and fix the parser in `scripts/sb-pros`
+until its tests and `-check` pass. Never hand-edit the JSON.
+
 # Pull Requests
 
 - **Always use Conventional Commits format for the PR title** (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.). Releases are automated from the squash-merged commit message via release-please-style tooling — a non-conventional title means no release on merge.

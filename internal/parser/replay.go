@@ -56,7 +56,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	data.Replay.ReplayDate = rep.Header.StartTime
 	data.Replay.Title = rep.Header.Title
 	data.Replay.Host = rep.Header.Host
-	data.Replay.MapName = rep.Header.Map
+	data.Replay.MapName = cleanMapName(rep.Header.Map)
 	data.Replay.MapWidth = rep.Header.MapWidth
 	data.Replay.MapHeight = rep.Header.MapHeight
 	data.Replay.DurationSeconds = int(rep.Header.Duration().Seconds())
@@ -114,6 +114,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 
 	data.Replay.GameSource = deriveGameSource(rep)
 	data.Replay.LobbyKind = deriveLobbyKind(data.Replay.GameSource, data.Replay.Title)
+	data.ShieldBattery = shieldBatteryGame(rep)
 
 	for i, player := range rep.Header.Players {
 		if player == nil {
@@ -482,6 +483,34 @@ func deriveGameSource(r *scraprep.Replay) string {
 		return "PreSCR"
 	}
 	return "AssumedBattleNet"
+}
+
+// cleanMapName drops StarCraft's in-name colour codes, the control characters that tint map titles in the
+// game lobby (ShieldBattery's official maps all have them) and only read as gaps anywhere else.
+func cleanMapName(name string) string {
+	return strings.TrimSpace(strings.Map(func(r rune) rune {
+		if r < 0x20 {
+			return -1
+		}
+		return r
+	}, name))
+}
+
+func shieldBatteryGame(r *scraprep.Replay) *models.ShieldBatteryGame {
+	sb := r.ShieldBattery
+	if sb == nil || sb.GameID == "" {
+		return nil
+	}
+	game := &models.ShieldBatteryGame{GameID: sb.GameID, UserIDs: map[byte]uint32{}}
+	for _, p := range r.Header.Players {
+		if p == nil {
+			continue
+		}
+		if id := sb.UserID(p.ID); id != 0 {
+			game.UserIDs[p.ID] = id
+		}
+	}
+	return game
 }
 
 func deriveLobbyKind(gameSource, title string) string {

@@ -556,7 +556,7 @@ func whyForce(f moments.Force) *workflowWhyForce {
 // youSlot is the slot of the user in a game, or NoPlayer when they did not play in it.
 func (d *Dashboard) youSlot(rec *library.Replay) int8 {
 	for _, p := range rec.Players {
-		if !p.IsObserver() && d.isYouPlayer(p.Name) {
+		if !p.IsObserver() && d.isYouKey(p.Key) {
 			return int8(p.Slot)
 		}
 	}

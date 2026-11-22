@@ -409,6 +409,7 @@ func (s *LibStore) ListReplayPlayers(ctx context.Context, replayIDs []int64) ([]
 			result = append(result, WorkflowGamePlayerRow{
 				ReplayID:      r.ID,
 				PlayerID:      rowPlayerID(r, uint8(i)),
+				PlayerKey:     p.Key,
 				Name:          p.Name,
 				Race:          p.Race.String(),
 				Team:          int64(p.Team),
@@ -419,6 +420,7 @@ func (s *LibStore) ListReplayPlayers(ctx context.Context, replayIDs []int64) ([]
 				PlayerOutcomeReason: p.PlayerOutcomeReason,
 				TeamOutcomeReason:   r.TeamOutcomeReason,
 				BnetOutcomeSource:   r.BnetOutcomeSource,
+				ShieldBattery:       r.ShieldBattery != nil,
 				CompleteCopy:        r.Flags.Has(library.FlagIsCompleteCopy),
 				BotSignals:          p.BotSignals,
 			})
@@ -517,13 +519,14 @@ func (s *LibStore) ListCurrentPlayersForReplayIDs(ctx context.Context, playerKey
 				continue
 			}
 			result = append(result, WorkflowCurrentPlayerRow{
-				ReplayID: r.ID,
-				PlayerID: rowPlayerID(r, uint8(i)),
-				Name:     p.Name,
-				Race:     p.Race.String(),
-				TeamWon:  p.TeamOutcome() == models.OutcomeWon,
-				APM:      int64(p.APM),
-				EAPM:     int64(p.EAPM),
+				ReplayID:  r.ID,
+				PlayerID:  rowPlayerID(r, uint8(i)),
+				PlayerKey: p.Key,
+				Name:      p.Name,
+				Race:      p.Race.String(),
+				TeamWon:   p.TeamOutcome() == models.OutcomeWon,
+				APM:       int64(p.APM),
+				EAPM:      int64(p.EAPM),
 			})
 		}
 	}

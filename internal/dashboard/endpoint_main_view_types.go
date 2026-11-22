@@ -795,6 +795,8 @@ type workflowPlayerOverview struct {
 	CountryCode         string                        `json:"country_code,omitempty"`
 	BnetProfile         *bnetProfileDetail            `json:"bnet_profile,omitempty"`
 	BnetRefreshing      bool                          `json:"bnet_refreshing,omitempty"`
+	// SBProfile is set for ShieldBattery players, who never have a Battle.net section.
+	SBProfile *sbProfileDetail `json:"sb_profile,omitempty"`
 	// The summary tab shows its Battle.net section only when this is non-zero.
 	BnetGames int64 `json:"bnet_games"`
 	// Set only for built-in progamer profiles (internal/propack); carries what the
