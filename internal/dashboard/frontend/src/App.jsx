@@ -5874,6 +5874,15 @@ function App() {
         <div className="workflow-nav workflow-nav-app">
           <div className="workflow-nav-group">
             <button type="button" className={`btn-manage ${activeView === 'games' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('games')}>{t('nav.games')}</button>
+            {gamingSession?.you_player_key ? (
+              <button
+                type="button"
+                className={`btn-manage ${activeView === 'player' && selectedPlayerKey === gamingSession.you_player_key ? 'workflow-nav-active' : ''}`}
+                onClick={() => openMainPlayer(gamingSession.you_player_key)}
+              >
+                {t('nav.you')}
+              </button>
+            ) : null}
             <button type="button" className={`btn-manage ${activeView === 'players' ? 'workflow-nav-active' : ''}`} onClick={() => navigateMainView('players')}>{t('nav.players')}</button>
             {gamingSession?.has_session ? (
               <button

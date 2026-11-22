@@ -131,3 +131,31 @@ func TestOtherYouProfilesListsRecentProfilesWithGames(t *testing.T) {
 		t.Errorf("display name = %q, want the you marker", name)
 	}
 }
+
+func TestLatestPlayedKeyFollowsTheNewestGameNotTheMostGames(t *testing.T) {
+	now := time.Now()
+	game := func(id int64, playedAt time.Time, opts ...librarytest.Option) *library.Replay {
+		return librarytest.Replay(append([]librarytest.Option{
+			librarytest.WithID(id),
+			librarytest.WithChecksum(fmt.Sprintf("latest-%d", id)),
+			librarytest.WithDate(playedAt),
+		}, opts...)...)
+	}
+	lib := library.New(library.Options{})
+	t.Cleanup(lib.Close)
+	lib.Add(0,
+		game(1, now.Add(-72*time.Hour), librarytest.WithPlayer("Main"), librarytest.WithPlayer("Foe")),
+		game(2, now.Add(-48*time.Hour), librarytest.WithPlayer("Main"), librarytest.WithPlayer("Foe")),
+		game(3, now.Add(-24*time.Hour), librarytest.WithPlayer("Main"), librarytest.WithPlayer("Foe")),
+		game(4, now.Add(-time.Hour), librarytest.WithPlayer("Smurf"), librarytest.WithPlayer("Foe")),
+		game(5, now, librarytest.WithPlayer("Foe"), librarytest.WithPlayer("Rival"), librarytest.WithPlayer("Main", librarytest.Observer())),
+	)
+	lib.Flush()
+	keys := map[string]struct{}{"main": {}, "smurf": {}}
+	if got := latestPlayedKey(lib.Snapshot(), keys); got != "smurf" {
+		t.Errorf("latestPlayedKey = %q, want the account of the newest game the user played, not one they observed", got)
+	}
+	if got := latestPlayedKey(lib.Snapshot(), map[string]struct{}{"nobody": {}}); got != "" {
+		t.Errorf("latestPlayedKey = %q for a user with no games, want empty", got)
+	}
+}

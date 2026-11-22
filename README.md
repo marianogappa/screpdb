@@ -304,18 +304,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-22  OK. Merge review fixes: the games list name search matches player names instead of keys, so ShieldBattery players (keyed sb:<id>) are found by name and their ids no longer match; the I/O audit is reordered newest first and the ShieldBattery entry restates its own network checks; no new paths, network calls or allowlist changes.
+2026-11-22  OK. A You button between Games and Players opens the profile the user played their most recent game on (games only observed do not count); it reads the replays already loaded in memory and rides on the existing gaming session response, so there are no new paths, network calls or writes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-22  OK. Merge review fixes: the games list name search matches player names instead of keys, so ShieldBattery players (keyed sb:<id>) are found by name and their ids no longer match; the I/O audit is reordered newest first and the ShieldBattery entry restates its own network checks; no new paths, network calls or allowlist changes.
 2026-11-22  OK. Built-in pros are no longer added to the featured strip but every one is found by a players name search, marked built in; their Hotkeys tab shows their conspicuous habits, the closest other built-in pro's layout (opening that pro's Hotkeys tab) and, for every player, hotkey presses and rebinds a minute plus each key's share of presses; pro habits and rates ship in a new embedded data/hotkey_oddities.json generated offline by scripts/hotkey-oddities, and the pro pack was regenerated with engine unit types; no new paths, network calls or allowlist changes.
 2026-11-21  OK. Insights are tiered by skill: each rule compares the player against the next tier up with ladder-fitted bars (army and building hotkey uses split by the command that follows a recall, idle production, army cadence, idle army, banked income on 1v1 regular maps), fires only on most recent games at 95% confidence, ranks by reliability, shows at most three with a progress chip only when a change is significant, a "Getting better" section and an "Already OK" section for the same level; reads library data already in memory, no new paths, network calls or allowlist changes.
 2026-11-21  OK. ShieldBattery support: internal/sbfacade is the only new network path. It makes anonymous GETs, paced by one shared 2 second pacer with a 429 pause, of https://shieldbattery.net/api/1/games/<uuid> (id format checked), /api/1/users/<id>/profile and /api/1/users/batch-info (at most 50 ids a request), with no redirects, a 1 MB read cap and no credentials or cookies; it downloads replays only from https://cdn.shieldbattery.net/replays/ (https only, exact host, no redirects, 16 MB cap, kept only when the sha256 matches the game record and the seRS magic is present); settled games and profiles are cached under <app-data>/shieldbattery/ through iofacade, and the dev and CI only scripts/sb-pros (not in the binary) reads a public TeamLiquid post and batch-info to write internal/propack/data/shieldbattery.json. The user's CSettings battle tags only ever mark Battle.net players; no allowlists change.
 2026-11-21  OK. The user's other profiles are recognised from what is already loaded: names on the same cached Battle.net account as two CSettings names, and the recorder of the user's own AutoSave replays (never downloaded complete copies), with fingerprints able to veto a recorder; a "You also play as" row lists them on the user's own pages; no new paths, network calls or allowlist changes.
-2026-11-21  OK. The downloadable Skill card's tier medal is a little larger and its label shrinks to fit inside it, so Intermediate no longer runs over the circle; dashboard rendering only, no new paths, network calls or allowlist changes.
 ```
 
 </details>

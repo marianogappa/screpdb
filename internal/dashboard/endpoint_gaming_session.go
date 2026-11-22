@@ -85,14 +85,16 @@ type gamingSessionStats struct {
 }
 
 type gamingSessionResponse struct {
-	HasSession bool                   `json:"has_session"`
-	Active     bool                   `json:"active"`
-	PlayerKey  string                 `json:"player_key,omitempty"`
-	Stats      gamingSessionStats     `json:"stats"`
-	Opponents  []gamingSessionPlayer  `json:"opponents"`
-	Allies     []gamingSessionPlayer  `json:"allies"`
-	Games      []workflowGameListItem `json:"games"`
-	Regulars   []sessionRegular       `json:"regulars"`
+	HasSession bool   `json:"has_session"`
+	Active     bool   `json:"active"`
+	PlayerKey  string `json:"player_key,omitempty"`
+	// YouPlayerKey is the user's profile in their latest played game, session or not.
+	YouPlayerKey string                 `json:"you_player_key,omitempty"`
+	Stats        gamingSessionStats     `json:"stats"`
+	Opponents    []gamingSessionPlayer  `json:"opponents"`
+	Allies       []gamingSessionPlayer  `json:"allies"`
+	Games        []workflowGameListItem `json:"games"`
+	Regulars     []sessionRegular       `json:"regulars"`
 }
 
 // sessionGameRow is one of the user's games, as the session builder needs it.
@@ -158,6 +160,9 @@ func (d *Dashboard) gamingSession(ctx context.Context) (*gamingSessionResponse, 
 	youKeys := d.loadYouKeys()
 	if len(youKeys) == 0 {
 		return empty, nil
+	}
+	if view := d.corpusView(); view != nil {
+		empty.YouPlayerKey = latestPlayedKey(view.Snapshot(), youKeys)
 	}
 	rows, err := d.dbStore.ListRecentAutosaveGamesForPlayers(ctx, sortedKeys(youKeys), gamingSessionCandidateLimit)
 	if err != nil {
