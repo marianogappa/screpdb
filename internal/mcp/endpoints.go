@@ -33,7 +33,7 @@ var exposed = []endpoint{
 	{
 		template:    "/api/games",
 		summary:     "The games list. Filters are repeatable; omit them for the newest games.",
-		queryParams: []string{"duration", "featuring", "limit", "map", "map_kind", "matchup", "offset", "player"},
+		queryParams: []string{"duration", "featuring", "limit", "map", "map_kind", "matchup", "name", "offset", "player"},
 	},
 	{
 		template: "/api/games/{replayID}",

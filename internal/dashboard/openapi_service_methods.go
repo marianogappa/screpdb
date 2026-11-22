@@ -100,6 +100,9 @@ func (d *Dashboard) GamesList(ctx context.Context, request apigen.GamesListReque
 	if request.Params.MapKind != nil {
 		filters.MapKindKeys = parseCSVQueryValues(*request.Params.MapKind, true)
 	}
+	if request.Params.Name != nil {
+		filters.NameContains = strings.TrimSpace(*request.Params.Name)
+	}
 	query := buildGamesQuery(filters)
 	total, err := d.dbStore.CountGames(ctx, query)
 	if err != nil {

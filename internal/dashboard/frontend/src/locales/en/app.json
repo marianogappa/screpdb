@@ -88,6 +88,7 @@
   "bnet.pill.off": "Bridge off",
   "bnet.pill.scanning": "Scanning…",
   "bnet.pill.offline": "SC:R offline",
+  "games.filterPlaceholder": "Filter games by player name or pick a filter...",
   "games.loading": "Loading games...",
   "games.table.played": "Played",
   "games.table.players": "Players",

@@ -184,6 +184,7 @@ func (s *LibStore) featureIndex() map[int64]replayFeatures {
 // unrecognised imposes nothing.
 type libGamesFilter struct {
 	playerKeys map[string]struct{}
+	nameNeedle string
 	mapNames   map[string]struct{}
 	durations  []func(uint16) bool
 	features   []libFeatureShape
@@ -200,7 +201,7 @@ const (
 )
 
 func newLibGamesFilter(query GamesQuery) libGamesFilter {
-	f := libGamesFilter{}
+	f := libGamesFilter{nameNeedle: normalizeKey(query.NameContains)}
 	if len(query.PlayerKeys) > 0 {
 		f.playerKeys = make(map[string]struct{}, len(query.PlayerKeys))
 		for _, key := range query.PlayerKeys {
@@ -270,6 +271,9 @@ func (f libGamesFilter) matches(r *library.Replay) bool {
 	if f.playerKeys != nil && !f.hasAnyPlayer(r) {
 		return false
 	}
+	if f.nameNeedle != "" && !f.hasPlayerNameContaining(r) {
+		return false
+	}
 	if f.mapNames != nil {
 		if _, ok := f.mapNames[normalizeKey(library.Strings.Name(r.Map))]; !ok {
 			return false
@@ -312,6 +316,16 @@ func (f libGamesFilter) matches(r *library.Replay) bool {
 func anyDurationBucket(buckets []func(uint16) bool, seconds uint16) bool {
 	for _, bucket := range buckets {
 		if bucket(seconds) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f libGamesFilter) hasPlayerNameContaining(r *library.Replay) bool {
+	for i := range r.Players {
+		p := &r.Players[i]
+		if !p.IsObserver() && strings.Contains(p.Key, f.nameNeedle) {
 			return true
 		}
 	}
