@@ -157,6 +157,8 @@ async function settle() {
  *                                   bottom (panels are grid cells, so they can
  *                                   be much taller than the image inside them)
  * - `{ throughSelector }`           page top down to that element's bottom
+ * - `… + { fromSelector }`          the same, starting at that element's top
+ *                                   instead of the page top
  * - `{ height }`                    page top down to a fixed height
  * - omitted                         the viewport
  *
@@ -164,7 +166,7 @@ async function settle() {
  * README image should be, and a raw viewport crop tends to slice a card in half.
  */
 async function shoot(file, clip = {}) {
-  const { selector, nth = 0, hasText, throughSelector, trimToBottomOf, maxHeight } = clip;
+  const { selector, nth = 0, hasText, throughSelector, fromSelector, trimToBottomOf, maxHeight } = clip;
   const text = phrase(hasText);
   const at = (sel) => (text ? page.locator(sel, { hasText: text }) : page.locator(sel)).nth(nth);
 
@@ -195,10 +197,11 @@ async function shoot(file, clip = {}) {
     // Measure from the top of the document so the clip is in page coordinates.
     await page.evaluate(() => window.scrollTo(0, 0));
     const box = await el.boundingBox();
+    const top = fromSelector ? Math.max(0, Math.floor((await page.locator(fromSelector).first().boundingBox()).y) - 12) : 0;
     await page.screenshot({
       path: file,
       fullPage: true,
-      clip: { x: 0, y: 0, width, height: Math.ceil(box.y + box.height) + 8 },
+      clip: { x: 0, y: top, width, height: Math.ceil(box.y + box.height) + 8 - top },
     });
     return;
   }

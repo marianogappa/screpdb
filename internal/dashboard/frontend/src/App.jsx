@@ -6164,6 +6164,15 @@ function App() {
                   }}
                   onToggle={(state, key) => toggleMainPlayersMultiFilter(state, key)}
                   onClear={clearMainPlayersFilters}
+                  textMatches={{
+                    label: t('players.builtInMatches'),
+                    items: mainPlayersFeatured.map((pro) => ({
+                      id: pro.player_key,
+                      label: pro.player_name,
+                      iconUrl: pro.photo_url,
+                      onPick: () => openMainPlayer(pro.player_key),
+                    })),
+                  }}
                 />
                 {mainPlayersLoading ? (
                   <div className="loading">{t('players.loading')}</div>
@@ -6192,6 +6201,7 @@ function App() {
                               <ProPhoto url={pro.photo_url} name={pro.player_name} />
                               <span className="workflow-featured-name">
                                 <span><CountryFlag code={pro.country_code} />{pro.player_name}</span>
+                                {filtering ? <span><FeaturedBadge /></span> : null}
                               </span>
                             </div>
                           ))}
@@ -7775,7 +7785,7 @@ function App() {
                       {mainPlayerHotkeySigLoading ? <div className="chart-empty">{t('hotkeys.loadingSignature')}</div> : null}
                       {!mainPlayerHotkeySigLoading && mainPlayerHotkeySigError ? <div className="chart-empty">{mainPlayerHotkeySigError}</div> : null}
                       {!mainPlayerHotkeySigLoading && !mainPlayerHotkeySigError && mainPlayerHotkeySig ? (
-                        <HotkeySignature payload={mainPlayerHotkeySig} loadingNotice={libraryLoadingCopy} />
+                        <HotkeySignature payload={mainPlayerHotkeySig} loadingNotice={libraryLoadingCopy} onOpenPlayer={openMainPlayer} />
                       ) : null}
                     </div>
                   )}

@@ -101,10 +101,11 @@ export const SHOTS = [
   {
     name: 'player-hotkey-signature',
     caption: 'Per-player hotkey signature, including the built-in progamers',
-    route: () => '/?view=player&player=pro%3Abisu&playerTab=hotkeys',
-    // One signature card: the page stacks one per matchup, and the first is
-    // enough to show what the surface is.
-    clip: { throughSelector: '.hk-sig-card', nth: 0 },
+    route: () => '/?view=player&player=pro%3Arich&playerTab=hotkeys',
+    // From the player's title row to the end of the first signature card: the
+    // page stacks one card per race, and the first shows the habits, the tempo
+    // and every key row.
+    clip: { fromSelector: '.workflow-player-title-featured', throughSelector: '.hk-sig-card', nth: 0 },
   },
   {
     name: 'alliances',

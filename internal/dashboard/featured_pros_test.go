@@ -78,6 +78,33 @@ func TestFeaturedProsAppearOnPlayersListFirstPageOnly(t *testing.T) {
 	if len(filtered) == 0 {
 		t.Fatalf("name filter %q returned 0 featured rows", needle)
 	}
+
+	var hidden *propack.Pro
+	for i := range pack.Pros {
+		if !featuredVisibleIDs[pack.Pros[i].ID] {
+			hidden = &pack.Pros[i]
+			break
+		}
+	}
+	if hidden == nil {
+		return
+	}
+	for _, item := range first {
+		if item.PlayerKey == hidden.Key() {
+			t.Fatalf("%s is not featured but appeared without a search", hidden.ID)
+		}
+	}
+	var searched []workflowFeaturedPlayerItem
+	if err := json.Unmarshal(get("/api/players?limit=5&name=" + url.QueryEscape(hidden.Label))["featured_players"], &searched); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, item := range searched {
+		found = found || item.PlayerKey == hidden.Key()
+	}
+	if !found {
+		t.Fatalf("searching %q did not find the built-in profile %s", hidden.Label, hidden.ID)
+	}
 }
 
 func TestFeaturedProEndpoints(t *testing.T) {
