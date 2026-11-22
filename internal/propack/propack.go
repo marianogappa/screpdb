@@ -84,6 +84,10 @@ type Pro struct {
 	// Skill is the pro's average place on the skill tiers over their rated games, measured as the dashboard
 	// measures a local player.
 	Skill *Skill `json:"skill,omitempty"`
+	// HotkeyOddities come from data/hotkey_oddities.json, keyed by race name.
+	HotkeyOddities map[string][]HotkeyOddity `json:"-"`
+	// HotkeyRates come from the same file: the pro's median hotkey tempo, keyed by race name.
+	HotkeyRates map[string]hotkeystream.Rates `json:"-"`
 	// ShieldBattery is attached from data/shieldbattery.json at load time,
 	// kept out of pros.json because scripts/sb-pros maintains it separately.
 	ShieldBattery []SBAccount `json:"-"`
@@ -152,6 +156,9 @@ func parse() (*Pack, error) {
 		}
 		pack.byID[p.ID] = p
 		pack.byLabel[strings.ToLower(strings.TrimSpace(p.Label))] = p
+	}
+	if err := attachOddities(&pack); err != nil {
+		return nil, err
 	}
 	if err := pack.attachShieldBattery(); err != nil {
 		return nil, err

@@ -106,3 +106,49 @@ func TestShieldBatteryAccounts(t *testing.T) {
 		t.Fatal("nil pack must not resolve")
 	}
 }
+
+func TestHotkeyOdditiesAttach(t *testing.T) {
+	pack, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	found := 0
+	for _, pro := range pack.Pros {
+		for race, oddities := range pro.HotkeyOddities {
+			if pro.Races[race] == 0 {
+				t.Errorf("%s: oddities for %s, a race the pack never sampled", pro.ID, race)
+			}
+			found += len(oddities)
+		}
+	}
+	if found == 0 {
+		t.Fatal("no hotkey oddities attached; is data/hotkey_oddities.json embedded?")
+	}
+	if pack.ByID("rich").OdditiesFor("protoss") == nil {
+		t.Error("rich: expected Protoss oddities")
+	}
+}
+
+// Every habit line of a race says "of N built-in players"; they must all count the same players.
+func TestHotkeyOdditiesShareOnePoolPerRace(t *testing.T) {
+	pack, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	populations := map[string]map[int][]string{}
+	for _, pro := range pack.Pros {
+		for race, oddities := range pro.HotkeyOddities {
+			for _, o := range oddities {
+				if populations[race] == nil {
+					populations[race] = map[int][]string{}
+				}
+				populations[race][o.Population] = append(populations[race][o.Population], pro.ID+" "+o.Kind)
+			}
+		}
+	}
+	for race, byPopulation := range populations {
+		if len(byPopulation) > 1 {
+			t.Errorf("%s habit lines count different players: %v", race, byPopulation)
+		}
+	}
+}

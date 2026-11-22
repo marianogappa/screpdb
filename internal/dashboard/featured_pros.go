@@ -95,6 +95,12 @@ var featuredVisibleIDs = map[string]bool{
 // whose page has recent games to show), then curated rank, then pros with a
 // portrait, then label.
 func (d *Dashboard) featuredPros() []*propack.Pro {
+	return d.builtInPros(true)
+}
+
+// builtInPros returns the built-in profiles the user is not, most popular first; visibleOnly keeps the
+// curated featured set. A name search reaches every built-in profile, featured or not.
+func (d *Dashboard) builtInPros(visibleOnly bool) []*propack.Pro {
 	pack := d.loadProPack()
 	if pack == nil {
 		return nil
@@ -103,7 +109,7 @@ func (d *Dashboard) featuredPros() []*propack.Pro {
 	out := make([]*propack.Pro, 0, len(pack.Pros))
 	for i := range pack.Pros {
 		pro := &pack.Pros[i]
-		if excluded[pro.ID] || !featuredVisibleIDs[pro.ID] {
+		if excluded[pro.ID] || (visibleOnly && !featuredVisibleIDs[pro.ID]) {
 			continue
 		}
 		out = append(out, pro)
@@ -213,7 +219,7 @@ func (d *Dashboard) excludedProIDs(pack *propack.Pack) map[string]bool {
 func (d *Dashboard) featuredPlayersList(nameFilter string) []workflowFeaturedPlayerItem {
 	needle := normalizePlayerKey(nameFilter)
 	items := []workflowFeaturedPlayerItem{}
-	for _, pro := range d.featuredPros() {
+	for _, pro := range d.builtInPros(needle == "") {
 		if needle != "" && !strings.Contains(strings.ToLower(pro.Label), needle) && !strings.Contains(pro.ID, needle) {
 			continue
 		}

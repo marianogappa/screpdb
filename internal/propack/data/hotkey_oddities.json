@@ -1,0 +1,1381 @@
+{
+  "source": "key habits from the pack's hotkey signatures; rates from the screpharvest ladder corpus (scripts/hotkey-oddities)",
+  "pros": {
+    "action": {
+      "Zerg": [
+        {
+          "kind": "tech_binds",
+          "value": 5,
+          "rank": 2,
+          "baseline": 1,
+          "population": 23
+        },
+        {
+          "kind": "standard_layout",
+          "value": 5,
+          "rank": 5,
+          "population": 23
+        }
+      ]
+    },
+    "barracks": {
+      "Terran": [
+        {
+          "kind": "standard_layout",
+          "value": 3,
+          "rank": 3,
+          "population": 25
+        }
+      ]
+    },
+    "best": {
+      "Protoss": [
+        {
+          "kind": "deselects",
+          "value": 13,
+          "tenths": true,
+          "rank": 1,
+          "baseline": 7,
+          "population": 16
+        },
+        {
+          "kind": "tech_binds",
+          "value": 3,
+          "tied": true,
+          "rank": 1,
+          "baseline": 1,
+          "population": 16
+        },
+        {
+          "kind": "few_hall_binds",
+          "value": 1,
+          "tied": true,
+          "rank": 1,
+          "baseline": 3,
+          "population": 16
+        }
+      ]
+    },
+    "byul": {
+      "Terran": [
+        {
+          "kind": "few_hall_binds",
+          "value": 1,
+          "rank": 1,
+          "baseline": 8,
+          "population": 25
+        }
+      ]
+    },
+    "core": {
+      "Protoss": [
+        {
+          "kind": "opening",
+          "value": 74,
+          "binds": [
+            {
+              "key": 1,
+              "building": "Nexus"
+            },
+            {
+              "key": 3,
+              "building": "Nexus"
+            },
+            {
+              "key": 2
+            }
+          ],
+          "population": 16
+        }
+      ]
+    },
+    "dewalt": {
+      "Protoss": [
+        {
+          "kind": "first_supply",
+          "value": 4,
+          "unit": "Pylon",
+          "shared_count": 2,
+          "population": 16
+        },
+        {
+          "kind": "opening",
+          "value": 82,
+          "binds": [
+            {
+              "key": 1
+            },
+            {
+              "key": 2,
+              "building": "Nexus"
+            },
+            {
+              "key": 3,
+              "building": "Nexus"
+            }
+          ],
+          "population": 16
+        }
+      ]
+    },
+    "effort": {
+      "Zerg": [
+        {
+          "kind": "hotkey_share",
+          "value": 57,
+          "rank": 3,
+          "baseline": 47,
+          "population": 23
+        },
+        {
+          "kind": "opening",
+          "value": 74,
+          "binds": [
+            {
+              "key": 5,
+              "building": "Hatchery"
+            },
+            {
+              "key": 4
+            },
+            {
+              "key": 1
+            }
+          ],
+          "population": 23
+        },
+        {
+          "kind": "shift_adds",
+          "value": 26,
+          "population": 23
+        }
+      ]
+    },
+    "famas2": {
+      "Terran": [
+        {
+          "kind": "opening",
+          "value": 98,
+          "binds": [
+            {
+              "key": 4,
+              "building": "Command Center"
+            },
+            {
+              "key": 2,
+              "building": "Command Center"
+            },
+            {
+              "key": 1
+            }
+          ],
+          "population": 25
+        }
+      ]
+    },
+    "fantasy": {
+      "Terran": [
+        {
+          "kind": "opening",
+          "value": 89,
+          "binds": [
+            {
+              "key": 3,
+              "building": "Command Center"
+            },
+            {
+              "key": 4,
+              "building": "Command Center"
+            },
+            {
+              "key": 1
+            }
+          ],
+          "population": 25
+        }
+      ]
+    },
+    "free": {
+      "Protoss": [
+        {
+          "kind": "opening",
+          "value": 90,
+          "binds": [
+            {
+              "key": 1
+            },
+            {
+              "key": 3,
+              "building": "Nexus"
+            },
+            {
+              "key": 8,
+              "building": "Nexus"
+            }
+          ],
+          "population": 16
+        }
+      ]
+    },
+    "ggaemo": {
+      "Zerg": [
+        {
+          "kind": "opening",
+          "value": 85,
+          "binds": [
+            {
+              "key": 1
+            },
+            {
+              "key": 4,
+              "building": "Hatchery"
+            },
+            {
+              "key": 2
+            }
+          ],
+          "population": 23
+        }
+      ]
+    },
+    "hero": {
+      "Zerg": [
+        {
+          "kind": "hotkey_share",
+          "value": 59,
+          "rank": 1,
+          "baseline": 47,
+          "population": 23
+        }
+      ]
+    },
+    "hiya": {
+      "Terran": [
+        {
+          "kind": "opening",
+          "value": 95,
+          "binds": [
+            {
+              "key": 5,
+              "building": "Command Center"
+            },
+            {
+              "key": 2
+            },
+            {
+              "key": 1
+            }
+          ],
+          "population": 25
+        }
+      ]
+    },
+    "hyuk": {
+      "Zerg": [
+        {
+          "kind": "hall_key",
+          "value": 3,
+          "shared_count": 2,
+          "population": 23
+        },
+        {
+          "kind": "rebinds",
+          "value": 47,
+          "rank": 1,
+          "baseline": 10,
+          "population": 23
+        }
+      ]
+    },
+    "hyun": {
+      "Zerg": [
+        {
+          "kind": "opening",
+          "value": 79,
+          "binds": [
+            {
+              "key": 1
+            },
+            {
+              "key": 2
+            },
+            {
+              "key": 3
+            }
+          ],
+          "population": 23
+        }
+      ]
+    },
+    "jaedong": {
+      "Zerg": [
+        {
+          "kind": "opening",
+          "value": 97,
+          "binds": [
+            {
+              "key": 2,
+              "building": "Hatchery"
+            },
+            {
+              "key": 3,
+              "building": "Hatchery"
+            },
+            {
+              "key": 4,
+              "building": "Hatchery"
+            }
+          ],
+          "population": 23
+        }
+      ]
+    },
+    "judge": {
+      "Zerg": [
+        {
+          "kind": "hotkey_share",
+          "value": 58,
+          "rank": 2,
+          "baseline": 47,
+          "population": 23
+        },
+        {
+          "kind": "tech_binds",
+          "value": 3,
+          "rank": 3,
+          "baseline": 1,
+          "population": 23
+        }
+      ]
+    },
+    "jyj": {
+      "Terran": [
+        {
+          "kind": "opening",
+          "value": 96,
+          "binds": [
+            {
+              "key": 2,
+              "building": "Command Center"
+            },
+            {
+              "key": 4,
+              "building": "Command Center"
+            },
+            {
+              "key": 1
+            }
+          ],
+          "population": 25
+        }
+      ]
+    },
+    "leta": {
+      "Terran": [
+        {
+          "kind": "first_supply",
+          "value": 3,
+          "unit": "Supply Depot",
+          "shared_count": 3,
+          "population": 25
+        },
+        {
+          "kind": "opening",
+          "value": 86,
+          "binds": [
+            {
+              "key": 4,
+              "building": "Command Center"
+            },
+            {
+              "key": 1
+            },
+            {
+              "key": 2
+            }
+          ],
+          "population": 25
+        }
+      ]
+    },
+    "light": {
+      "Terran": [
+        {
+          "kind": "comsat_keys",
+          "value": 4,
+          "keys": [
+            7,
+            8,
+            9,
+            0
+          ],
+          "shared_count": 1,
+          "population": 25
+        }
+      ]
+    },
+    "mihu": {
+      "Terran": [
+        {
+          "kind": "standard_layout",
+          "value": 2,
+          "rank": 2,
+          "population": 25
+        }
+      ]
+    },
+    "motive": {
+      "Protoss": [
+        {
+          "kind": "opening",
+          "value": 74,
+          "binds": [
+            {
+              "key": 8,
+              "building": "Nexus"
+            },
+            {
+              "key": 1,
+              "building": "Nexus"
+            },
+            {
+              "key": 2
+            }
+          ],
+          "population": 16
+        },
+        {
+          "kind": "worker_key",
+          "value": 5,
+          "key": 7,
+          "population": 16
+        }
+      ]
+    },
+    "nada": {
+      "Terran": [
+        {
+          "kind": "opening",
+          "value": 81,
+          "binds": [
+            {
+              "key": 6,
+              "building": "Command Center"
+            },
+            {
+              "key": 4
+            },
+            {
+              "key": 5
+            }
+          ],
+          "population": 25
+        }
+      ]
+    },
+    "noob": {
+      "Protoss": [
+        {
+          "kind": "first_supply",
+          "value": 2,
+          "unit": "Pylon",
+          "shared_count": 2,
+          "population": 16
+        },
+        {
+          "kind": "opening",
+          "value": 92,
+          "binds": [
+            {
+              "key": 5,
+              "building": "Nexus"
+            },
+            {
+              "key": 1
+            },
+            {
+              "key": 2
+            }
+          ],
+          "population": 16
+        },
+        {
+          "kind": "fast_presses",
+          "value": 288,
+          "rank": 1,
+          "baseline": 161,
+          "population": 16
+        }
+      ]
+    },
+    "paralyze": {
+      "Protoss": [
+        {
+          "kind": "deselects",
+          "value": 12,
+          "tenths": true,
+          "tied": true,
+          "rank": 2,
+          "baseline": 7,
+          "population": 16
+        },
+        {
+          "kind": "standard_layout",
+          "value": 2,
+          "rank": 2,
+          "population": 16
+        }
+      ]
+    },
+    "promise": {
+      "Protoss": [
+        {
+          "kind": "opening",
+          "value": 84,
+          "binds": [
+            {
+              "key": 3,
+              "building": "Nexus"
+            },
+            {
+              "key": 1
+            },
+            {
+              "key": 2
+            }
+          ],
+          "population": 16
+        },
+        {
+          "kind": "few_hall_binds",
+          "value": 2,
+          "tied": true,
+          "rank": 3,
+          "baseline": 3,
+          "population": 16
+        }
+      ]
+    },
+    "queen": {
+      "Zerg": [
+        {
+          "kind": "shift_adds",
+          "value": 11,
+          "population": 23
+        }
+      ]
+    },
+    "rich": {
+      "Protoss": [
+        {
+          "kind": "hotkey_share",
+          "value": 67,
+          "rank": 1,
+          "baseline": 52,
+          "population": 16
+        },
+        {
+          "kind": "first_supply",
+          "value": 3,
+          "unit": "Pylon",
+          "shared_count": 2,
+          "population": 16
+        },
+        {
+          "kind": "rebinds",
+          "value": 35,
+          "rank": 2,
+          "baseline": 8,
+          "population": 16
+        }
+      ]
+    },
+    "royal": {
+      "Terran": [
+        {
+          "kind": "shift_adds",
+          "value": 13,
+          "population": 25
+        }
+      ]
+    },
+    "ruin": {
+      "Protoss": [
+        {
+          "kind": "deselects",
+          "value": 12,
+          "tenths": true,
+          "tied": true,
+          "rank": 2,
+          "baseline": 7,
+          "population": 16
+        },
+        {
+          "kind": "opening",
+          "value": 100,
+          "binds": [
+            {
+              "key": 1,
+              "building": "Nexus"
+            },
+            {
+              "key": 2,
+              "building": "Nexus"
+            },
+            {
+              "key": 3,
+              "building": "Nexus"
+            }
+          ],
+          "population": 16
+        },
+        {
+          "kind": "shift_adds",
+          "value": 11,
+          "population": 16
+        }
+      ]
+    },
+    "rush": {
+      "Terran": [
+        {
+          "kind": "fast_presses",
+          "value": 244,
+          "rank": 1,
+          "baseline": 162,
+          "population": 25
+        }
+      ]
+    },
+    "saber": {
+      "Zerg": [
+        {
+          "kind": "deselects",
+          "value": 23,
+          "tenths": true,
+          "rank": 1,
+          "baseline": 14,
+          "population": 23
+        },
+        {
+          "kind": "standard_layout",
+          "value": 4,
+          "rank": 4,
+          "population": 23
+        }
+      ]
+    },
+    "sacsri": {
+      "Zerg": [
+        {
+          "kind": "standard_layout",
+          "value": 2,
+          "rank": 2,
+          "population": 23
+        }
+      ]
+    },
+    "scan": {
+      "Terran": [
+        {
+          "kind": "shift_adds",
+          "value": 19,
+          "population": 25
+        },
+        {
+          "kind": "standard_layout",
+          "value": 4,
+          "rank": 4,
+          "population": 25
+        }
+      ]
+    },
+    "shinee": {
+      "Terran": [
+        {
+          "kind": "comsat_keys",
+          "value": 4,
+          "keys": [
+            7,
+            8,
+            9,
+            0
+          ],
+          "shared_count": 1,
+          "population": 25
+        }
+      ]
+    },
+    "skey": {
+      "Terran": [
+        {
+          "kind": "first_supply",
+          "value": 4,
+          "unit": "Supply Depot",
+          "shared_count": 3,
+          "population": 25
+        },
+        {
+          "kind": "deselects",
+          "value": 14,
+          "tenths": true,
+          "rank": 1,
+          "baseline": 9,
+          "population": 25
+        },
+        {
+          "kind": "few_hall_binds",
+          "value": 2,
+          "tied": true,
+          "rank": 2,
+          "baseline": 8,
+          "population": 25
+        }
+      ]
+    },
+    "sky": {
+      "Protoss": [
+        {
+          "kind": "few_hall_binds",
+          "value": 2,
+          "tied": true,
+          "rank": 3,
+          "baseline": 3,
+          "population": 16
+        }
+      ]
+    },
+    "soma": {
+      "Zerg": [
+        {
+          "kind": "standard_layout",
+          "value": 3,
+          "rank": 3,
+          "population": 23
+        }
+      ]
+    },
+    "soo": {
+      "Zerg": [
+        {
+          "kind": "opening",
+          "value": 79,
+          "binds": [
+            {
+              "key": 5,
+              "building": "Hatchery"
+            },
+            {
+              "key": 2
+            },
+            {
+              "key": 3
+            }
+          ],
+          "population": 23
+        }
+      ]
+    },
+    "speed": {
+      "Terran": [
+        {
+          "kind": "rebinds",
+          "value": 28,
+          "rank": 1,
+          "baseline": 9,
+          "population": 25
+        }
+      ]
+    },
+    "stork": {
+      "Protoss": [
+        {
+          "kind": "opening",
+          "value": 93,
+          "binds": [
+            {
+              "key": 4,
+              "building": "Nexus"
+            },
+            {
+              "key": 2
+            }
+          ],
+          "population": 16
+        },
+        {
+          "kind": "few_hall_binds",
+          "value": 1,
+          "tied": true,
+          "rank": 1,
+          "baseline": 3,
+          "population": 16
+        }
+      ]
+    },
+    "stryker": {
+      "Zerg": [
+        {
+          "kind": "shift_adds",
+          "value": 17,
+          "population": 23
+        },
+        {
+          "kind": "tech_binds",
+          "value": 8,
+          "rank": 1,
+          "baseline": 1,
+          "population": 23
+        }
+      ]
+    },
+    "true": {
+      "Zerg": [
+        {
+          "kind": "opening",
+          "value": 92,
+          "binds": [
+            {
+              "key": 5
+            },
+            {
+              "key": 2,
+              "building": "Hatchery"
+            },
+            {
+              "key": 1
+            }
+          ],
+          "population": 23
+        }
+      ]
+    },
+    "xuanxuan": {
+      "Terran": [
+        {
+          "kind": "opening",
+          "value": 71,
+          "binds": [
+            {
+              "key": 2
+            },
+            {
+              "key": 3
+            },
+            {
+              "key": 1,
+              "building": "Command Center"
+            }
+          ],
+          "population": 25
+        },
+        {
+          "kind": "few_hall_binds",
+          "value": 2,
+          "tied": true,
+          "rank": 2,
+          "baseline": 8,
+          "population": 25
+        }
+      ]
+    },
+    "zelot": {
+      "Zerg": [
+        {
+          "kind": "few_keys",
+          "value": 5,
+          "baseline": 7,
+          "population": 23
+        }
+      ]
+    }
+  },
+  "rates": {
+    "action": {
+      "Zerg": {
+        "presses_per_minute": 169,
+        "rebinds_per_minute": 17
+      }
+    },
+    "alen": {
+      "Zerg": {
+        "presses_per_minute": 97,
+        "rebinds_per_minute": 13
+      }
+    },
+    "ample": {
+      "Terran": {
+        "presses_per_minute": 143,
+        "rebinds_per_minute": 4
+      }
+    },
+    "artosis": {
+      "Terran": {
+        "presses_per_minute": 90,
+        "rebinds_per_minute": 4
+      }
+    },
+    "barracks": {
+      "Protoss": {
+        "presses_per_minute": 157,
+        "rebinds_per_minute": 32
+      },
+      "Terran": {
+        "presses_per_minute": 202,
+        "rebinds_per_minute": 21
+      }
+    },
+    "best": {
+      "Protoss": {
+        "presses_per_minute": 171,
+        "rebinds_per_minute": 10
+      },
+      "Terran": {
+        "presses_per_minute": 161,
+        "rebinds_per_minute": 8
+      },
+      "Zerg": {
+        "presses_per_minute": 126,
+        "rebinds_per_minute": 9
+      }
+    },
+    "bishop": {
+      "Terran": {
+        "presses_per_minute": 177,
+        "rebinds_per_minute": 10
+      },
+      "Zerg": {
+        "presses_per_minute": 151,
+        "rebinds_per_minute": 12
+      }
+    },
+    "bisu": {
+      "Protoss": {
+        "presses_per_minute": 143,
+        "rebinds_per_minute": 21
+      },
+      "Zerg": {
+        "presses_per_minute": 118,
+        "rebinds_per_minute": 22
+      }
+    },
+    "bliss": {
+      "Zerg": {
+        "presses_per_minute": 173,
+        "rebinds_per_minute": 26
+      }
+    },
+    "byul": {
+      "Protoss": {
+        "presses_per_minute": 80,
+        "rebinds_per_minute": 14
+      },
+      "Terran": {
+        "presses_per_minute": 105,
+        "rebinds_per_minute": 12
+      }
+    },
+    "core": {
+      "Protoss": {
+        "presses_per_minute": 157,
+        "rebinds_per_minute": 9
+      }
+    },
+    "dewalt": {
+      "Protoss": {
+        "presses_per_minute": 111,
+        "rebinds_per_minute": 8
+      }
+    },
+    "effort": {
+      "Zerg": {
+        "presses_per_minute": 233,
+        "rebinds_per_minute": 4
+      }
+    },
+    "famas2": {
+      "Terran": {
+        "presses_per_minute": 171,
+        "rebinds_per_minute": 10
+      }
+    },
+    "fantasy": {
+      "Terran": {
+        "presses_per_minute": 109,
+        "rebinds_per_minute": 6
+      }
+    },
+    "free": {
+      "Protoss": {
+        "presses_per_minute": 189,
+        "rebinds_per_minute": 16
+      }
+    },
+    "freyja": {
+      "Zerg": {
+        "presses_per_minute": 60,
+        "rebinds_per_minute": 6
+      }
+    },
+    "ggaemo": {
+      "Zerg": {
+        "presses_per_minute": 110,
+        "rebinds_per_minute": 9
+      }
+    },
+    "hbq": {
+      "Terran": {
+        "presses_per_minute": 130,
+        "rebinds_per_minute": 9
+      },
+      "Zerg": {
+        "presses_per_minute": 148,
+        "rebinds_per_minute": 10
+      }
+    },
+    "hero": {
+      "Zerg": {
+        "presses_per_minute": 246,
+        "rebinds_per_minute": 11
+      }
+    },
+    "hiya": {
+      "Terran": {
+        "presses_per_minute": 216,
+        "rebinds_per_minute": 12
+      }
+    },
+    "hm": {
+      "Zerg": {
+        "presses_per_minute": 213,
+        "rebinds_per_minute": 22
+      }
+    },
+    "hyuk": {
+      "Zerg": {
+        "presses_per_minute": 212,
+        "rebinds_per_minute": 47
+      }
+    },
+    "hyun": {
+      "Zerg": {
+        "presses_per_minute": 124,
+        "rebinds_per_minute": 14
+      }
+    },
+    "jaedong": {
+      "Zerg": {
+        "presses_per_minute": 142,
+        "rebinds_per_minute": 9
+      }
+    },
+    "judge": {
+      "Zerg": {
+        "presses_per_minute": 249,
+        "rebinds_per_minute": 4
+      }
+    },
+    "jyj": {
+      "Terran": {
+        "presses_per_minute": 127,
+        "rebinds_per_minute": 7
+      }
+    },
+    "larva": {
+      "Zerg": {
+        "presses_per_minute": 192,
+        "rebinds_per_minute": 8
+      }
+    },
+    "leta": {
+      "Terran": {
+        "presses_per_minute": 157,
+        "rebinds_per_minute": 9
+      }
+    },
+    "light": {
+      "Terran": {
+        "presses_per_minute": 147,
+        "rebinds_per_minute": 4
+      }
+    },
+    "mayd": {
+      "Terran": {
+        "presses_per_minute": 71,
+        "rebinds_per_minute": 9
+      }
+    },
+    "midas": {
+      "Terran": {
+        "presses_per_minute": 118,
+        "rebinds_per_minute": 11
+      }
+    },
+    "mighty": {
+      "Protoss": {
+        "presses_per_minute": 143,
+        "rebinds_per_minute": 19
+      },
+      "Terran": {
+        "presses_per_minute": 157,
+        "rebinds_per_minute": 22
+      },
+      "Zerg": {
+        "presses_per_minute": 105,
+        "rebinds_per_minute": 20
+      }
+    },
+    "mihu": {
+      "Terran": {
+        "presses_per_minute": 164,
+        "rebinds_per_minute": 5
+      }
+    },
+    "mind": {
+      "Terran": {
+        "presses_per_minute": 137,
+        "rebinds_per_minute": 8
+      }
+    },
+    "mong": {
+      "Terran": {
+        "presses_per_minute": 88,
+        "rebinds_per_minute": 8
+      }
+    },
+    "motive": {
+      "Protoss": {
+        "presses_per_minute": 182,
+        "rebinds_per_minute": 6
+      }
+    },
+    "nada": {
+      "Terran": {
+        "presses_per_minute": 163,
+        "rebinds_per_minute": 11
+      }
+    },
+    "noob": {
+      "Protoss": {
+        "presses_per_minute": 288,
+        "rebinds_per_minute": 4
+      }
+    },
+    "noob13": {
+      "Protoss": {
+        "presses_per_minute": 223,
+        "rebinds_per_minute": 4
+      }
+    },
+    "paralyze": {
+      "Protoss": {
+        "presses_per_minute": 160,
+        "rebinds_per_minute": 13
+      }
+    },
+    "prime": {
+      "Terran": {
+        "presses_per_minute": 162,
+        "rebinds_per_minute": 11
+      }
+    },
+    "promise": {
+      "Protoss": {
+        "presses_per_minute": 219,
+        "rebinds_per_minute": 7
+      },
+      "Zerg": {
+        "presses_per_minute": 246,
+        "rebinds_per_minute": 4
+      }
+    },
+    "queen": {
+      "Zerg": {
+        "presses_per_minute": 151,
+        "rebinds_per_minute": 10
+      }
+    },
+    "rich": {
+      "Protoss": {
+        "presses_per_minute": 219,
+        "rebinds_per_minute": 35
+      }
+    },
+    "royal": {
+      "Terran": {
+        "presses_per_minute": 196,
+        "rebinds_per_minute": 5
+      }
+    },
+    "ruin": {
+      "Protoss": {
+        "presses_per_minute": 163,
+        "rebinds_per_minute": 49
+      }
+    },
+    "rush": {
+      "Terran": {
+        "presses_per_minute": 244,
+        "rebinds_per_minute": 5
+      }
+    },
+    "saber": {
+      "Zerg": {
+        "presses_per_minute": 140,
+        "rebinds_per_minute": 10
+      }
+    },
+    "sacsri": {
+      "Zerg": {
+        "presses_per_minute": 249,
+        "rebinds_per_minute": 14
+      }
+    },
+    "scan": {
+      "Terran": {
+        "presses_per_minute": 194,
+        "rebinds_per_minute": 4
+      }
+    },
+    "sharp": {
+      "Terran": {
+        "presses_per_minute": 199,
+        "rebinds_per_minute": 11
+      }
+    },
+    "shine": {
+      "Protoss": {
+        "presses_per_minute": 134,
+        "rebinds_per_minute": 3
+      },
+      "Terran": {
+        "presses_per_minute": 175,
+        "rebinds_per_minute": 4
+      },
+      "Zerg": {
+        "presses_per_minute": 177,
+        "rebinds_per_minute": 5
+      }
+    },
+    "shinee": {
+      "Terran": {
+        "presses_per_minute": 101,
+        "rebinds_per_minute": 5
+      }
+    },
+    "shuttle": {
+      "Protoss": {
+        "presses_per_minute": 114,
+        "rebinds_per_minute": 4
+      }
+    },
+    "skey": {
+      "Terran": {
+        "presses_per_minute": 183,
+        "rebinds_per_minute": 17
+      }
+    },
+    "sky": {
+      "Protoss": {
+        "presses_per_minute": 108,
+        "rebinds_per_minute": 3
+      }
+    },
+    "snow": {
+      "Protoss": {
+        "presses_per_minute": 115,
+        "rebinds_per_minute": 4
+      },
+      "Terran": {
+        "presses_per_minute": 115,
+        "rebinds_per_minute": 4
+      }
+    },
+    "soma": {
+      "Zerg": {
+        "presses_per_minute": 143,
+        "rebinds_per_minute": 10
+      }
+    },
+    "soo": {
+      "Zerg": {
+        "presses_per_minute": 170,
+        "rebinds_per_minute": 8
+      }
+    },
+    "soulkey": {
+      "Terran": {
+        "presses_per_minute": 179,
+        "rebinds_per_minute": 3
+      },
+      "Zerg": {
+        "presses_per_minute": 121,
+        "rebinds_per_minute": 4
+      }
+    },
+    "speed": {
+      "Terran": {
+        "presses_per_minute": 227,
+        "rebinds_per_minute": 28
+      }
+    },
+    "ssak": {
+      "Protoss": {
+        "presses_per_minute": 66,
+        "rebinds_per_minute": 23
+      },
+      "Terran": {
+        "presses_per_minute": 127,
+        "rebinds_per_minute": 23
+      }
+    },
+    "stork": {
+      "Protoss": {
+        "presses_per_minute": 155,
+        "rebinds_per_minute": 13
+      }
+    },
+    "stryker": {
+      "Zerg": {
+        "presses_per_minute": 110,
+        "rebinds_per_minute": 5
+      }
+    },
+    "timeisgold": {
+      "Zerg": {
+        "presses_per_minute": 110,
+        "rebinds_per_minute": 25
+      }
+    },
+    "true": {
+      "Zerg": {
+        "presses_per_minute": 168,
+        "rebinds_per_minute": 17
+      }
+    },
+    "xiaoshuai": {
+      "Zerg": {
+        "presses_per_minute": 171,
+        "rebinds_per_minute": 5
+      }
+    },
+    "xuanxuan": {
+      "Terran": {
+        "presses_per_minute": 137,
+        "rebinds_per_minute": 4
+      }
+    },
+    "yoon": {
+      "Zerg": {
+        "presses_per_minute": 166,
+        "rebinds_per_minute": 8
+      }
+    },
+    "zelot": {
+      "Zerg": {
+        "presses_per_minute": 157,
+        "rebinds_per_minute": 3
+      }
+    }
+  }
+}
