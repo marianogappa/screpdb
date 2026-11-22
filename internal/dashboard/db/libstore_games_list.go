@@ -325,7 +325,8 @@ func anyDurationBucket(buckets []func(uint16) bool, seconds uint16) bool {
 func (f libGamesFilter) hasPlayerNameContaining(r *library.Replay) bool {
 	for i := range r.Players {
 		p := &r.Players[i]
-		if !p.IsObserver() && strings.Contains(p.Key, f.nameNeedle) {
+		// The name, not the key: a ShieldBattery player's key is "sb:<id>", not their name.
+		if !p.IsObserver() && strings.Contains(normalizeKey(p.Name), f.nameNeedle) {
 			return true
 		}
 	}

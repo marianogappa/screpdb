@@ -747,3 +747,16 @@ func TestLibStoreFilterOptionsOverTheRealCorpus(t *testing.T) {
 
 	t.Logf("corpus: %d games, %d players, %d maps, %d featuring chips", games, len(players), len(maps), len(counts))
 }
+
+// A ShieldBattery player's key is "sb:<id>", so the name search must read the name.
+func TestLibStoreGamesNameSearchFindsShieldBatteryPlayers(t *testing.T) {
+	sbGame := librarytest.Replay(librarytest.WithPlayer("Rain"), librarytest.WithPlayer("Sea"))
+	sbGame.Players[0].Key = "sb:4242"
+	s := newTestLibStore(t, sbGame)
+	if got := listedIDs(t, s, GamesQuery{NameContains: "rain"}); len(got) != 1 || got[0] != sbGame.ID {
+		t.Fatalf("searching a ShieldBattery player's name: got %v, want [%d]", got, sbGame.ID)
+	}
+	if got := listedIDs(t, s, GamesQuery{NameContains: "4242"}); len(got) != 0 {
+		t.Fatalf("searching a ShieldBattery id should not match: got %v", got)
+	}
+}
