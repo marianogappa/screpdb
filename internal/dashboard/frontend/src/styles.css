@@ -7040,6 +7040,8 @@ span[data-tip],
   box-shadow: inset 2px 0 0 var(--e-accent);
 }
 
+.wf-ob-icon img.wf-ob-photo { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(224, 184, 76, 0.5); }
+.wf-ob-opt--entity .wf-ob-icon { color: var(--e-quiet); }
 .wf-ob-tick { flex: 0 0 auto; width: 10px; color: var(--e-accent); font-size: 11px; }
 
 .wf-ob-lbl { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -7248,8 +7250,24 @@ span[data-tip],
 .hk-map-chip rect { fill: #181e25; stroke: #6c7884; stroke-width: 1.5; }
 .hk-map-chip text { fill: #e8edf2; font-size: 16px; font-weight: 600; }
 .hk-sigs { display: grid; gap: 14px; }
-.hk-sig-card { border: 1px solid var(--e-line); border-radius: 8px; padding: 12px 14px; }
-.hk-sig-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; padding: 4px 0; }
+.hk-sig-card { border: 1px solid var(--e-line); border-radius: 8px; padding: 16px 18px 12px; }
+.hk-sig-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 32px; padding: 4px 0 18px; margin-bottom: 14px; border-bottom: 1px solid var(--e-line); }
+.hk-sig-head-main { display: grid; gap: 14px; flex: 1 1 320px; min-width: 0; }
+.hk-sig-oddities { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; font-size: 0.875rem; line-height: 1.45; }
+.hk-sig-oddities li { display: grid; grid-template-columns: 1.6em 1fr; align-items: center; gap: 8px; }
+.hk-sig-bullet { font-size: 1rem; line-height: 1; text-align: center; }
+.hk-sig-twin { margin-left: auto; display: grid; justify-items: end; gap: 6px; font-size: 0.8rem; }
+.hk-sig-twin-who .hk-sig-twin-name { font-size: 0.875rem; }
+.hk-sig-twin-btn { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--e-line); padding: 5px 14px 5px 6px; color: inherit; font: inherit; cursor: pointer; border-radius: 999px; }
+.hk-sig-twin-btn:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(224, 184, 76, 0.45); }
+.hk-sig-twin-btn:focus-visible { outline: 2px solid var(--e-accent); outline-offset: 2px; }
+.hk-sig-twin-who { display: inline-flex; align-items: center; gap: 10px; }
+.hk-sig-twin-name { font-weight: 600; }
+.hk-sig-note-quiet { color: var(--e-quiet); }
+.hk-sig-share { font-size: 0.8rem; color: var(--e-quiet); text-align: right; font-variant-numeric: tabular-nums; }
+.hk-sig-stats { display: flex; flex-wrap: wrap; gap: 6px 28px; font-size: 0.8rem; color: var(--e-quiet); }
+.hk-sig-stat b { font-size: 1.25rem; margin-right: 2px; font-weight: 600; color: var(--e-strong, inherit); font-variant-numeric: tabular-nums; }
+.hk-sig-row { display: grid; grid-template-columns: 30px 1fr 40px; gap: 10px; align-items: center; padding: 4px 0; }
 .hk-sig-keycap { align-self: stretch; display: flex; align-items: center; justify-content: center; }
 .hk-sig-lane {
   position: relative; height: 54px; border-left: 1px solid var(--e-line);
@@ -7269,7 +7287,7 @@ span[data-tip],
 }
 .hk-sig-bar:hover::after { opacity: 1; }
 .hk-sig-bar:hover { filter: brightness(1.25); }
-.hk-sig-axis { display: grid; grid-template-columns: 30px 1fr; gap: 10px; margin-top: 2px; }
+.hk-sig-axis { display: grid; grid-template-columns: 30px 1fr 40px; gap: 10px; margin-top: 2px; }
 .hk-sig-axis-in { position: relative; height: 14px; font-size: 9.5px; color: var(--e-quiet); }
 .hk-sig-axis-in span { position: absolute; transform: translateX(-50%); }
 

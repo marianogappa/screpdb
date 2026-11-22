@@ -112,6 +112,9 @@ export default function FilterOmnibar({
   // { value, onChange, placeholder }. The same text still narrows the option
   // menu, so picking an option stays one keystroke away.
   textFilter = null,
+  // Entities the typed text matches outside the option vocabulary, listed first in the menu:
+  // { label, items: [{ id, label, iconUrl, onPick }] }.
+  textMatches = null,
   loading = false,
 }) {
   const isDeadEnd = (item) => !loading && item.games === 0;
@@ -283,13 +286,16 @@ export default function FilterOmnibar({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setOpen(true);
-      setCursor((c) => Math.min(flatShown.length - 1, c + 1));
+      setCursor((c) => Math.min(extraItems.length + flatShown.length - 1, c + 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setCursor((c) => Math.max(0, c - 1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (open && flatShown[cursor]) pick(flatShown[cursor]);
+      if (open && cursor < extraItems.length) {
+        extraItems[cursor].onPick();
+        setOpen(false);
+      } else if (open && flatShown[cursor - extraItems.length]) pick(flatShown[cursor - extraItems.length]);
     } else if (e.key === 'Escape') {
       setOpen(false);
     } else if (e.key === 'Backspace' && !query && activeCount) {
@@ -316,7 +322,35 @@ export default function FilterOmnibar({
   // One section per matching axis, so 67 build orders and 26 tactics stay
   // tellable apart and "rush" shows which axis each hit sits on.
   const menuNodes = [];
-  let flatIdx = 0;
+  const extraItems = String(query || '').trim() ? (textMatches?.items || []) : [];
+  if (extraItems.length) {
+    menuNodes.push(
+      <div className="wf-ob-sec" key="sec-text-matches">
+        {textMatches.label}
+        <span>{extraItems.length}</span>
+      </div>,
+    );
+    extraItems.forEach((item, idx) => {
+      menuNodes.push(
+        <button
+          type="button"
+          role="option"
+          aria-selected={idx === cursor}
+          key={`text-match-${item.id}`}
+          className="wf-ob-opt wf-ob-opt--entity"
+          onMouseEnter={() => setCursor(idx)}
+          onClick={() => { item.onPick(); setOpen(false); }}
+        >
+          <span className="wf-ob-tick" />
+          <span className="wf-ob-icon">
+            {item.iconUrl ? <img className="wf-ob-photo" src={item.iconUrl} alt="" /> : '★'}
+          </span>
+          <span className="wf-ob-lbl">{item.label}</span>
+        </button>,
+      );
+    });
+  }
+  let flatIdx = extraItems.length;
   shownGroups.forEach((group) => {
     menuNodes.push(
       <div className="wf-ob-sec" key={`sec-${group.axisId}`}>
@@ -433,6 +467,8 @@ export default function FilterOmnibar({
       {open ? (
         <div className="wf-ob-menu" id="wf-ob-menu" role="listbox" ref={menuRef}>
           {flatShown.length === 0 ? (
+            <>
+            {menuNodes}
             <div className="wf-ob-empty">
               {textFilter
                 ? renderRich(t(`omnibar.textFilterEmpty.${noun}`), { query: <b>{query}</b> })
@@ -442,6 +478,7 @@ export default function FilterOmnibar({
                   tactic: <b>{t('omnibar.exampleTactic')}</b>,
                 })}
             </div>
+            </>
           ) : (
             <>
               {menuNodes}
