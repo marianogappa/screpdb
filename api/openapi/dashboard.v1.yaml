@@ -399,6 +399,11 @@ paths:
             type: array
             items:
               type: string
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: OK
