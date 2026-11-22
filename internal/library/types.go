@@ -175,6 +175,9 @@ const (
 	TeamResultWon
 	TeamResultLost
 	PlayerHasSkillCommands
+	// PlayerSaver marks whoever recorded the file: the chat lines a replay keeps
+	// are the ones its saver received.
+	PlayerSaver
 )
 
 func (f PlayerFlags) Has(flag PlayerFlags) bool { return f&flag != 0 }

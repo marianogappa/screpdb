@@ -52,25 +52,27 @@ func youKeySetFromBattleTags(battleTags []string) map[string]struct{} {
 	return keys
 }
 
-// loadYouKeys returns the current set of names that are the user, or nil when
-// it cannot be determined. It is held in memory rather than persisted: it is
-// derived entirely from CSettings.json, so a stored copy could only ever go
-// stale relative to the file it came from.
+// loadYouKeys returns every player key that is the user (see youSet), or nil
+// when none can be determined.
 func (d *Dashboard) loadYouKeys() map[string]struct{} {
-	var bnet map[string]struct{}
-	if v := d.youKeys.Load(); v != nil {
-		bnet, _ = v.(map[string]struct{})
+	members := d.youSet()
+	if len(members) == 0 {
+		return nil
 	}
-	sb := d.sbYouKey()
-	if sb == "" {
-		return bnet
-	}
-	keys := make(map[string]struct{}, len(bnet)+1)
-	for k := range bnet {
+	keys := make(map[string]struct{}, len(members))
+	for k := range members {
 		keys[k] = struct{}{}
 	}
-	keys[sb] = struct{}{}
 	return keys
+}
+
+// csettingsYouKeys is the user's Battle.net names as CSettings.json lists them.
+func (d *Dashboard) csettingsYouKeys() map[string]struct{} {
+	if v := d.youKeys.Load(); v != nil {
+		keys, _ := v.(map[string]struct{})
+		return keys
+	}
+	return nil
 }
 
 type sbYouCache struct {

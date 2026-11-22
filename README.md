@@ -10,10 +10,10 @@ screpdb is an advanced Starcraft replay reporting tool. A quiet companion to you
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/marianogappa/screpdb)](go.mod)
 [![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](scripts/coverage.sh)
-[![Replay load throughput](https://img.shields.io/badge/replay%20load-49.4%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
+[![Replay load throughput](https://img.shields.io/badge/replay%20load-37.9%20replays%2Fsec-brightgreen)](.github/workflows/bench-load.yml)
 
 <!-- load-bench-start -->
-<sub>20.23 ms/replay · corpus: 166 replays · GitHub-hosted 2-core runner · updated automatically on merge to main</sub>
+<sub>26.40 ms/replay · corpus: 166 replays · GitHub-hosted 2-core runner · updated automatically on merge to main</sub>
 <!-- load-bench-end -->
 
 ## Features
@@ -311,11 +311,11 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-21  OK. The user's other profiles are recognised from what is already loaded: names on the same cached Battle.net account as two CSettings names, and the recorder of the user's own AutoSave replays (never downloaded complete copies), with fingerprints able to veto a recorder; a "You also play as" row lists them on the user's own pages; no new paths, network calls or allowlist changes.
 2026-11-21  OK. ShieldBattery support rebased onto main: internal/sbfacade stays the only new network path (anonymous paced GETs of shieldbattery.net/api/1 with the checks listed below) and its caches live under app-data through iofacade; the user's CSettings battle tags now only ever mark Battle.net players, never a ShieldBattery account of the same name; no other paths, network calls or allowlists change.
 2026-11-21  OK. A complete copy of a game shows only the chat from the user's own copy, re-attributed by player name, instead of merging both files' chat; no paths, network calls or allowlists change.
 2026-11-21  OK. The games list gains a player-name substring filter (`name` query parameter, matched in memory against the loaded library), and the omnibar stops covering results while typing a name; no paths, network calls or allowlists change.
-2026-11-20  OK. GitHub Pages serves a static landing page from site/ instead of the WASM demo, which is removed along with its WASM-only dashboard hooks, and the README links to it first; no paths, network calls or allowlists change.
-2026-11-16  OK. ShieldBattery outcomes: a new sanctioned facade, internal/sbfacade, makes anonymous paced GETs of https://shieldbattery.net/api/1/games/<uuid> (game id format checked, no redirects, 1 MB read cap, no credentials or cookies) for ShieldBattery replays whose winner is undecided, and caches settled records at <app-data>/shieldbattery/games.json through iofacade; the enforcement test skips internal/sbfacade alongside the other facades.
+2026-11-20  OK. Game events: engine drops that land on Big Game Hunters' corner cliffs are cliff drops, High Templar and Lurker drops are named like Reaver and DT drops when they are most of what landed, everywhere drops are listed or filtered, and the overrun pill and games list chip are gone while the overrun event stays; a pill whose event the list hides is no longer a link; an army standing in a base its owner holds overruns nobody; drops read "drops with", air harass reads from the attacker's side and a razing Recall names the workers it killed; dashboard and detectors only, no new paths, network calls or allowlist changes.
 ```
 
 </details>

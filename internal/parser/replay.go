@@ -234,6 +234,7 @@ func ParseReplayWithOptions(filePath string, fileInfo *models.Replay, opts Optio
 	if rep.Computed != nil && rep.Computed.RepSaverPlayerID != nil {
 		v := *rep.Computed.RepSaverPlayerID
 		repSaverPID = &v
+		data.SaverPlayerID = &v
 	}
 
 	// Runs on the full unfiltered stream because earlyfilter / dedup don't touch

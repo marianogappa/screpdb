@@ -374,6 +374,7 @@
   "player.bnet.gamesLastWeek": "{count} games in the last week",
   "player.bnet.allTimeApm": "All-time APM",
   "player.bnet.outdated": "Outdated",
+  "player.youAlsoPlayAs": "You also play as",
   "player.bnet.alsoPlaysAs": "Also plays as",
   "player.bnet.recentGames": "🏁 Recent games",
   "player.bnet.playersCount": "{count} players",
