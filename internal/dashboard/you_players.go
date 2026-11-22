@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/marianogappa/screpdb/internal/library"
+
 	"github.com/marianogappa/screpdb/internal/iofacade"
 )
 
@@ -55,39 +57,95 @@ func youKeySetFromBattleTags(battleTags []string) map[string]struct{} {
 // derived entirely from CSettings.json, so a stored copy could only ever go
 // stale relative to the file it came from.
 func (d *Dashboard) loadYouKeys() map[string]struct{} {
+	var bnet map[string]struct{}
 	if v := d.youKeys.Load(); v != nil {
-		if keys, ok := v.(map[string]struct{}); ok {
-			return keys
-		}
+		bnet, _ = v.(map[string]struct{})
 	}
-	return nil
+	sb := d.sbYouKey()
+	if sb == "" {
+		return bnet
+	}
+	keys := make(map[string]struct{}, len(bnet)+1)
+	for k := range bnet {
+		keys[k] = struct{}{}
+	}
+	keys[sb] = struct{}{}
+	return keys
 }
 
-func (d *Dashboard) isYouPlayer(name string) bool {
-	keys := d.loadYouKeys()
-	if len(keys) == 0 {
-		return false
+type sbYouCache struct {
+	generation, version uint64
+	key                 string
+}
+
+// sbYouKey is the user's ShieldBattery account: CSettings knows nothing of it, but the user is in every
+// game they recorded, so it is the account found in nearly all of their ShieldBattery replays. Their
+// own autosaves are the best evidence, so other files only count when there are none.
+func (d *Dashboard) sbYouKey() string {
+	if d.library == nil {
+		return ""
 	}
-	_, ok := keys[normalizePlayerKey(name)]
+	snap := d.library.lib.Snapshot()
+	if c := d.sbYou.Load(); c != nil && c.generation == snap.Generation && c.version == snap.Version {
+		return c.key
+	}
+	key := sbOwnerKey(snap.Replays)
+	d.sbYou.Store(&sbYouCache{generation: snap.Generation, version: snap.Version, key: key})
+	return key
+}
+
+const (
+	sbOwnerMinGames = 3
+	sbOwnerMinShare = 0.8
+)
+
+func sbOwnerKey(replays []*library.Replay) string {
+	count := func(autosaveOnly bool) (map[string]int, int) {
+		counts := map[string]int{}
+		games := 0
+		for _, r := range replays {
+			if r.ShieldBattery == nil || (autosaveOnly && !r.Flags.Has(library.FlagIsAutosave)) {
+				continue
+			}
+			games++
+			for i := range r.Players {
+				if p := &r.Players[i]; !p.IsObserver() && library.IsSBKey(p.Key) {
+					counts[p.Key]++
+				}
+			}
+		}
+		return counts, games
+	}
+	counts, games := count(true)
+	if games == 0 {
+		counts, games = count(false)
+	}
+	if games < sbOwnerMinGames {
+		return ""
+	}
+	best, bestGames := "", 0
+	for key, n := range counts {
+		if n > bestGames || (n == bestGames && key < best) {
+			best, bestGames = key, n
+		}
+	}
+	if float64(bestGames) < sbOwnerMinShare*float64(games) {
+		return ""
+	}
+	return best
+}
+
+func (d *Dashboard) isYouKey(key string) bool {
+	_, ok := d.loadYouKeys()[normalizePlayerKey(key)]
 	return ok
 }
 
-// youDisplayNames maps each of names that is the user to its marked display
-// name. Names that are not the user are absent from the result, so callers can
-// keep treating it as an override map.
-func (d *Dashboard) youDisplayNames(names []string) map[string]string {
-	keys := d.loadYouKeys()
-	if len(keys) == 0 {
-		return map[string]string{}
+// youDisplayName marks name when the player key is the user's.
+func (d *Dashboard) youDisplayName(key, name string) string {
+	if d.isYouKey(key) {
+		return formatYouDisplayName(name)
 	}
-	display := make(map[string]string, len(names))
-	for _, name := range names {
-		if _, ok := keys[normalizePlayerKey(name)]; !ok {
-			continue
-		}
-		display[name] = formatYouDisplayName(name)
-	}
-	return display
+	return name
 }
 
 func formatYouDisplayName(name string) string {

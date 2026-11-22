@@ -22,6 +22,7 @@ type ReplaySummaryRow struct {
 
 type ReplayPlayerDetailRow struct {
 	PlayerID            int64
+	PlayerKey           string
 	Name                string
 	Color               string
 	Race                string

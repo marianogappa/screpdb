@@ -21,11 +21,12 @@ type WorkflowGameListRow struct {
 }
 
 type WorkflowGamePlayerRow struct {
-	ReplayID int64
-	PlayerID int64
-	Name     string
-	Race     string
-	Team     int64
+	ReplayID  int64
+	PlayerID  int64
+	PlayerKey string
+	Name      string
+	Race      string
+	Team      int64
 	// TeamWon is the match fact: did this player's side take the game. The
 	// roster is styled from this, never from the personal result.
 	TeamWon bool
@@ -38,6 +39,8 @@ type WorkflowGamePlayerRow struct {
 	PlayerOutcomeReason string
 	TeamOutcomeReason   string
 	BnetOutcomeSource   string
+	// ShieldBattery marks a game played there, whose BnetOutcomeSource is ShieldBattery's record.
+	ShieldBattery bool
 	// CompleteCopy marks a co-player recording downloaded through Battle.net
 	// because the user's own copy ended before the game did (issue #341).
 	CompleteCopy bool
@@ -60,13 +63,14 @@ type WorkflowReplayEventRow struct {
 }
 
 type WorkflowCurrentPlayerRow struct {
-	ReplayID int64
-	PlayerID int64
-	Name     string
-	Race     string
-	TeamWon  bool
-	APM      int64
-	EAPM     int64
+	ReplayID  int64
+	PlayerID  int64
+	PlayerKey string
+	Name      string
+	Race      string
+	TeamWon   bool
+	APM       int64
+	EAPM      int64
 }
 
 type WorkflowCurrentPlayerPatternRow struct {

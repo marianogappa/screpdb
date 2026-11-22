@@ -8232,3 +8232,26 @@ button.skill-compare-marker:hover { color: #fff; }
 .insight-example-map { color: var(--e-quiet); }
 
 .insight-card-foot { margin-top: 4px; font-size: 11px; color: var(--e-quiet); }
+
+.sb-pill {
+  cursor: default;
+}
+
+.sb-pill--recent {
+  color: rgba(140, 190, 255, 0.95);
+  border-color: rgba(110, 170, 255, 0.35);
+  background: rgba(70, 130, 230, 0.12);
+}
+
+.sb-pill--recent .bnet-pill-dot {
+  background: #5aa2ff;
+  box-shadow: 0 0 4px rgba(90, 162, 255, 0.55);
+}
+
+.sb-pill--idle {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.sb-pill--idle .bnet-pill-dot {
+  background: rgba(120, 160, 230, 0.35);
+}

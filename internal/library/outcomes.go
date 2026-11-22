@@ -10,7 +10,8 @@ import (
 
 // A replay's results come from up to three sources, most trusted first: the engine, which watched the
 // game itself; the command stream, which can only infer a winner from who left and who kept acting; and
-// Battle.net, which knows how the game ended even when this recording stopped before it did. The command
+// the service the game was played on (Battle.net or ShieldBattery), which knows how the game ended even
+// when this recording stopped before it did. The command
 // stream's answer is what the parser stored; the other two are layered over it here, so switching the
 // engine off or forgetting Battle.net's answer gives back exactly what the parser said.
 
@@ -30,7 +31,8 @@ type EngineResult struct {
 	Frame          uint32
 }
 
-// BnetResult is one player's result as Battle.net records it on their own profile.
+// BnetResult is one player's result as the service the game was played on records it: Battle.net on the
+// player's own profile, or ShieldBattery on the game.
 type BnetResult struct {
 	Key     string
 	Outcome models.Outcome
@@ -67,13 +69,21 @@ func (r *Replay) resolveOutcomes() {
 			teamReason = why
 		}
 	}
-	if why, ok := applyBnetResults(players, r.bnetResults, r.Flags); ok {
+	if why, ok := applyBnetResults(players, r.bnetResults, r.Flags, r.resultService()); ok {
 		teamReason, bnetSource = why, r.bnetSource
 	}
 	r.Players, r.TeamOutcomeReason, r.BnetOutcomeSource = players, teamReason, bnetSource
 	if !engine && len(r.bnetResults) == 0 {
 		r.parsed = nil
 	}
+}
+
+// resultService is who keeps the record a BnetResult comes from.
+func (r *Replay) resultService() string {
+	if r.ShieldBattery != nil {
+		return "ShieldBattery"
+	}
+	return "Battle.net"
 }
 
 // WinnerUndecided reports whether no side of a scored game is known to have won.
@@ -253,9 +263,9 @@ func hasResult(final map[uint8]EngineResult, p *Player) bool {
 	return ok
 }
 
-// applyBnetResults settles a game nothing else could from the players' own Battle.net records. A recorded
-// win names the winning side; in a 1v1, a recorded loss names it too.
-func applyBnetResults(players []Player, results []BnetResult, flags Flags) (string, bool) {
+// applyBnetResults settles a game nothing else could from the service's records of it. A recorded win
+// names the winning side; in a 1v1, a recorded loss names it too.
+func applyBnetResults(players []Player, results []BnetResult, flags Flags, service string) (string, bool) {
 	if len(results) == 0 || notScored(players) || !(&Replay{Players: players}).WinnerUndecided() {
 		return "", false
 	}
@@ -301,16 +311,23 @@ func applyBnetResults(players []Player, results []BnetResult, flags Flags) (stri
 		}
 		switch own, recorded := byKey[p.Key]; {
 		case recorded && own == models.OutcomeWon:
-			setOutcomes(p, own, team, "Battle.net records a win on their own profile")
+			setOutcomes(p, own, team, recordedReason(service, "win"))
 		case recorded && own == models.OutcomeLost:
-			setOutcomes(p, own, team, "Battle.net records a loss on their own profile")
+			setOutcomes(p, own, team, recordedReason(service, "loss"))
 		case recorded && own == models.OutcomeDisconnected:
-			setOutcomes(p, own, team, "Battle.net records a disconnect on their own profile")
+			setOutcomes(p, own, team, recordedReason(service, "disconnect"))
 		case p.PlayerOutcome().Known() || p.PlayerOutcome() == models.OutcomeDisconnected:
 			setOutcomes(p, p.PlayerOutcome(), team, p.PlayerOutcomeReason)
 		default:
 			setOutcomes(p, team, team, "their side's result, which they share")
 		}
 	}
-	return "Battle.net names " + strings.Join(winners, ", ") + " as winning", true
+	return service + " names " + strings.Join(winners, ", ") + " as winning", true
+}
+
+func recordedReason(service, result string) string {
+	if service == "Battle.net" {
+		return "Battle.net records a " + result + " on their own profile"
+	}
+	return service + " records a " + result + " for them"
 }

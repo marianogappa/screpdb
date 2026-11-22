@@ -927,6 +927,99 @@ const COUNTRY_FLAG_POLL_MAX_TICKS = 45;
 
 // Polling stops as soon as nothing is outstanding and the server reports no
 // backfill in flight.
+const isShieldBatteryKey = (key) => String(key || '').startsWith('sb:');
+
+const SB_LADDER_LABELS = { '1v1': '1v1', '2v2': '2v2', '2v2bgh': '2v2 BGH' };
+
+function ShieldBatterySection({ profile, onOpenPlayer }) {
+  const t = useT();
+  const recent = Array.isArray(profile?.recent_games) ? profile.recent_games : [];
+  const ladder = Array.isArray(profile?.ladder) ? profile.ladder : [];
+  const main = ladder[0];
+  return (
+    <div className="wps-section">
+      <div className="workflow-card-title wps-section-title">
+        <span>{t('player.sb.title')}</span>
+      </div>
+      {!profile ? (
+        <div className="chart-empty">{t('player.sb.unavailable')}</div>
+      ) : (<>
+        <div className="wps-stats">
+          <div className="wps-stat">
+            <span className="wps-stat-label">{t('player.bnet.ladder')}</span>
+            <span className="wps-stat-value">
+              {main ? t('player.bnet.mmr', { mmr: main.rating }) : t('player.bnet.unranked')}
+            </span>
+            {ladder.map((l) => (
+              <span key={l.type} className="wps-stat-sub">
+                {`${SB_LADDER_LABELS[l.type] || l.type} #${l.rank} · ${l.rating} · ${l.wins}-${l.losses}`}
+              </span>
+            ))}
+          </div>
+          <div className="wps-stat">
+            <span className="wps-stat-label">{t('player.stats.games')}</span>
+            <span className="wps-stat-value">{Number(profile.lifetime_games || 0).toLocaleString()}</span>
+          </div>
+          <div className="wps-stat">
+            <span className="wps-stat-label">{t('common.lastPlayed')}</span>
+            <span className="wps-stat-value">{profile.last_played_at ? formatRelativeReplayDate(profile.last_played_at) : <NoValue />}</span>
+          </div>
+        </div>
+        <div className="workflow-card-title wps-section-title"><span>{t('player.bnet.recentGames')}</span></div>
+        {recent.length === 0 ? (
+          <div className="chart-empty">{t('player.sb.noRecentGames')}</div>
+        ) : (
+          <div className="workflow-bnet-games">
+            <div className="workflow-bnet-game-row wbg-head">
+              <span className="wbg-race" />
+              <span className="wbg-when">{t('player.bnet.table.when')}</span>
+              <span className="wbg-map">{t('common.map')}</span>
+              <span className="wbg-type">{t('player.lastGames.type')}</span>
+              <span className="wbg-length">{t('common.time')}</span>
+              <span className="wbg-result">{t('common.winLoss')}</span>
+              <span className="wbg-apm" />
+              <span className="wbg-opp">{t('player.bnet.table.opponent')}</span>
+            </div>
+            {recent.map((g) => {
+              const raceIcon = getWorkerIconForRace(g.race);
+              const result = String(g.result || '');
+              const resultEmoji = result === 'win' ? '✅' : result === 'loss' ? '❌' : '❓';
+              const resultTitle = result === 'win' ? t('player.result.win')
+                : result === 'loss' ? t('player.result.loss')
+                : t('player.result.undetermined');
+              return (
+                <div key={g.id} className="workflow-bnet-game-row">
+                  <span className="wbg-race">{raceIcon ? <img src={raceIcon} alt={raceLabel(g.race)} title={raceLabel(g.race)} /> : null}</span>
+                  <span className="wbg-when" title={g.played_at}>{formatRelativeReplayDate(g.played_at)}</span>
+                  <span className="wbg-map" title={g.map_name}>
+                    {g.map_name || <NoValue />}
+                    {g.ranked ? <span className="wbg-ladder">{t('player.bnet.ladder')}</span> : null}
+                  </span>
+                  <span className="wbg-type">{SB_LADDER_LABELS[g.matchmaking_type] || g.matchmaking_type || ''}</span>
+                  <span className="wbg-length">{g.duration_seconds ? formatDuration(g.duration_seconds) : ''}</span>
+                  <span className="wbg-result" title={resultTitle}>{resultEmoji}</span>
+                  <span className="wbg-apm" />
+                  <span className="wbg-opp">
+                    {(g.opponents || []).map((o, i) => (
+                      <span key={o.player_key}>
+                        {i > 0 ? ', ' : ''}
+                        {o.local ? (
+                          <button type="button" className="wps-alias wps-alias-known" onClick={() => onOpenPlayer(o.player_key)}>{o.name}</button>
+                        ) : o.name}
+                        {o.race ? ` (${o.race.slice(0, 1)})` : ''}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </>)}
+    </div>
+  );
+}
+
 function useCountryFlagBackfill(missingKeys, enabled) {
   const [overrides, setOverrides] = useState({});
   const missingSignature = missingKeys.join(',');
@@ -3239,6 +3332,9 @@ function App() {
   useEffect(() => {
     if (bnetLive) refreshFeaturedPlayerBnetRef.current?.();
   }, [bnetLive]);
+  const sbStatus = bnetStatus?.shieldbattery || null;
+  // A user who only plays on ShieldBattery never sees the Battle.net pill.
+  const showBnetPill = !sbStatus || Number(bnetStatus?.bnet_games ?? 1) > 0;
   const bnetRequestsToday = bnetStatus?.requests_today ?? 0;
   const bnetCooldownUntil = bnetStatus?.cooldown_until ? new Date(bnetStatus.cooldown_until) : null;
   const bnetCoolingDown = Boolean(bnetCooldownUntil) && bnetCooldownUntil > new Date();
@@ -3320,7 +3416,7 @@ function App() {
     const keys = new Set();
     const consider = (player) => {
       const key = String(player?.player_key || '').trim().toLowerCase();
-      if (!key || player?.country_code) return;
+      if (!key || player?.country_code || isShieldBatteryKey(key)) return;
       keys.add(key);
     };
     (mainPlayers || []).forEach(consider);
@@ -3338,6 +3434,11 @@ function App() {
     : bnetCoolingDown
       ? t('bnet.tip.requestsPaused', { used: bnetRequestsToday, time: bnetCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
       : t('bnet.tip.requests', { used: bnetRequestsToday });
+
+  const sbCooldownUntil = sbStatus?.cooldown_until ? new Date(sbStatus.cooldown_until) : null;
+  const sbTipSuffix = sbCooldownUntil && sbCooldownUntil > new Date()
+    ? t('bnet.tip.requestsPaused', { used: sbStatus.requests_today ?? 0, time: sbCooldownUntil.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })
+    : t('bnet.tip.requests', { used: sbStatus?.requests_today ?? 0 });
 
   const handleBnetToggle = useCallback(async () => {
     const newDisabled = !bnetDisabled;
@@ -5865,6 +5966,16 @@ function App() {
             </button>
           </div>
           <div className="workflow-nav-group workflow-nav-group-right">
+            {sbStatus ? (
+              <span
+                className={`bnet-pill sb-pill sb-pill--${sbStatus.recent ? 'recent' : 'idle'} tip-below`}
+                data-tip={t(sbStatus.recent ? 'sb.tip.recent' : 'sb.tip.idle') + sbTipSuffix}
+              >
+                <span className="bnet-pill-dot" />
+                SC:R
+              </span>
+            ) : null}
+            {showBnetPill ? (
             <button
               type="button"
               className={`bnet-pill bnet-pill--${bnetDisabled ? 'disabled' : bnetState} tip-below`}
@@ -5885,6 +5996,7 @@ function App() {
                 : bnetState === 'offline' ? t('bnet.pill.offline')
                 : 'SC:R'}
             </button>
+            ) : null}
             <button
               type="button"
               onClick={handleQuit}
@@ -7363,7 +7475,8 @@ function App() {
                     // show. found is what separates an account from an answer
                     // of "no such account".
                     const bnetHasAnswer = !!bnet && !!bnet.found;
-                    const showBnet = !!bnet || isFeaturedPlayer || Number(mainPlayer?.bnet_games || 0) > 0;
+                    const isSBPlayer = isShieldBatteryKey(mainPlayer?.player_key || selectedPlayerKey);
+                    const showBnet = !isSBPlayer && (!!bnet || isFeaturedPlayer || Number(mainPlayer?.bnet_games || 0) > 0);
                     // One miss only rules out one gateway. Until the sweep has
                     // covered them all, "not on Battle.net" would be a guess.
                     const bnetSweepDone = !!bnet && !bnet.found
@@ -7406,6 +7519,7 @@ function App() {
                       <div className="workflow-card">
                         <div className="wps-top-row">
                         {skillCard}
+                        {isSBPlayer ? <ShieldBatterySection profile={mainPlayer?.sb_profile} onOpenPlayer={openMainPlayer} /> : null}
                         {showBnet ? (
                           <div className="wps-section">
                             <div className="workflow-card-title wps-section-title wps-section-title--with-notice">
