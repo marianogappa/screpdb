@@ -259,7 +259,7 @@ func TestHandleGetSchema(t *testing.T) {
 		"42 replays from /replays",
 		"GET /api/games",
 		"GET /api/custom/players/skill",
-		"query: duration, featuring, limit, map, map_kind, matchup, offset, player",
+		"query: duration, featuring, limit, map, map_kind, matchup, name, offset, player",
 		"There is no raw command stream",
 	} {
 		if !strings.Contains(out, want) {
