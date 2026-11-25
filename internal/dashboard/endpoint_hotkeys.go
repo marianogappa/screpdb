@@ -33,6 +33,9 @@ type hotkeyTimelinePlayer struct {
 	// (0 when the replay has no engine data): the group's main unit and how
 	// many units it held.
 	Events [][9]int `json:"events"`
+	// Compositions maps a unit assign's event index to every unit type the group held, as
+	// [unitType, count] pairs, most valuable first. Only engine digests from EngineVersion 14 have it.
+	Compositions map[int][][2]int `json:"compositions,omitempty"`
 	// Legacy marks a pre-v2 stream: times are real, annotations are absent.
 	Legacy bool `json:"legacy,omitempty"`
 }

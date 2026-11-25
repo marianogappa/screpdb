@@ -139,6 +139,8 @@
   "chart.hotkey.assignBuildingTitle": "{time} {group}번 부대 지정: {name}",
   "chart.hotkey.assignUnitsTitle.one": "{time} {group}번 부대 지정: 유닛 {count}기",
   "chart.hotkey.assignUnitsTitle.other": "{time} {group}번 부대 지정: 유닛 {count}기",
+  "chart.hotkey.fitToViewport": "화면에 맞추기",
+  "chart.hotkey.removeImages": "이미지 숨기기",
   "chart.muta.legendTooltip": "프로게이머는 뮤탈이 도착하는 순간에 맞춰 터렛이 완성되도록 노력합니다. 띠는 프로가 보통 맞추는 구간입니다.",
   "chart.muta.legend": "* 프로 범위",
   "chart.muta.title": "뮤탈-터렛 타이밍",

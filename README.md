@@ -304,18 +304,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-25  OK. The landing page gains a News section rendered from site/news.json (release notes, videos, articles), with YouTube thumbnails from i.ytimg.com; plus release-please changelog sections, a player-facing writing guide and a dev-only scripts/news drafter; site and docs only, no app code, paths, network calls or allowlist changes.
+2026-11-25  OK. Engine digests (EngineVersion 14) record every unit type a hotkey assign held; older digests are redone only when their game is opened, through the existing engine pass and digest cache. No new paths, network calls or allowlist changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-25  OK. The landing page gains a News section rendered from site/news.json (release notes, videos, articles), with YouTube thumbnails from i.ytimg.com; plus release-please changelog sections, a player-facing writing guide and a dev-only scripts/news drafter; site and docs only, no app code, paths, network calls or allowlist changes.
 2026-11-23  OK. The landing page sends Google Analytics hits to its own screpdb property (G-FWF642V3PP) instead of the blog's; site HTML only, no app code, paths, network calls or allowlist changes.
 2026-11-22  OK. A You button between Games and Players opens the profile the user played their most recent game on (games only observed do not count); it reads the replays already loaded in memory and rides on the existing gaming session response, so there are no new paths, network calls or writes.
 2026-11-22  OK. Merge review fixes: the games list name search matches player names instead of keys, so ShieldBattery players (keyed sb:<id>) are found by name and their ids no longer match; the I/O audit is reordered newest first and the ShieldBattery entry restates its own network checks; no new paths, network calls or allowlist changes.
 2026-11-22  OK. Built-in pros are no longer added to the featured strip but every one is found by a players name search, marked built in; their Hotkeys tab shows their conspicuous habits, the closest other built-in pro's layout (opening that pro's Hotkeys tab) and, for every player, hotkey presses and rebinds a minute plus each key's share of presses; pro habits and rates ship in a new embedded data/hotkey_oddities.json generated offline by scripts/hotkey-oddities, and the pro pack was regenerated with engine unit types; no new paths, network calls or allowlist changes.
-2026-11-21  OK. Insights are tiered by skill: each rule compares the player against the next tier up with ladder-fitted bars (army and building hotkey uses split by the command that follows a recall, idle production, army cadence, idle army, banked income on 1v1 regular maps), fires only on most recent games at 95% confidence, ranks by reliability, shows at most three with a progress chip only when a change is significant, a "Getting better" section and an "Already OK" section for the same level; reads library data already in memory, no new paths, network calls or allowlist changes.
 ```
 
 </details>

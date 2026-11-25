@@ -139,6 +139,8 @@
   "chart.hotkey.assignBuildingTitle": "{time} assign {group}: {name}",
   "chart.hotkey.assignUnitsTitle.one": "{time} assign {group}: {count} unit",
   "chart.hotkey.assignUnitsTitle.other": "{time} assign {group}: {count} units",
+  "chart.hotkey.fitToViewport": "Fit to viewport",
+  "chart.hotkey.removeImages": "Remove images",
   "chart.muta.legendTooltip": "Progamers aim for turrets to land just in time as mutas arrive. The band is the range they usually hit.",
   "chart.muta.legend": "* Expert range",
   "chart.muta.title": "Mutalisk-Turret timing",

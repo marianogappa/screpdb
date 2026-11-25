@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"slices"
+
 	"github.com/icza/screp/rep/repcmd"
 	openbw "github.com/marianogappa/openbw-go"
 	"github.com/marianogappa/screpsim"
@@ -14,6 +16,14 @@ type HotkeyAssign struct {
 	Group    uint8
 	MainType uint16
 	Count    uint8
+	// Units is every unit type the group held, most valuable first, so Units[0] is MainType; empty before
+	// EngineVersion 14.
+	Units []UnitCount
+}
+
+type UnitCount struct {
+	Type  uint16
+	Count uint8
 }
 
 type hotkeyGroupKey struct {
@@ -58,15 +68,18 @@ func (p *passState) summarizeGroup(frame int32, key hotkeyGroupKey) (HotkeyAssig
 	if total == 0 {
 		return HotkeyAssign{}, false
 	}
-	var main openbw.UnitType
-	best := -1
+	units := make([]UnitCount, 0, len(counts))
 	for t, n := range counts {
-		score := n * int(max(CostOf(uint16(t)).Value(), 1))
-		if score > best || score == best && t < main {
-			main, best = t, score
-		}
+		units = append(units, UnitCount{Type: uint16(t), Count: uint8(min(n, 255))})
 	}
-	return HotkeyAssign{Frame: frame, Owner: key.owner, Group: key.group, MainType: uint16(main), Count: uint8(min(total, 255))}, true
+	score := func(u UnitCount) int { return int(u.Count) * int(max(CostOf(u.Type).Value(), 1)) }
+	slices.SortFunc(units, func(a, b UnitCount) int {
+		if sa, sb := score(a), score(b); sa != sb {
+			return sb - sa
+		}
+		return int(a.Type) - int(b.Type)
+	})
+	return HotkeyAssign{Frame: frame, Owner: key.owner, Group: key.group, MainType: units[0].Type, Count: uint8(min(total, 255)), Units: units}, true
 }
 
 func unionUnits(a, b []openbw.UnitID) []openbw.UnitID {
