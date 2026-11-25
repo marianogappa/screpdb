@@ -37,6 +37,7 @@
       <a class="logo" href="./" aria-label="screpdb">screp<b>db</b></a>
       <nav class="nav-links" aria-label="Sections">
         <a href="#learn" data-i18n="nav.learn">Learn</a>
+        <a href="#news" data-i18n="nav.news">News</a>
         <a href="#author" data-i18n="nav.about">About</a>
         <a href="https://github.com/marianogappa/screpdb">GitHub</a>
       </nav>
@@ -251,6 +252,21 @@ scoop install screpdb</code></pre>
       </div>
     </section>
 
+    <section id="news" class="news">
+      <div class="wrap">
+        <header class="section-head">
+          <p class="eyebrow" data-i18n="news.eyebrow">News</p>
+          <h2 data-i18n="news.title">What's new</h2>
+          <p class="section-sub" data-i18n="news.sub">New releases, videos and articles about screpdb.</p>
+        </header>
+        <ol class="news-feed" id="news-feed"></ol>
+        <div class="news-foot">
+          <button class="btn btn-ghost btn-sm" type="button" id="news-more" hidden data-i18n="news.more">Show everything</button>
+          <p data-i18n="news.foot">The full technical changelog is on <a href="https://github.com/marianogappa/screpdb/blob/main/CHANGELOG.md">GitHub</a>.</p>
+        </div>
+      </div>
+    </section>
+
     <section id="author" class="author">
       <div class="wrap">
         <header class="section-head">
@@ -315,7 +331,7 @@ scoop install screpdb</code></pre>
       <nav aria-label="Links">
         <a href="https://github.com/marianogappa/screpdb">GitHub</a>
         <a href="https://www.youtube.com/@screpdb">YouTube</a>
-        <a href="https://github.com/marianogappa/screpdb/blob/main/CHANGELOG.md" data-i18n="footer.changelog">Changelog</a>
+        <a href="#news" data-i18n="footer.changelog">Changelog</a>
         <a href="https://tl.net/forum/brood-war/645718-screpdb-new-starcraft-reporting-tool" data-i18n="footer.tl">TL.net thread</a>
         <a href="https://github.com/marianogappa/screpdb/issues" data-i18n="footer.issue">Report an issue</a>
       </nav>
@@ -325,5 +341,6 @@ scoop install screpdb</code></pre>
 
   <script src="i18n.js"></script>
   <script src="main.js"></script>
+  <script src="news.js"></script>
 </body>
 </html>

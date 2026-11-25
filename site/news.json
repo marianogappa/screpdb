@@ -1,0 +1,258 @@
+[
+  {
+    "date": "2026-11-22",
+    "kind": "release",
+    "version": "2.5.0",
+    "title": "ShieldBattery support",
+    "items": [
+      "Your ShieldBattery games and players now show up next to your Battle.net ones.",
+      "Search the games list by player name.",
+      "screpdb recognises all of your accounts and lists them under \"You also play as\". The You button opens your profile from your latest game.",
+      "Insights for Beginner and Intermediate players now compare you with the next tier up, so the advice fits where you are.",
+      "Progamer profiles show their hotkey habits, and which progamer's hotkey layout is closest to theirs."
+    ]
+  },
+  {
+    "date": "2026-11-20",
+    "kind": "release",
+    "version": "2.4.0",
+    "title": "A new Insights tab",
+    "items": [
+      "The new Insights tab gives Advanced players advice drawn from their own games.",
+      "Game Events now catch High Templar, Lurker and cliff drops.",
+      "screpdb times the first Mutalisks reaching the enemy base and counts the Turrets waiting for them.",
+      "This website replaces the old in-browser demo.",
+      "Game Events read more naturally in Korean."
+    ]
+  },
+  {
+    "date": "2026-11-19",
+    "kind": "release",
+    "version": "2.3.0",
+    "title": "Game insights for everyone",
+    "items": [
+      "Every game report now has insights: the turning points, highlighted on the map.",
+      "Bases are named after whoever holds them at that moment.",
+      "Bots are detected and marked with a bot badge.",
+      "Base outlines and chokes on maps are more accurate.",
+      "Fixed rare games where screpdb's replay of the game drifted away from what really happened."
+    ]
+  },
+  {
+    "date": "2026-11-14",
+    "kind": "release",
+    "version": "2.1.0",
+    "title": "Skill on the player summary",
+    "items": [
+      "Player summaries now open with a Skill card.",
+      "Skill is measured over the last 3 months of games.",
+      "In 1v1 games, side by side bars show who was ahead on each Skill metric."
+    ]
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "release",
+    "version": "2.0.0",
+    "title": "Full game analysis for everyone",
+    "items": [
+      "screpdb now replays every game in the StarCraft engine on your computer, so reports show what actually happened on the map, not just what players clicked.",
+      "The app links to a video tour, and to a short video on why it is safe to install."
+    ]
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "video",
+    "title": "Free replay analysis for StarCraft: Remastered (full tour)",
+    "url": "https://www.youtube.com/watch?v=p2KgiVLyyZE"
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "video",
+    "title": "Team games and melee: alliances and game events",
+    "url": "https://www.youtube.com/watch?v=aPvf8Ppu3vs"
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "video",
+    "title": "Left a team game early? See how it ended",
+    "url": "https://www.youtube.com/watch?v=K9tP_qoQx8A"
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "video",
+    "title": "Follow your gaming session",
+    "url": "https://www.youtube.com/watch?v=e45GMzfucYI"
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "video",
+    "title": "Installing screpdb: is it safe?",
+    "url": "https://www.youtube.com/watch?v=p5fUvRRv-Rc"
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "video",
+    "title": "Skill tiers for every game, Beginner to Pro",
+    "url": "https://www.youtube.com/watch?v=V-6TLjSee2o"
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "video",
+    "title": "Build orders vs progamer timings",
+    "url": "https://www.youtube.com/watch?v=bFzL7Mf0Cw8"
+  },
+  {
+    "date": "2026-11-10",
+    "kind": "video",
+    "title": "Who's behind the barcode? Player identity",
+    "url": "https://www.youtube.com/watch?v=iTUomG3hCeE"
+  },
+  {
+    "date": "2026-11-08",
+    "kind": "release",
+    "version": "1.36.2",
+    "title": "Nukes, Recalls and a clearer Skill tab",
+    "items": [
+      "Game Events show whether each nuke and Recall worked, on maps that are no longer cropped.",
+      "The Skill tab puts every metric on one scale, ordered from your weakest to your strongest.",
+      "Opening a newer version of screpdb now replaces an older one that is still running.",
+      "Fixed: Windows updates failing at the last step."
+    ]
+  },
+  {
+    "date": "2026-10-31",
+    "kind": "release",
+    "version": "1.35.0",
+    "title": "Skill on every player list",
+    "items": [
+      "Player lists show a Skill column, and the Skill chart fits on one line.",
+      "Micro actions replace spell usage on the Skill tab.",
+      "Game Events show who owns each base and zoom the map in on each event.",
+      "Analysis uses all your CPU cores while StarCraft is closed, and slows down again when you start playing.",
+      "Games with no clear winner are settled from the game itself, or from Battle.net."
+    ]
+  },
+  {
+    "date": "2026-10-25",
+    "kind": "release",
+    "version": "1.34.0",
+    "title": "The Skill tab",
+    "items": [
+      "Player pages have a new Skill tab: a tier from Beginner to Pro, the habits behind it, and how it changes over time."
+    ]
+  },
+  {
+    "date": "2026-10-20",
+    "kind": "release",
+    "version": "1.33.0",
+    "title": "Game Events that tell the story",
+    "items": [
+      "Game Events now pick the moments that mattered, show how each one turned out, and play them on a map that looks like the game.",
+      "On Windows, updates install the new version for you, and fall back to a browser download if that fails."
+    ]
+  },
+  {
+    "date": "2026-10-18",
+    "kind": "release",
+    "version": "1.31.0",
+    "title": "Full game analysis, in Labs",
+    "items": [
+      "Turn on the engine switch in Labs to build reports by replaying each game in the StarCraft engine, and to try an early Skill tab."
+    ]
+  },
+  {
+    "date": "2026-10-13",
+    "kind": "release",
+    "version": "1.30.0",
+    "title": "Install on Windows with one command",
+    "items": [
+      "Install screpdb on Windows with a single PowerShell command.",
+      "Simpler install instructions, now also on every release page."
+    ]
+  },
+  {
+    "date": "2026-09-28",
+    "kind": "release",
+    "version": "1.29.1",
+    "title": "Session habits and matchups",
+    "items": [
+      "Player pages show session habits, matchups, and who they faced in team games.",
+      "Use Map Settings games played on melee rules are now analysed.",
+      "Fixed: some Zerg openers missing early Drones, Bunker unloads counted as drops, and 6+ Fact Expa shown when no expansion was built."
+    ]
+  },
+  {
+    "date": "2026-09-22",
+    "kind": "article",
+    "title": "Player fingerprinting in StarCraft in the age of AI bots",
+    "summary": "Can you recognise a player by the way they play, and tell a human from a bot?",
+    "url": "https://marianogappa.github.io/software/2026/09/22/player-fingerprinting-in-the-age-of-ai-bots/"
+  },
+  {
+    "date": "2026-09-20",
+    "kind": "release",
+    "version": "1.28.0",
+    "title": "Drops are not losses",
+    "items": [
+      "Games you dropped from are listed apart from your losses.",
+      "In team games, your own result is shown apart from your team's.",
+      "Player profiles show how long ago each game was.",
+      "The gaming session view is on for everyone.",
+      "The \"Became race\" filter is now called \"New race (Mind Control)\"."
+    ]
+  },
+  {
+    "date": "2026-09-13",
+    "kind": "release",
+    "version": "1.27.0",
+    "title": "See how a team game ended after you left",
+    "items": [
+      "Left a team game early? screpdb fetches another player's replay to show you how it ended.",
+      "Badges show who is behind each account, on the player lists too, and replays from progamer events name the progamers.",
+      "Your last session stays visible after you stop playing.",
+      "Games with no decided winner get their own result instead of counting as a loss.",
+      "Fixed: Zerg Hatchery hotkeys being misread."
+    ]
+  },
+  {
+    "date": "2026-09-06",
+    "kind": "release",
+    "version": "1.26.0",
+    "title": "screpdb in Korean, and built-in progamer profiles",
+    "items": [
+      "screpdb speaks Korean. It follows your system language, and you can switch from the footer.",
+      "Built-in progamer profiles, with their Battle.net play habits.",
+      "A reworked players page with hotkey details, and one search bar to filter everything.",
+      "The dashboard is faster.",
+      "Fixed: country flags on Windows, and mass disconnect games counted as wins for whoever saved the replay."
+    ]
+  },
+  {
+    "date": "2026-08-30",
+    "kind": "release",
+    "version": "1.25.0",
+    "title": "Who is behind the barcode?",
+    "items": [
+      "A country flag beside every player.",
+      "screpdb recognises players by how they play, on player and game pages.",
+      "While StarCraft: Remastered is running, screpdb fetches player profiles from it.",
+      "A first look at your gaming session."
+    ]
+  },
+  {
+    "date": "2026-07-14",
+    "kind": "article",
+    "title": "9 months in: building an advanced StarCraft reporting tool",
+    "summary": "How screpdb was built, and what AI could and couldn't do along the way.",
+    "url": "https://marianogappa.github.io/thoughts/building-an-advanced-starcraft-reporting-tool/"
+  },
+  {
+    "date": "2025-09-30",
+    "kind": "release",
+    "version": "0.1.0",
+    "title": "The first release",
+    "items": [
+      "screpdb's first public release."
+    ]
+  }
+]
