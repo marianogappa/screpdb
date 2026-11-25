@@ -143,6 +143,7 @@
     markExternalLinks();
     placeRings();
     applyVersion();
+    document.dispatchEvent(new Event("screpdb:locale"));
   }
 
   applyLocale();

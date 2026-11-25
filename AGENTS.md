@@ -92,6 +92,8 @@ until its tests and `-check` pass. Never hand-edit the JSON.
 # Pull Requests
 
 - **Always use Conventional Commits format for the PR title** (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.). Releases are automated from the squash-merged commit message via release-please-style tooling — a non-conventional title means no release on merge.
+- **`feat:` and `fix:` titles are copied into `CHANGELOG.md` for players to read.** Describe what the player sees, with no internal names, and use `chore:`/`ci:`/`test:`/`refactor:` for work players won't notice. Follow [docs/WRITING_FOR_PLAYERS.md](docs/WRITING_FOR_PLAYERS.md).
+- **Release PRs need a News entry.** Before merging a release-please PR, add the release to `site/news.json` (`go run ./scripts/news draft` prints a starting point), written per the same guide.
 - **Check open GitHub issues before opening a PR** (`gh issue list`). If any issue describes the work, start the PR body with `fixes https://github.com/marianogappa/screpdb/issues/<N>` so merging closes the issue. If no matching issue exists, surface that and offer to either open one or proceed without.
 - PR descriptions are bullet-point based. Lead with the user-visible behaviour change, then notable implementation details, then anything reviewers should be aware of.
 - Do not merge — open the PR and stop. The user wants to review and may want to add commits before merging.
