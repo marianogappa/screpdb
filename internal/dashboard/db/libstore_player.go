@@ -96,7 +96,7 @@ func (s *LibStore) ListPlayerRecentGames(_ context.Context, playerKey string) ([
 		r := ref.Replay
 		out = append(out, PlayerRecentGameRow{
 			ReplayID:           r.ID,
-			ReplayDate:         r.Date.String(),
+			ReplayDate:         formatReplayDate(r.Date),
 			FileName:           r.FileName(),
 			MapName:            library.Strings.Name(r.Map),
 			MapKind:            r.MapKind.String(),

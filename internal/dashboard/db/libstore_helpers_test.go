@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/marianogappa/screpdb/internal/library"
 	"github.com/marianogappa/screpdb/internal/library/librarytest"
@@ -255,5 +256,19 @@ func TestLibStoreSnapshotIsUnfiltered(t *testing.T) {
 	}
 	if got := s.view().Len(); got != 1 {
 		t.Fatalf("view has %d replays, want the long one only", got)
+	}
+}
+
+func TestReplayDateIsRFC3339WithTheReplaysOffset(t *testing.T) {
+	cet := time.FixedZone("CET", 3600)
+	r := melee("cet", librarytest.WithDate(time.Date(2026, 11, 24, 19, 35, 16, 0, cet)))
+	s := newTestLibStore(t, r)
+
+	got, err := s.GetReplaySummary(context.Background(), r.ID)
+	if err != nil {
+		t.Fatalf("GetReplaySummary: %v", err)
+	}
+	if want := "2026-11-24T19:35:16+01:00"; got.ReplayDate != want {
+		t.Errorf("ReplayDate = %q, want %q", got.ReplayDate, want)
 	}
 }

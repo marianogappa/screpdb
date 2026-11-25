@@ -27,7 +27,7 @@ func (s *LibStore) ListRecentAutosaveGamesForPlayers(_ context.Context, playerKe
 			}
 			out = append(out, SessionCandidateRow{
 				ReplayID:   r.ID,
-				ReplayDate: r.Date.String(),
+				ReplayDate: formatReplayDate(r.Date),
 				FilePath:   path,
 				PlayerKey:  p.Key,
 				PlayerName: p.Name,
@@ -70,7 +70,7 @@ func (s *LibStore) ListReplaysByIDs(_ context.Context, replayIDs []int64) ([]Ses
 		}
 		out = append(out, SessionReplayRow{
 			ReplayID:           r.ID,
-			ReplayDate:         r.Date.String(),
+			ReplayDate:         formatReplayDate(r.Date),
 			FileName:           r.FileName(),
 			MapName:            library.Strings.Name(r.Map),
 			MapKind:            r.MapKind.String(),
