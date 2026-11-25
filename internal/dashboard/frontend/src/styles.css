@@ -7194,8 +7194,8 @@ span[data-tip],
 
 .hk-timeline { user-select: none; }
 .hk-warning { margin-left: 0; margin-bottom: 12px; flex: none; max-width: none; }
-.hk-player { margin-bottom: 10px; }
-.hk-player-head { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 6px; }
+.hk-player { margin-bottom: 6px; }
+.hk-player-head { display: flex; align-items: baseline; gap: 10px; margin: 8px 0 4px; }
 .hk-player-name { font-weight: 600; }
 .hk-race {
   font-size: 11px; padding: 1px 8px; border-radius: 4px;
@@ -7207,38 +7207,48 @@ span[data-tip],
 .hk-player-stat { margin-left: auto; font-size: 11.5px; color: var(--e-quiet); }
 .hk-row { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; }
 .hk-keycap {
-  font-size: 12px; font-weight: 500; text-align: center; color: var(--e-base);
+  font-size: var(--hk-key-font, 12px); font-weight: 500; text-align: center; color: var(--e-base);
   background: rgba(255,255,255,0.04); border: 1px solid var(--e-line);
-  border-bottom-width: 2px; border-radius: 5px; padding: 2px 0;
+  border-radius: 4px; line-height: 1.3;
 }
-.hk-viewport { position: relative; height: 40px; overflow: hidden; cursor: grab; touch-action: pan-y; }
-.hk-track { position: absolute; top: 0; left: 0; height: 100%; will-change: transform; }
+.hk-viewport { position: relative; height: var(--hk-row, 32px); overflow: hidden; }
+.hk-track { position: absolute; top: 0; left: 0; height: 100%; }
 .hk-ticks { position: absolute; inset: 0; }
 .hk-mark-building {
   position: absolute; top: 50%; transform: translate(-50%, -50%);
-  height: 30px; width: auto; z-index: 2; pointer-events: auto;
+  height: var(--hk-building, 24px); width: auto; z-index: 2;
 }
-.hk-mark-dot {
-  position: absolute; top: 50%; transform: translate(-50%, -50%);
-  width: 9px; height: 9px; border-radius: 50%; z-index: 2;
+.hk-mark-square {
+  position: absolute; top: 1px; transform: translateX(-50%);
+  width: 5px; height: 5px; border-radius: 1px; z-index: 2;
 }
 .hk-mark-units { position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 2; }
-.hk-mark-units img { display: block; height: 22px; width: auto; }
+.hk-mark-units img { display: block; height: var(--hk-unit, 18px); width: auto; }
 .hk-silhouette { filter: grayscale(1) brightness(1.35) opacity(.9); }
 .hk-count {
   position: absolute; right: -8px; bottom: -3px; font-style: normal;
   font-size: 9px; font-weight: 600; color: #0d1116; min-width: 12px; text-align: center;
   border-radius: 3px; padding: 0 1px; line-height: 12px;
 }
-.hk-axis-row { margin-top: 2px; margin-bottom: 6px; }
-.hk-axis { height: 18px; cursor: default; }
+.hk-axis-row { margin-top: 2px; margin-bottom: 4px; }
+.hk-axis { height: 16px; cursor: default; }
+.hk-options { display: flex; justify-content: flex-end; gap: 18px; margin-top: 6px; font-size: 11.5px; color: var(--e-quiet); }
+.hk-options label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.hk-options input { margin: 0; accent-color: var(--e-accent); }
+.hk-hover {
+  position: fixed; z-index: 50; pointer-events: none; max-width: 360px;
+  background: rgba(9, 10, 16, 0.97); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 7px;
+  padding: 5px 9px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); font-size: 12px;
+}
+.hk-hover-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 2px 0; }
+.hk-hover-row img { height: 20px; width: auto; }
+.hk-hover-time { color: var(--e-quiet); font-variant-numeric: tabular-nums; min-width: 34px; }
+.hk-hover-unit { display: inline-flex; align-items: center; gap: 1px; }
+.hk-hover-unit b { font-weight: 600; font-size: 11px; color: var(--e-base); }
 .hk-axis-label {
   position: absolute; top: 1px; transform: translateX(-50%);
   font-size: 10.5px; color: var(--e-quiet);
 }
-.hk-scrollbar { overflow-x: auto; overflow-y: hidden; height: 16px; margin-top: 4px; }
-.hk-scrollbar::-webkit-scrollbar { height: 8px; }
-.hk-scrollbar::-webkit-scrollbar-thumb { background: var(--e-line); border-radius: 4px; }
 .hk-maps { margin-top: 22px; }
 .hk-maps-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 900px) { .hk-maps-grid { grid-template-columns: 1fr; } }

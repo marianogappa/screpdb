@@ -304,6 +304,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
+2026-11-25  OK. Engine digests (EngineVersion 14) record every unit type a hotkey assign held; older digests are redone only when their game is opened, through the existing engine pass and digest cache. No new paths, network calls or allowlist changes.
 2026-11-23  OK. The landing page sends Google Analytics hits to its own screpdb property (G-FWF642V3PP) instead of the blog's; site HTML only, no app code, paths, network calls or allowlist changes.
 ```
 

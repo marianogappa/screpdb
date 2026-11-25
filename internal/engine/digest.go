@@ -13,7 +13,7 @@ package engine
 // read (aggregates, the games list); leave it when a bump only adds to one game's page, and a game with an
 // older digest is redone when someone opens it.
 const (
-	EngineVersion               = 13
+	EngineVersion               = 14
 	OldestReadableEngineVersion = 7
 	BackgroundUpgradeBelow      = 11
 )

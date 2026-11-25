@@ -68,21 +68,53 @@ func (d *Dashboard) applyEngineHotkeys(replayID int64, payload *hotkeyTimelinePa
 		}
 		assigns := newEngineAssigns(dg, slot)
 		for j := range p.Events {
-			ev := &p.Events[j]
-			if byte(ev[evType]) != hotkeystream.TypeAssignUnits {
+			if byte(p.Events[j][evType]) != hotkeystream.TypeAssignUnits {
 				continue
 			}
-			match, ok := assigns.match(uint8(ev[evGroup]), int64(ev[evSec]))
-			unit := repcmd.UnitByID(match.MainType)
-			if !ok || unit == nil || unit.Name == "" {
-				continue
+			if match, ok := assigns.match(uint8(p.Events[j][evGroup]), int64(p.Events[j][evSec])); ok {
+				applyEngineAssign(p, j, match, payload)
 			}
-			ev[evUnitType] = int(match.MainType)
-			ev[evUnitCount] = int(match.Count)
-			payload.Units[match.MainType] = unit.Name
 		}
 	}
 	payload.UnitTypesExact = true
+}
+
+// applyEngineAssign puts what the engine saw on one unit assign of the timeline. The stream only recognizes a
+// building from what it later did, so a building that was keyed and never used reaches here as one unit; the
+// engine knows it was a building, and the assign is shown as one (its placement stays unknown).
+func applyEngineAssign(p *hotkeyTimelinePlayer, j int, match engine.HotkeyAssign, payload *hotkeyTimelinePayload) {
+	unit := repcmd.UnitByID(match.MainType)
+	if unit == nil || unit.Name == "" {
+		return
+	}
+	ev := &p.Events[j]
+	if building := hotkeystream.BuildingID(unit.Name); building != 0 && match.Count == 1 {
+		ev[evType] = int(hotkeystream.TypeAssignBuilding)
+		ev[evCount] = 0
+		ev[evBuilding] = int(building)
+		ev[evTileX], ev[evTileY] = int(hotkeystream.TileUnknown), int(hotkeystream.TileUnknown)
+		payload.Buildings[building] = unit.Name
+		return
+	}
+	ev[evUnitType] = int(match.MainType)
+	ev[evUnitCount] = int(match.Count)
+	payload.Units[match.MainType] = unit.Name
+	if composition := unitComposition(match.Units, payload.Units); len(composition) > 0 {
+		if p.Compositions == nil {
+			p.Compositions = map[int][][2]int{}
+		}
+		p.Compositions[j] = composition
+	}
+}
+
+// unitComposition lists an assign's unit types as [unitType, count] pairs and names each of them.
+func unitComposition(units []engine.UnitCount, names map[uint16]string) [][2]int {
+	out := make([][2]int, 0, len(units))
+	for _, u := range units {
+		names[u.Type] = repcmd.UnitByID(u.Type).Name
+		out = append(out, [2]int{int(u.Type), int(u.Count)})
+	}
+	return out
 }
 
 // engineHotkeyUnits puts the engine's main unit type and exact count on a game's unit assigns, for the
