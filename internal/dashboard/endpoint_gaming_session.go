@@ -568,14 +568,13 @@ func (d *Dashboard) workflowGameListItemsByReplayIDs(replayIDs []int64) ([]workf
 	return items, nil
 }
 
-// replayDateLayouts covers how replay_date is written to SQLite. The first is
-// Go's time.Time.String() form, which is what the ingest path stores; the rest
-// are there so a hand-edited or older row still parses rather than silently
-// dropping a game out of the session.
+// replayDateLayouts accepts the RFC3339 form the store emits, plus older
+// layouts so a legacy value still parses rather than silently dropping a game
+// out of the session.
 var replayDateLayouts = []string{
+	time.RFC3339,
 	"2006-01-02 15:04:05 -0700 MST",
 	"2006-01-02 15:04:05 -0700",
-	time.RFC3339,
 	"2006-01-02 15:04:05",
 }
 

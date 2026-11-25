@@ -81,7 +81,7 @@ func TestLibStoreListGamesRowShapeAndOrder(t *testing.T) {
 	if !got.TeamStacking || !got.TeamInfoIncomplete {
 		t.Errorf("flags did not survive: %+v", got)
 	}
-	if got.ReplayDate != newest.Date.String() || got.FileName != newest.FileName() {
+	if got.ReplayDate != formatReplayDate(newest.Date) || got.FileName != newest.FileName() {
 		t.Errorf("date/file = %q/%q", got.ReplayDate, got.FileName)
 	}
 }

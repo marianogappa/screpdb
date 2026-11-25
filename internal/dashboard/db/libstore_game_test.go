@@ -48,7 +48,7 @@ func TestLibStoreGetReplaySummary(t *testing.T) {
 	}
 	want := ReplaySummaryRow{
 		ReplayID:           r.ID,
-		ReplayDate:         r.Date.String(),
+		ReplayDate:         formatReplayDate(r.Date),
 		FileName:           filepath.Base(r.Path()),
 		FilePath:           r.Path(),
 		FileChecksum:       library.ChecksumHex(r.Checksum),

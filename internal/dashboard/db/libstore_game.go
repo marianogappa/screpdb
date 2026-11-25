@@ -16,10 +16,8 @@ func (s *LibStore) GetReplaySummary(ctx context.Context, replayID int64) (*Repla
 		return nil, err
 	}
 	return &ReplaySummaryRow{
-		ReplayID: r.ID,
-		// The SQL store persisted replay_date as time.Time.String(), which is
-		// the only layout the dashboard's parseReplayDate treats as canonical.
-		ReplayDate:         r.Date.String(),
+		ReplayID:           r.ID,
+		ReplayDate:         formatReplayDate(r.Date),
 		FileName:           r.FileName(),
 		FilePath:           r.Path(),
 		FileChecksum:       library.ChecksumHex(r.Checksum),
