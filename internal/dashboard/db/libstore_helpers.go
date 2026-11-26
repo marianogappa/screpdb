@@ -14,6 +14,11 @@ func (s *LibStore) view() *library.View { return s.lib.View() }
 
 func (s *LibStore) CorpusView() *library.View { return s.view() }
 
+// formatReplayDate keeps the replay's own offset so server-side wall-clock
+// logic is unchanged; time.Time.String() is not used because browsers can't
+// parse its zone abbreviations (e.g. "CET", "KST").
+func formatReplayDate(t time.Time) string { return t.Format(time.RFC3339) }
+
 // snapshot is the unfiltered corpus, for the few reads that must ignore the
 // global filter (corpus totals, settings, bnet).
 func (s *LibStore) snapshot() *library.Snapshot { return s.lib.Snapshot() }

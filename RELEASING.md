@@ -99,6 +99,22 @@ The App only has write access to this one repo and can only touch contents and
 pull requests, so it cannot bypass the branch ruleset — the bump PR still merges
 through the normal `test` gate.
 
+## Release notes for players
+
+release-please keeps a release PR open and turns each `feat:`/`fix:` PR title
+into a line of `CHANGELOG.md`, under New, Fixed and Faster. Other types are left
+out. Before merging the release PR, add an entry to `site/news.json` so the
+website's News section has the release:
+
+```bash
+go run ./scripts/news draft
+```
+
+prints a starting point from the release's changelog lines. Rewrite it following
+[docs/WRITING_FOR_PLAYERS.md](docs/WRITING_FOR_PLAYERS.md); `go test ./scripts/news`
+checks it, and fails the release PR's CI until the entry is there with the
+same version and date as `CHANGELOG.md`.
+
 ## Cutting a release
 
 ```bash

@@ -99,3 +99,23 @@ func TestOlderDigestsStayReadableWithoutUnitOrders(t *testing.T) {
 		t.Fatal("an older digest is readable but has no unit orders")
 	}
 }
+
+func TestHotkeyCompositionIsOnlyEncodedFromVersion14(t *testing.T) {
+	assign := HotkeyAssign{Frame: 100, Owner: 1, Group: 3, MainType: 65, Count: 12, Units: []UnitCount{{Type: 65, Count: 8}, {Type: 66, Count: 4}}}
+	for version, want := range map[int32]HotkeyAssign{
+		13: {Frame: 100, Owner: 1, Group: 3, MainType: 65, Count: 12},
+		14: assign,
+	} {
+		b, err := Encode(&Digest{EngineVersion: version, Hotkeys: []HotkeyAssign{assign}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := Decode(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got.Hotkeys, []HotkeyAssign{want}) {
+			t.Errorf("version %d: got %+v, want %+v", version, got.Hotkeys, want)
+		}
+	}
+}

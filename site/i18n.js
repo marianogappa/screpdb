@@ -46,6 +46,16 @@ window.SCREPDB_KO = {
   "closer.sub": "screpdb를 써 보셨다면 어땠는지 꼭 듣고 싶어요.",
 
   "footer.changelog": "변경 기록",
+
+  "nav.news": "소식",
+  "news.eyebrow": "소식",
+  "news.title": "새로운 소식",
+  "news.sub": "screpdb의 새 릴리스, 영상, 글을 모았습니다. 릴리스 내용은 영어로만 제공됩니다.",
+  "news.more": "모두 보기",
+  "news.foot": "개발자용 전체 변경 기록은 <a href=\"https://github.com/marianogappa/screpdb/blob/main/CHANGELOG.md\">GitHub</a>에 있습니다.",
+  "news.kind.video": "영상",
+  "news.kind.article": "글",
+  "news.videos.n": "새 영상 {n}개",
   "footer.issue": "문제 신고",
   "footer.legal": "MIT 라이선스. 제작: Mariano Gappa. StarCraft는 Blizzard Entertainment의 상표이며, screpdb는 Blizzard와 관련이 없습니다.",
 
@@ -123,5 +133,8 @@ window.SCREPDB_EN = {
   "fact.version": "{v} for Windows, macOS, Linux",
   "copy": "Copy",
   "copied": "Copied",
-  "cta.windows": "Download for Windows"
+  "cta.windows": "Download for Windows",
+  "news.kind.video": "Video",
+  "news.kind.article": "Article",
+  "news.videos.n": "{n} new videos"
 };

@@ -1,16 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getUnitIcon } from '../../lib/gameAssets';
 import { useT } from '../../lib/i18nContext';
 import { slugKey } from '../../lib/i18n';
+import { getStoredHotkeyView, saveHotkeyView } from '../../lib/dashboardStorage';
 
-// Hotkey timeline: one row per hotkey group per player, both players sharing
-// one horizontal scroll. Building assigns render the actual building sprite,
+// Hotkey timeline: one row per hotkey group per player, the whole game fitted to the width. Building assigns render the actual building sprite,
 // unit assigns a race silhouette with the selection count, and the tick
 // texture shows uses tinted by what the group held at that moment.
 
-// Minimum horizontal density; short games stretch to fill the full width.
-const MIN_PX_PER_MIN = 84;
-const ROW_HEIGHT = 40;
+// Fit to viewport scales rows between these heights; the default is the roomiest.
+const MIN_ROW_HEIGHT = 20;
+const MAX_ROW_HEIGHT = 32;
+const AXIS_LABEL_MIN_PX = 44;
+// Assigns within this many pixels of the pointer share one hover card, so clumped marks stay readable.
+const HOVER_RADIUS_PX = 10;
 // Keycap column plus grid gap, subtracted from the container to size lanes.
 const LANE_INSET = 40;
 
@@ -64,32 +67,26 @@ export const EV_UNIT_COUNT = 8;
 export const TYPE_ASSIGN_UNITS = 1;
 export const TYPE_ASSIGN_BUILDING = 3;
 
-const keyboardOrder = (g) => (g === 0 ? 10 : g);
+const KEYBOARD_GROUPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
-function TicksCanvas({ events, buildingNames, totalW, durationSeconds, pxPerMin }) {
+function TicksCanvas({ events, buildingNames, totalW, pxPerMin, rowHeight }) {
   const ref = useRef(null);
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     canvas.width = totalW;
-    canvas.height = ROW_HEIGHT;
+    canvas.height = rowHeight;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, totalW, ROW_HEIGHT);
+    ctx.clearRect(0, 0, totalW, rowHeight);
     ctx.strokeStyle = 'rgba(120, 130, 140, 0.28)';
     ctx.lineWidth = 1;
-    const minutes = durationSeconds / 60;
-    for (let m = 1; m < minutes; m += 1) {
-      const x = Math.round(m * pxPerMin) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(x, m % 5 ? 16 : 8);
-      ctx.lineTo(x, m % 5 ? 24 : 32);
-      ctx.stroke();
-    }
     ctx.beginPath();
-    ctx.moveTo(0, ROW_HEIGHT - 0.5);
-    ctx.lineTo(totalW, ROW_HEIGHT - 0.5);
+    ctx.moveTo(0, rowHeight - 0.5);
+    ctx.lineTo(totalW, rowHeight - 0.5);
     ctx.stroke();
 
+    // Recall ticks leave the row's top edge free for the plain assign squares.
+    const inset = Math.max(7, Math.round(rowHeight * 0.3));
     let current = null;
     for (const e of events) {
       const x = (e[EV_SEC] / 60) * pxPerMin;
@@ -103,14 +100,89 @@ function TicksCanvas({ events, buildingNames, totalW, durationSeconds, pxPerMin 
         ctx.globalAlpha = current ? 0.75 : 0.4;
         const xi = Math.round(x) + 0.5;
         ctx.beginPath();
-        ctx.moveTo(xi, 12);
-        ctx.lineTo(xi, 28);
+        ctx.moveTo(xi, inset);
+        ctx.lineTo(xi, rowHeight - inset);
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
     }
-  }, [events, buildingNames, totalW, durationSeconds, pxPerMin]);
+  }, [events, buildingNames, totalW, pxPerMin, rowHeight]);
   return <canvas ref={ref} className="hk-ticks" aria-hidden="true" />;
+}
+
+const isAssign = (e) => e[EV_TYPE] === TYPE_ASSIGN_UNITS || e[EV_TYPE] === TYPE_ASSIGN_BUILDING;
+
+// assignUnits is what a unit assign held as [unitType, count] pairs: the engine's full composition when the
+// digest has it, else its main unit, else nothing (the stream only knows the count).
+const assignUnits = (e, composition) => {
+  if (composition?.length) return composition;
+  if (e[EV_UNIT_COUNT] > 0) return [[e[EV_UNIT_TYPE], e[EV_UNIT_COUNT]]];
+  return null;
+};
+
+const sameAssign = (a, b) => a.e[EV_TYPE] === b.e[EV_TYPE]
+  && a.e[EV_BUILDING] === b.e[EV_BUILDING]
+  && JSON.stringify(a.units) === JSON.stringify(b.units)
+  && (a.units || a.e[EV_TYPE] === TYPE_ASSIGN_BUILDING || Math.min(a.e[EV_COUNT], 12) === Math.min(b.e[EV_COUNT], 12));
+
+// hoverEntries gathers the row's assigns near the pointer and keeps one entry per run of the same assign,
+// since players re-press ctrl+number.
+const hoverEntries = (events, compositions, indexOf, sec, pxPerMin) => {
+  const radiusSec = (HOVER_RADIUS_PX / pxPerMin) * 60;
+  const near = events
+    .filter((e) => isAssign(e) && Math.abs(e[EV_SEC] - sec) <= radiusSec)
+    .map((e) => ({ e, units: e[EV_TYPE] === TYPE_ASSIGN_UNITS ? assignUnits(e, compositions?.[indexOf.get(e)]) : null }));
+  const folded = [];
+  for (const entry of near) {
+    const last = folded[folded.length - 1];
+    if (!last || !sameAssign(last, entry)) folded.push(entry);
+  }
+  return folded;
+};
+
+function HoverCard({ hover, buildingNames, unitNames, race }) {
+  const t = useT();
+  const flipX = hover.x > window.innerWidth - 280;
+  return (
+    <div
+      className="hk-hover"
+      style={{ left: `${hover.x + (flipX ? -12 : 12)}px`, top: `${hover.y + 14}px`, transform: flipX ? 'translateX(-100%)' : undefined }}
+    >
+      {hover.entries.map(({ e, units }) => {
+        let body;
+        if (e[EV_TYPE] === TYPE_ASSIGN_BUILDING) {
+          const name = buildingNames[e[EV_BUILDING]] || '';
+          const icon = hotkeyBuildingIcon(name);
+          body = (
+            <>
+              {icon ? <img src={icon} alt="" /> : null}
+              <span>{name ? t.server(`server.name.${slugKey(name)}`, name) : t('chart.hotkey.buildingFallback')}</span>
+            </>
+          );
+        } else if (units) {
+          body = units.map(([type, count]) => (
+            <span key={type} className="hk-hover-unit" title={unitNames[type] ? t.server(`server.name.${slugKey(unitNames[type])}`, unitNames[type]) : undefined}>
+              <img src={getUnitIcon(unitNames[type] || '')} alt={unitNames[type] || ''} />
+              <b>×{count}</b>
+            </span>
+          ));
+        } else {
+          body = (
+            <span className="hk-hover-unit">
+              <img src={getUnitIcon(UNIT_SILHOUETTE[race] || 'Marine')} alt="" className="hk-silhouette" />
+              <b>×{Math.min(e[EV_COUNT], 12)}</b>
+            </span>
+          );
+        }
+        return (
+          <div key={`${e[EV_SEC]}-${e[EV_TYPE]}-${e[EV_BUILDING]}`} className="hk-hover-row">
+            <span className="hk-hover-time">{mmss(e[EV_SEC])}</span>
+            {body}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function HotkeyTimeline({ payload }) {
@@ -122,6 +194,13 @@ export default function HotkeyTimeline({ payload }) {
   const minutesTotal = durationSeconds / 60;
 
   const containerRef = useRef(null);
+  const [view, setView] = useState(getStoredHotkeyView);
+  const setOption = (key) => (ev) => {
+    const next = { ...view, [key]: ev.target.checked };
+    setView(next);
+    saveHotkeyView(next);
+  };
+  const [rowHeight, setRowHeight] = useState(MAX_ROW_HEIGHT);
   const [laneWidth, setLaneWidth] = useState(0);
   useEffect(() => {
     const el = containerRef.current;
@@ -132,65 +211,66 @@ export default function HotkeyTimeline({ payload }) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const pxPerMin = laneWidth > 0 ? Math.max(MIN_PX_PER_MIN, laneWidth / minutesTotal) : MIN_PX_PER_MIN;
+  const pxPerMin = laneWidth > 0 ? laneWidth / minutesTotal : 1;
   const totalW = Math.ceil(minutesTotal * pxPerMin);
 
-  const scrollRef = useRef(null);
-  const tracksRef = useRef([]);
-  tracksRef.current = [];
-  const registerTrack = (node) => {
-    if (node) tracksRef.current.push(node);
-  };
-  const applyScroll = () => {
-    const x = scrollRef.current ? scrollRef.current.scrollLeft : 0;
-    for (const t of tracksRef.current) t.style.transform = `translateX(${-x}px)`;
-  };
-  const dragState = useRef(null);
-  const onPointerDown = (e) => {
-    if (!e.target.closest('.hk-viewport')) return;
-    dragState.current = e.clientX;
-  };
-  useEffect(() => {
-    const move = (e) => {
-      if (dragState.current === null || dragState.current === undefined) return;
-      if (scrollRef.current) scrollRef.current.scrollLeft += dragState.current - e.clientX;
-      dragState.current = e.clientX;
-    };
-    const up = () => { dragState.current = null; };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-    return () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-  }, []);
-  const onWheel = (e) => {
-    if (!e.target.closest('.hk-viewport')) return;
-    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
-    if (d && scrollRef.current) {
-      scrollRef.current.scrollLeft += d;
-      e.preventDefault();
-    }
+  const [hover, setHover] = useState(null);
+  const onRowHover = (ev, row, events) => {
+    const rect = ev.currentTarget.getBoundingClientRect();
+    const sec = ((ev.clientX - rect.left) / pxPerMin) * 60;
+    const entries = hoverEntries(events, row.player.compositions, row.indexOf, sec, pxPerMin);
+    setHover(entries.length ? { x: ev.clientX, y: ev.clientY, entries, row } : null);
   };
 
   const rowsByPlayer = useMemo(() => players
     .map((p) => {
-      const byGroup = new Map();
-      for (const e of p.events || []) {
-        if (e[EV_GROUP] > 9) continue;
-        if (!byGroup.has(e[EV_GROUP])) byGroup.set(e[EV_GROUP], []);
+      const byGroup = new Map(KEYBOARD_GROUPS.map((g) => [g, []]));
+      const indexOf = new Map();
+      let used = false;
+      (p.events || []).forEach((e, i) => {
+        if (e[EV_GROUP] > 9) return;
         byGroup.get(e[EV_GROUP]).push(e);
-      }
-      const groups = [...byGroup.keys()]
-        .filter((g) => byGroup.get(g).length >= 3)
-        .sort((a, b) => keyboardOrder(a) - keyboardOrder(b));
-      return { player: p, groups, byGroup };
+        indexOf.set(e, i);
+        used = true;
+      });
+      return { player: p, groups: KEYBOARD_GROUPS, byGroup, indexOf, used };
     })
-    .filter(({ groups }) => groups.length > 0), [players]);
+    .filter(({ used }) => used), [players]);
+
+  const rowCount = rowsByPlayer.length * KEYBOARD_GROUPS.length;
+  const canFit = rowsByPlayer.length === 2;
+  const fit = canFit && view.fit;
+  // Everything but the rows (page header, player names, axes, options) stays the same height, so the
+  // rows get whatever the viewport has left after it.
+  useLayoutEffect(() => {
+    if (!fit) {
+      setRowHeight(MAX_ROW_HEIGHT);
+      return undefined;
+    }
+    const fitRows = () => {
+      const el = containerRef.current;
+      if (!el || !rowCount) return;
+      const rect = el.getBoundingClientRect();
+      const rest = rect.height - rowCount * rowHeight;
+      const available = window.innerHeight - (rect.top + window.scrollY) - rest - 8;
+      const next = Math.min(MAX_ROW_HEIGHT, Math.max(MIN_ROW_HEIGHT, Math.floor(available / rowCount)));
+      if (next !== rowHeight) setRowHeight(next);
+    };
+    fitRows();
+    window.addEventListener('resize', fitRows);
+    return () => window.removeEventListener('resize', fitRows);
+  }, [fit, rowCount, rowHeight]);
+  const scale = (rowHeight - MIN_ROW_HEIGHT) / (MAX_ROW_HEIGHT - MIN_ROW_HEIGHT);
+  const sizeVars = {
+    '--hk-row': `${rowHeight}px`,
+    '--hk-building': `${Math.round(18 + 6 * scale)}px`,
+    '--hk-unit': `${Math.round(15 + 3 * scale)}px`,
+    '--hk-key-font': `${(10.5 + 1.5 * scale).toFixed(1)}px`,
+  };
 
   const axisLabels = [];
   const minutes = Math.floor(durationSeconds / 60);
-  const step = minutes > 16 ? 4 : 2;
+  const step = [1, 2, 4, 5, 10, 15, 20, 30].find((m) => m * pxPerMin >= AXIS_LABEL_MIN_PX) || 60;
   for (let m = 0; m <= minutes; m += step) axisLabels.push(m);
 
   if (!rowsByPlayer.length) {
@@ -201,7 +281,7 @@ export default function HotkeyTimeline({ payload }) {
     <div key={key} className="hk-row hk-axis-row">
       <div />
       <div className="hk-viewport hk-axis">
-        <div className="hk-track" ref={registerTrack} style={{ width: `${totalW}px` }}>
+        <div className="hk-track" style={{ width: `${totalW}px` }}>
           {axisLabels.map((m) => (
             <span key={m} className="hk-axis-label" style={{ left: `${m * pxPerMin}px` }}>{t('chart.hotkey.minuteTick', { minute: m })}</span>
           ))}
@@ -211,15 +291,16 @@ export default function HotkeyTimeline({ payload }) {
   );
 
   return (
-    // Wheel/drag panning needs non-passive handlers on a plain container.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div className="hk-timeline" ref={containerRef} onPointerDown={onPointerDown} onWheelCapture={onWheel}>
+    <div className="hk-timeline" ref={containerRef} style={sizeVars}>
       {payload?.unit_types_exact ? null : (
         <div className="workflow-section-warning hk-warning">
           {t('chart.hotkey.selectionWarning')}
         </div>
       )}
-      {rowsByPlayer.map(({ player, groups, byGroup }) => (
+      {hover ? <HoverCard hover={hover} buildingNames={buildingNames} unitNames={unitNames} race={hover.row.player.race} /> : null}
+      {rowsByPlayer.map((row) => {
+        const { player, groups, byGroup } = row;
+        return (
         <div key={player.player_id} className="hk-player">
           <div className="hk-player-head">
             <span className="hk-player-name">{player.name}</span>
@@ -230,14 +311,14 @@ export default function HotkeyTimeline({ payload }) {
             return (
               <div key={g} className="hk-row">
                 <div className="hk-keycap">{g}</div>
-                <div className="hk-viewport">
-                  <div className="hk-track" ref={registerTrack} style={{ width: `${totalW}px` }}>
+                <div className="hk-viewport" onPointerMove={(ev) => onRowHover(ev, row, events)} onPointerLeave={() => setHover(null)}>
+                  <div className="hk-track" style={{ width: `${totalW}px` }}>
                     <TicksCanvas
                       events={events}
                       buildingNames={buildingNames}
                       totalW={totalW}
-                      durationSeconds={durationSeconds}
                       pxPerMin={pxPerMin}
+                      rowHeight={rowHeight}
                     />
                     {events.map((e, i) => {
                       const x = (e[EV_SEC] / 60) * pxPerMin;
@@ -247,22 +328,24 @@ export default function HotkeyTimeline({ payload }) {
                         const displayName = name
                           ? t.server(`server.name.${slugKey(name)}`, name)
                           : t('chart.hotkey.buildingFallback');
-                        const title = t('chart.hotkey.assignBuildingTitle', { time: mmss(e[EV_SEC]), group: g, name: displayName });
-                        return icon ? (
+                        const label = t('chart.hotkey.assignBuildingTitle', { time: mmss(e[EV_SEC]), group: g, name: displayName });
+                        if (view.noImages || !icon) {
+                          return (
+                            <span
+                              key={i}
+                              aria-label={label}
+                              className="hk-mark-square"
+                              style={{ left: `${x}px`, background: CATEGORY_COLORS[hotkeyCategoryOf(name)] }}
+                            />
+                          );
+                        }
+                        return (
                           <img
                             key={i}
                             src={icon}
-                            alt={displayName}
-                            title={title}
+                            alt={label}
                             className="hk-mark-building"
                             style={{ left: `${x}px` }}
-                          />
-                        ) : (
-                          <span
-                            key={i}
-                            title={title}
-                            className="hk-mark-dot"
-                            style={{ left: `${x}px`, background: CATEGORY_COLORS[hotkeyCategoryOf(name)] }}
                           />
                         );
                       }
@@ -271,12 +354,23 @@ export default function HotkeyTimeline({ payload }) {
                         // Streams encoded before the 12-unit cap can carry
                         // stale-tag inflated counts; clamp at render too.
                         const n = unitName ? e[EV_UNIT_COUNT] : Math.min(e[EV_COUNT], 12);
+                        const unitsLabel = t.plural('chart.hotkey.assignUnitsTitle', n, { time: mmss(e[EV_SEC]), group: g });
+                        if (view.noImages) {
+                          return (
+                            <span
+                              key={i}
+                              aria-label={unitsLabel}
+                              className="hk-mark-square"
+                              style={{ left: `${x}px`, background: hotkeyCountColor(n) }}
+                            />
+                          );
+                        }
                         return (
                           <span
                             key={i}
                             className="hk-mark-units"
                             style={{ left: `${x}px` }}
-                            title={t.plural('chart.hotkey.assignUnitsTitle', n, { time: mmss(e[EV_SEC]), group: g })}
+                            aria-label={unitsLabel}
                           >
                             {unitName
                               ? <img src={getUnitIcon(unitName)} alt="" />
@@ -294,9 +388,19 @@ export default function HotkeyTimeline({ payload }) {
           })}
           {axisRow(`axis-${player.player_id}`)}
         </div>
-      ))}
-      <div className="hk-scrollbar" ref={scrollRef} onScroll={applyScroll}>
-        <div style={{ width: `${totalW}px`, height: '1px' }} />
+        );
+      })}
+      <div className="hk-options">
+        {canFit ? (
+          <label>
+            <input type="checkbox" checked={!!view.fit} onChange={setOption('fit')} />
+            {t('chart.hotkey.fitToViewport')}
+          </label>
+        ) : null}
+        <label>
+          <input type="checkbox" checked={!!view.noImages} onChange={setOption('noImages')} />
+          {t('chart.hotkey.removeImages')}
+        </label>
       </div>
     </div>
   );

@@ -385,7 +385,7 @@ func (s *LibStore) ListGames(ctx context.Context, query GamesQuery, limit, offse
 func gameListRow(r *library.Replay) WorkflowGameListRow {
 	return WorkflowGameListRow{
 		ReplayID:           r.ID,
-		ReplayDate:         r.Date.String(),
+		ReplayDate:         formatReplayDate(r.Date),
 		FileName:           r.FileName(),
 		MapName:            library.Strings.Name(r.Map),
 		MapKind:            r.MapKind.String(),

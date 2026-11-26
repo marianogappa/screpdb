@@ -31,9 +31,9 @@ func fullDigest() *Digest {
 		{Frame: 7777, Owner: 7, Order: 0x77, X: 4095, Y: 4095, TargetOwner: NoOwner},
 	}
 	d.Hotkeys = []HotkeyAssign{
-		{Frame: 100, Owner: 0, Group: 1, MainType: 7, Count: 12},
-		{Frame: 100, Owner: 7, Group: 9, MainType: 43, Count: 255},
-		{Frame: 2400, Owner: 3, Group: 0, MainType: 131, Count: 1},
+		{Frame: 100, Owner: 0, Group: 1, MainType: 7, Count: 12, Units: []UnitCount{{Type: 7, Count: 9}, {Type: 0, Count: 3}}},
+		{Frame: 100, Owner: 7, Group: 9, MainType: 43, Count: 255, Units: []UnitCount{{Type: 43, Count: 255}}},
+		{Frame: 2400, Owner: 3, Group: 0, MainType: 131, Count: 1, Units: []UnitCount{{Type: 131, Count: 1}}},
 	}
 	d.Drift = Drift{EngineError: "", ErrorFrame: NoFrame, Selects: 4000, MissingSelects: 0, FirstMissing: NoFrame, DesyncFrame: 12000, UnlinkedCommands: 0, LinkedCommands: 5000}
 	return d

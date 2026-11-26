@@ -122,8 +122,17 @@ func Encode(d *Digest) ([]byte, error) {
 		w.int(int64(h.Frame - prev))
 		prev = h.Frame
 		w.uint(uint64(h.Owner)<<4 | uint64(h.Group))
-		w.uint(uint64(h.MainType))
+		if d.EngineVersion < 14 {
+			w.uint(uint64(h.MainType))
+			w.uint(uint64(h.Count))
+			continue
+		}
 		w.uint(uint64(h.Count))
+		w.uint(uint64(len(h.Units)))
+		for _, u := range h.Units {
+			w.uint(uint64(u.Type))
+			w.uint(uint64(u.Count))
+		}
 	}
 	w.str(d.Drift.EngineError)
 	w.int(int64(d.Drift.ErrorFrame))
@@ -414,8 +423,19 @@ func Decode(b []byte) (*Digest, error) {
 		prev = h.Frame
 		og := r.uint()
 		h.Owner, h.Group = int8(og>>4), uint8(og&0xF)
-		h.MainType = uint16(r.uint())
+		if d.EngineVersion < 14 {
+			h.MainType = uint16(r.uint())
+			h.Count = uint8(r.uint())
+			continue
+		}
 		h.Count = uint8(r.uint())
+		h.Units = makeN[[]UnitCount](r.count())
+		for j := range h.Units {
+			h.Units[j] = UnitCount{Type: uint16(r.uint()), Count: uint8(r.uint())}
+		}
+		if len(h.Units) > 0 {
+			h.MainType = h.Units[0].Type
+		}
 	}
 	d.Drift.EngineError = r.str()
 	d.Drift.ErrorFrame = int32(r.int())
