@@ -4,7 +4,7 @@
   "footer.replaysInDatabase": "라이브러리에 리플레이 {count}개",
   "footer.by": " 제작: ",
   "footer.commit": "커밋 {commit}",
-  "footer.reportIssue": "🐞 문제 신고",
+  "footer.reportIssue": "🐞 피드백 보내기",
   "footer.discord": "💬 디스코드로 대화하기",
   "marker.betaTooltip": "베타. 아직 다듬는 중입니다."
 }

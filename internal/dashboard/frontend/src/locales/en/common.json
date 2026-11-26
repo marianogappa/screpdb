@@ -4,7 +4,7 @@
   "footer.replaysInDatabase": "{count} replays in library",
   "footer.by": " by ",
   "footer.commit": "commit {commit}",
-  "footer.reportIssue": "🐞 Report an issue",
+  "footer.reportIssue": "🐞 Send feedback",
   "footer.discord": "💬 Chat on Discord",
   "marker.betaTooltip": "Beta. Expect rough edges."
 }

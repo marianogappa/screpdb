@@ -76,6 +76,20 @@ export const api = {
     return response.json();
   },
 
+  sendFeedback: async (feedback) => {
+    try {
+      const response = await fetch(`${API_CUSTOM}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedback),
+      });
+      const body = await response.json().catch(() => ({}));
+      return body.result || 'failed';
+    } catch {
+      return 'failed';
+    }
+  },
+
   quit: async () => {
     const response = await fetch(`${API_CUSTOM}/quit`, { method: 'POST' });
     if (!response.ok) {
