@@ -15,7 +15,7 @@ import (
 
 func TestHandlerFeedback(t *testing.T) {
 	shot := []byte{0x89, 'P', 'N', 'G', 1, 2, 3}
-	validBody := `{"message":"hi","contact":"me","language":"en","screenshots":["` + base64.StdEncoding.EncodeToString(shot) + `"]}`
+	validBody := `{"message":"hi","contact":"me","language":"en","screenshots":["` + base64.StdEncoding.EncodeToString(shot) + `"],"replays":[{"name":"game.rep","data":"` + base64.StdEncoding.EncodeToString([]byte("rep")) + `"}]}`
 	cases := []struct {
 		name        string
 		contentType string
@@ -28,6 +28,7 @@ func TestHandlerFeedback(t *testing.T) {
 		{"form posts are refused", "application/x-www-form-urlencoded", validBody, nil, http.StatusUnsupportedMediaType, "invalid"},
 		{"bad json", "application/json", "{", nil, http.StatusBadRequest, "invalid"},
 		{"bad base64", "application/json", `{"message":"hi","screenshots":["!!"]}`, nil, http.StatusBadRequest, "invalid"},
+		{"bad replay base64", "application/json", `{"message":"hi","replays":[{"name":"a.rep","data":"!!"}]}`, nil, http.StatusBadRequest, "invalid"},
 		{"invalid", "application/json", validBody, feedbackfacade.ErrInvalid, http.StatusBadRequest, "invalid"},
 		{"rate limited", "application/json", validBody, feedbackfacade.ErrRateLimited, http.StatusTooManyRequests, "rate_limited"},
 		{"upstream failure", "application/json", validBody, errors.New("boom"), http.StatusBadGateway, "failed"},
@@ -53,7 +54,7 @@ func TestHandlerFeedback(t *testing.T) {
 			if resp["result"] != c.wantResult {
 				t.Fatalf("result %q, want %q", resp["result"], c.wantResult)
 			}
-			if c.name == "sent" && (got.Message != "hi" || got.Contact != "me" || len(got.Screenshots) != 1 || string(got.Screenshots[0]) != string(shot)) {
+			if c.name == "sent" && (got.Message != "hi" || got.Contact != "me" || len(got.Screenshots) != 1 || string(got.Screenshots[0]) != string(shot) || len(got.Replays) != 1 || got.Replays[0].Name != "game.rep" || string(got.Replays[0].Data) != "rep") {
 				t.Fatalf("unexpected submission %+v", got)
 			}
 		})

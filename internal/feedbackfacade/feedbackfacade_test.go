@@ -32,6 +32,7 @@ func TestSendPostsJSONPayload(t *testing.T) {
 		Contact:     "someone#discord",
 		Language:    "ko",
 		Screenshots: [][]byte{png},
+		Replays:     []Replay{{Name: "C:\\Users\\me\\LastReplay.rep", Data: []byte("replay")}},
 	})
 	if err != nil {
 		t.Fatalf("sendTo: %v", err)
@@ -41,6 +42,9 @@ func TestSendPostsJSONPayload(t *testing.T) {
 	}
 	if got.Version == "" || !strings.Contains(got.OS, "/") {
 		t.Fatalf("missing version or os: %+v", got)
+	}
+	if len(got.Replays) != 1 || got.Replays[0].Name != "LastReplay.rep" || got.Replays[0].Data != base64.StdEncoding.EncodeToString([]byte("replay")) {
+		t.Fatalf("unexpected replays %+v", got.Replays)
 	}
 	if len(got.Screenshots) != 1 || got.Screenshots[0] != base64.StdEncoding.EncodeToString(png) {
 		t.Fatalf("unexpected screenshots %v", got.Screenshots)
@@ -101,7 +105,9 @@ func TestBuildPayloadRejectsInvalidSubmissions(t *testing.T) {
 		"long language":        {Message: "hi", Language: strings.Repeat("a", MaxLanguageChars+1)},
 		"too many screenshots": {Message: "hi", Screenshots: [][]byte{jpeg, jpeg, jpeg, jpeg, jpeg}},
 		"not an image":         {Message: "hi", Screenshots: [][]byte{[]byte("GIF89a")}},
-		"too large":            {Message: "hi", Screenshots: [][]byte{append(append([]byte{}, png...), make([]byte, MaxScreenshotBytes)...)}},
+		"too large":            {Message: "hi", Screenshots: [][]byte{png}, Replays: []Replay{{Name: "a.rep", Data: make([]byte, MaxAttachmentBytes)}}},
+		"too many replays":     {Message: "hi", Replays: []Replay{{"a", []byte{1}}, {"b", []byte{1}}, {"c", []byte{1}}, {"d", []byte{1}}}},
+		"empty replay":         {Message: "hi", Replays: []Replay{{Name: "a.rep"}}},
 	}
 	for name, s := range cases {
 		if _, err := buildPayload(s); !errors.Is(err, ErrInvalid) {
@@ -110,5 +116,22 @@ func TestBuildPayloadRejectsInvalidSubmissions(t *testing.T) {
 	}
 	if _, err := buildPayload(Submission{Message: strings.Repeat("가", MaxMessageChars), Screenshots: [][]byte{jpeg}}); err != nil {
 		t.Fatalf("limits should be inclusive: %v", err)
+	}
+}
+
+func TestReplayName(t *testing.T) {
+	cases := map[string]string{
+		"LastReplay.rep":                  "LastReplay.rep",
+		"../../etc/passwd":                "passwd.rep",
+		"C:\\Replays\\경기 1 (ZvT).REP":     "경기 1 (ZvT).rep",
+		"a<b>|c?.rep":                     "a_b__c_.rep",
+		"":                                "replay.rep",
+		"..":                              "replay.rep",
+		strings.Repeat("x", 300) + ".rep": strings.Repeat("x", MaxReplayNameChars) + ".rep",
+	}
+	for in, want := range cases {
+		if got := replayName(in); got != want {
+			t.Errorf("replayName(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

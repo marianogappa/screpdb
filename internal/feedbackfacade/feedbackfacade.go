@@ -2,11 +2,12 @@
 // private feedback to the author from screpdb's Go binary.
 //
 // It makes exactly one kind of request: an HTTPS POST of a small JSON document
-// to https://screpdb-feedback.spinetta.workers.dev/, a Cloudflare Worker (its
+// to https://screpdb-feedback.screpdb.workers.dev/, a Cloudflare Worker (its
 // source is in feedback-worker/) that relays it to a private Discord channel
 // only the author can read. It sends only what the user typed and chose to
 // attach (a message, an optional contact, at most four PNG or JPEG
-// screenshots), plus the app version, the OS and the UI language. It sends
+// screenshots and three .rep replays, 9 MB in total), plus the app version, the
+// OS and the UI language. It sends
 // nothing unless the user presses Send, never follows redirects and never
 // sends credentials or cookies.
 //
@@ -24,22 +25,26 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"runtime"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/marianogappa/screpdb/internal/buildinfo"
 )
 
 const (
-	endpoint = "https://screpdb-feedback.spinetta.workers.dev/"
+	endpoint = "https://screpdb-feedback.screpdb.workers.dev/"
 
 	MaxMessageChars    = 4000
 	MaxContactChars    = 200
 	MaxLanguageChars   = 16
 	MaxScreenshots     = 4
-	MaxScreenshotBytes = 9 << 20
+	MaxReplays         = 3
+	MaxAttachmentBytes = 9 << 20
+	MaxReplayNameChars = 100
 
 	maxReplyBytes = 4 << 10
 )
@@ -59,20 +64,32 @@ var (
 	}
 )
 
+type Replay struct {
+	Name string
+	Data []byte
+}
+
 type Submission struct {
 	Message     string
 	Contact     string
 	Language    string
 	Screenshots [][]byte
+	Replays     []Replay
 }
 
 type payload struct {
-	Message     string   `json:"message"`
-	Contact     string   `json:"contact,omitempty"`
-	Language    string   `json:"language,omitempty"`
-	Version     string   `json:"version"`
-	OS          string   `json:"os"`
-	Screenshots []string `json:"screenshots,omitempty"`
+	Message     string          `json:"message"`
+	Contact     string          `json:"contact,omitempty"`
+	Language    string          `json:"language,omitempty"`
+	Version     string          `json:"version"`
+	OS          string          `json:"os"`
+	Screenshots []string        `json:"screenshots,omitempty"`
+	Replays     []payloadReplay `json:"replays,omitempty"`
+}
+
+type payloadReplay struct {
+	Name string `json:"name"`
+	Data string `json:"data"`
 }
 
 func Send(ctx context.Context, s Submission) error {
@@ -126,18 +143,32 @@ func buildPayload(s Submission) (payload, error) {
 		return payload{}, fmt.Errorf("%w: language too long", ErrInvalid)
 	case len(s.Screenshots) > MaxScreenshots:
 		return payload{}, fmt.Errorf("%w: too many screenshots", ErrInvalid)
+	case len(s.Replays) > MaxReplays:
+		return payload{}, fmt.Errorf("%w: too many replays", ErrInvalid)
 	}
 	total := 0
-	encoded := make([]string, 0, len(s.Screenshots))
+	for _, shot := range s.Screenshots {
+		total += len(shot)
+	}
+	for _, replay := range s.Replays {
+		total += len(replay.Data)
+	}
+	if total > MaxAttachmentBytes {
+		return payload{}, fmt.Errorf("%w: attachments too large", ErrInvalid)
+	}
+	shots := make([]string, 0, len(s.Screenshots))
 	for _, shot := range s.Screenshots {
 		if !bytes.HasPrefix(shot, pngMagic) && !bytes.HasPrefix(shot, jpegMagic) {
 			return payload{}, fmt.Errorf("%w: screenshots must be PNG or JPEG", ErrInvalid)
 		}
-		total += len(shot)
-		if total > MaxScreenshotBytes {
-			return payload{}, fmt.Errorf("%w: screenshots too large", ErrInvalid)
+		shots = append(shots, base64.StdEncoding.EncodeToString(shot))
+	}
+	replays := make([]payloadReplay, 0, len(s.Replays))
+	for _, replay := range s.Replays {
+		if len(replay.Data) == 0 {
+			return payload{}, fmt.Errorf("%w: empty replay", ErrInvalid)
 		}
-		encoded = append(encoded, base64.StdEncoding.EncodeToString(shot))
+		replays = append(replays, payloadReplay{Name: replayName(replay.Name), Data: base64.StdEncoding.EncodeToString(replay.Data)})
 	}
 	return payload{
 		Message:     message,
@@ -145,6 +176,26 @@ func buildPayload(s Submission) (payload, error) {
 		Language:    language,
 		Version:     buildinfo.Version,
 		OS:          runtime.GOOS + "/" + runtime.GOARCH,
-		Screenshots: encoded,
+		Screenshots: shots,
+		Replays:     replays,
 	}, nil
+}
+
+func replayName(name string) string {
+	base := path.Base(strings.ReplaceAll(name, "\\", "/"))
+	base = strings.TrimSuffix(base, path.Ext(base))
+	cleaned := strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || strings.ContainsRune(" ._()[]-", r) {
+			return r
+		}
+		return '_'
+	}, base)
+	cleaned = strings.TrimSpace(cleaned)
+	if runes := []rune(cleaned); len(runes) > MaxReplayNameChars {
+		cleaned = string(runes[:MaxReplayNameChars])
+	}
+	if cleaned == "" || cleaned == "." || cleaned == ".." {
+		cleaned = "replay"
+	}
+	return cleaned + ".rep"
 }

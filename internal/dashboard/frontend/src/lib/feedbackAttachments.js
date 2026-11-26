@@ -1,4 +1,7 @@
 export const MAX_SCREENSHOTS = 4;
+export const MAX_REPLAYS = 3;
+export const MAX_ATTACHMENT_BYTES = 9 * 1024 * 1024;
+export const MAX_ATTACHMENT_MB = MAX_ATTACHMENT_BYTES / (1024 * 1024);
 const MAX_DIMENSION = 2560;
 const KEEP_AS_IS_BYTES = 1.5 * 1024 * 1024;
 const JPEG_QUALITY = 0.85;
@@ -10,6 +13,18 @@ export function scaledSize(width, height, max = MAX_DIMENSION) {
 
 export function base64FromDataURL(dataURL) {
   return dataURL.slice(dataURL.indexOf(',') + 1);
+}
+
+export function isReplayFile(file) {
+  return /\.rep$/i.test(file.name || '');
+}
+
+export function isImageFile(file) {
+  return (file.type || '').startsWith('image/');
+}
+
+export function attachmentBytes(screenshots, replays) {
+  return [...screenshots, ...replays].reduce((sum, item) => sum + item.size, 0);
 }
 
 const readDataURL = (blob) => new Promise((resolve, reject) => {
@@ -41,5 +56,14 @@ export async function prepareScreenshot(file) {
   return {
     base64: base64FromDataURL(await readDataURL(blob)),
     preview: URL.createObjectURL(blob),
+    size: blob.size,
+  };
+}
+
+export async function prepareReplay(file) {
+  return {
+    name: file.name,
+    base64: base64FromDataURL(await readDataURL(file)),
+    size: file.size,
   };
 }

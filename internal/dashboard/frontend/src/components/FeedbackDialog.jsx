@@ -2,19 +2,33 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useT, getLocale } from '../lib/i18nContext';
 import { api } from '../api';
-import { MAX_SCREENSHOTS, prepareScreenshot } from '../lib/feedbackScreenshots';
+import {
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENT_MB,
+  MAX_REPLAYS,
+  MAX_SCREENSHOTS,
+  attachmentBytes,
+  isImageFile,
+  isReplayFile,
+  prepareReplay,
+  prepareScreenshot,
+} from '../lib/feedbackAttachments';
 
 const DISCORD_PROFILE_URL = 'https://discord.com/users/516408972652183576';
 const GITHUB_ISSUE_URL = 'https://github.com/marianogappa/screpdb/issues/new/choose';
+
+const formatKB = (bytes) => `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
 function FeedbackDialog({ onClose }) {
   const t = useT();
   const [message, setMessage] = useState('');
   const [contact, setContact] = useState('');
   const [shots, setShots] = useState([]);
+  const [replays, setReplays] = useState([]);
   const [status, setStatus] = useState('editing');
   const [error, setError] = useState('');
-  const fileInput = useRef(null);
+  const shotInput = useRef(null);
+  const replayInput = useRef(null);
   const sending = status === 'sending';
 
   useEffect(() => {
@@ -25,27 +39,51 @@ function FeedbackDialog({ onClose }) {
 
   useEffect(() => () => shots.forEach((shot) => URL.revokeObjectURL(shot.preview)), [shots]);
 
-  const addFiles = useCallback(async (files) => {
-    const images = [...files].filter((file) => file.type.startsWith('image/'));
-    if (images.length === 0) return;
-    const room = MAX_SCREENSHOTS - shots.length;
-    if (images.length > room) setError(t('feedback.error.tooManyScreenshots', { max: MAX_SCREENSHOTS }));
-    const prepared = [];
-    for (const file of images.slice(0, Math.max(room, 0))) {
+  const addFiles = useCallback(async (fileList) => {
+    const files = [...fileList];
+    const images = files.filter(isImageFile);
+    const reps = files.filter(isReplayFile);
+    if (images.length + reps.length < files.length) setError(t('feedback.error.unsupportedFile'));
+    let used = attachmentBytes(shots, replays);
+    const fits = (size) => {
+      if (used + size > MAX_ATTACHMENT_BYTES) {
+        setError(t('feedback.error.tooLarge', { mb: MAX_ATTACHMENT_MB }));
+        return false;
+      }
+      used += size;
+      return true;
+    };
+
+    const newShots = [];
+    if (shots.length + images.length > MAX_SCREENSHOTS) setError(t('feedback.error.tooManyScreenshots', { max: MAX_SCREENSHOTS }));
+    for (const file of images.slice(0, Math.max(MAX_SCREENSHOTS - shots.length, 0))) {
       try {
-        prepared.push(await prepareScreenshot(file));
+        const shot = await prepareScreenshot(file);
+        if (fits(shot.size)) newShots.push(shot);
       } catch {
         setError(t('feedback.error.unreadableImage'));
       }
     }
-    if (prepared.length > 0) setShots((current) => [...current, ...prepared].slice(0, MAX_SCREENSHOTS));
-  }, [shots.length, t]);
+    const newReplays = [];
+    if (replays.length + reps.length > MAX_REPLAYS) setError(t('feedback.error.tooManyReplays', { max: MAX_REPLAYS }));
+    for (const file of reps.slice(0, Math.max(MAX_REPLAYS - replays.length, 0))) {
+      if (!fits(file.size)) continue;
+      try {
+        newReplays.push(await prepareReplay(file));
+      } catch {
+        used -= file.size;
+        setError(t('feedback.error.unreadableFile'));
+      }
+    }
+    if (newShots.length > 0) setShots((current) => [...current, ...newShots]);
+    if (newReplays.length > 0) setReplays((current) => [...current, ...newReplays]);
+  }, [shots, replays, t]);
 
   useEffect(() => {
     if (status !== 'editing') return undefined;
     const onPaste = (e) => {
       const files = [...(e.clipboardData?.files || [])];
-      if (files.some((file) => file.type.startsWith('image/'))) {
+      if (files.some((file) => isImageFile(file) || isReplayFile(file))) {
         e.preventDefault();
         addFiles(files);
       }
@@ -53,10 +91,6 @@ function FeedbackDialog({ onClose }) {
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
   }, [addFiles, status]);
-
-  const removeShot = (index) => {
-    setShots((current) => current.filter((_, i) => i !== index));
-  };
 
   const send = async (e) => {
     e.preventDefault();
@@ -68,6 +102,7 @@ function FeedbackDialog({ onClose }) {
       contact,
       language: getLocale(),
       screenshots: shots.map((shot) => shot.base64),
+      replays: replays.map((replay) => ({ name: replay.name, data: replay.base64 })),
     });
     if (result === 'sent') {
       setStatus('sent');
@@ -76,6 +111,12 @@ function FeedbackDialog({ onClose }) {
     setStatus('editing');
     setError(t(`feedback.error.${result}`));
   };
+
+  const pickerButton = (input, label) => (
+    <button type="button" className="feedback-add-shot" onClick={() => input.current?.click()} disabled={sending}>
+      {label}
+    </button>
+  );
 
   return (
     <div className="modal-overlay" onClick={sending ? undefined : onClose}>
@@ -118,24 +159,24 @@ function FeedbackDialog({ onClose }) {
                 {shots.map((shot, i) => (
                   <div className="feedback-shot" key={shot.preview}>
                     <img src={shot.preview} alt={t('feedback.screenshotAlt', { n: i + 1 })} />
-                    <button type="button" onClick={() => removeShot(i)} disabled={sending} aria-label={t('feedback.removeScreenshot')}>×</button>
+                    <button type="button" onClick={() => setShots((current) => current.filter((_, j) => j !== i))} disabled={sending} aria-label={t('feedback.removeScreenshot')}>×</button>
                   </div>
                 ))}
-                {shots.length < MAX_SCREENSHOTS ? (
-                  <button type="button" className="feedback-add-shot" onClick={() => fileInput.current?.click()} disabled={sending}>
-                    {t('feedback.addScreenshots')}
-                  </button>
-                ) : null}
+                {replays.map((replay, i) => (
+                  <div className="feedback-replay" key={`${replay.name}-${i}`}>
+                    <span className="feedback-replay-name" title={replay.name}>{replay.name}</span>
+                    <span className="feedback-replay-size">{formatKB(replay.size)}</span>
+                    <button type="button" onClick={() => setReplays((current) => current.filter((_, j) => j !== i))} disabled={sending} aria-label={t('feedback.removeReplay')}>×</button>
+                  </div>
+                ))}
+                {shots.length < MAX_SCREENSHOTS ? pickerButton(shotInput, t('feedback.addScreenshots')) : null}
+                {replays.length < MAX_REPLAYS ? pickerButton(replayInput, t('feedback.addReplays')) : null}
               </div>
-              <p className="feedback-hint">{t('feedback.screenshotHint')}</p>
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
-              />
+              <p className="feedback-hint">
+                {t('feedback.attachmentHint', { screenshots: MAX_SCREENSHOTS, replays: MAX_REPLAYS, mb: MAX_ATTACHMENT_MB })}
+              </p>
+              <input ref={shotInput} type="file" accept="image/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
+              <input ref={replayInput} type="file" accept=".rep" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             </div>
             <label className="feedback-contact">
               <span>{t('feedback.contactLabel')}</span>

@@ -8466,3 +8466,43 @@ button.skill-compare-marker:hover { color: #fff; }
   opacity: 0.45;
   cursor: default;
 }
+
+.feedback-replay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 60px;
+  max-width: 220px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--e-line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+  color: var(--e-base);
+}
+
+.feedback-replay-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedback-replay-size {
+  flex: none;
+  color: var(--e-quiet);
+  font-size: 12px;
+}
+
+.feedback-replay button {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 14px;
+  padding: 0;
+}

@@ -3,7 +3,9 @@ const MAX_MESSAGE_CHARS = 4000;
 const MAX_CONTACT_CHARS = 200;
 const MAX_META_CHARS = 64;
 const MAX_SCREENSHOTS = 4;
-const MAX_SCREENSHOT_BYTES = 9 * 1024 * 1024;
+const MAX_REPLAYS = 3;
+const MAX_ATTACHMENT_BYTES = 9 * 1024 * 1024;
+const MAX_REPLAY_NAME_CHARS = 100;
 const PER_IP_LIMIT = 5;
 const PER_IP_WINDOW_MS = 60 * 1000;
 
@@ -82,18 +84,31 @@ function parseSubmission(body) {
   if (screenshots.length > MAX_SCREENSHOTS) {
     return { error: `at most ${MAX_SCREENSHOTS} screenshots` };
   }
-  const images = [];
+  const replays = Array.isArray(body.replays) ? body.replays : [];
+  if (replays.length > MAX_REPLAYS) {
+    return { error: `at most ${MAX_REPLAYS} replays` };
+  }
+  const files = [];
   let total = 0;
-  for (const encoded of screenshots) {
+  for (const [i, encoded] of screenshots.entries()) {
     const image = decodeImage(encoded);
     if (!image) {
       return { error: 'screenshots must be PNG or JPEG' };
     }
-    total += image.bytes.length;
-    if (total > MAX_SCREENSHOT_BYTES) {
-      return { error: 'screenshots are too large' };
+    files.push({ bytes: image.bytes, mime: image.type.mime, filename: `screenshot-${i + 1}.${image.type.ext}` });
+  }
+  for (const replay of replays) {
+    const bytes = replay && decodeBase64(replay.data);
+    if (!bytes || bytes.length === 0) {
+      return { error: 'invalid replay' };
     }
-    images.push(image);
+    files.push({ bytes, mime: 'application/octet-stream', filename: replayName(replay.name) });
+  }
+  for (const file of files) {
+    total += file.bytes.length;
+  }
+  if (total > MAX_ATTACHMENT_BYTES) {
+    return { error: 'attachments are too large' };
   }
   return {
     message,
@@ -101,7 +116,7 @@ function parseSubmission(body) {
     version: text(body.version, MAX_META_CHARS),
     os: text(body.os, MAX_META_CHARS),
     language: text(body.language, MAX_META_CHARS),
-    images,
+    files,
   };
 }
 
@@ -109,21 +124,33 @@ function text(value, max) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-function decodeImage(encoded) {
+function decodeBase64(encoded) {
   if (typeof encoded !== 'string') {
     return null;
   }
-  let bytes;
   try {
-    bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+    return Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
   } catch {
+    return null;
+  }
+}
+
+function replayName(name) {
+  const base = (typeof name === 'string' ? name : '').split(/[\\/]/).pop().replace(/\.[^.]*$/, '');
+  const cleaned = base.replace(/[^\p{L}\p{N} ._()\[\]-]/gu, '_').trim().slice(0, MAX_REPLAY_NAME_CHARS);
+  return `${cleaned && cleaned !== '.' && cleaned !== '..' ? cleaned : 'replay'}.rep`;
+}
+
+function decodeImage(encoded) {
+  const bytes = decodeBase64(encoded);
+  if (!bytes) {
     return null;
   }
   const type = Object.values(IMAGE_TYPES).find((t) => t.magic.every((b, i) => bytes[i] === b));
   return type ? { bytes, type } : null;
 }
 
-function discordForm({ message, contact, version, os, language, images }) {
+function discordForm({ message, contact, version, os, language, files }) {
   const firstLine = message.split('\n')[0].trim();
   const threadName = (firstLine.length > 90 ? `${firstLine.slice(0, 90)}…` : firstLine) || 'Feedback';
   const fields = [
@@ -136,12 +163,12 @@ function discordForm({ message, contact, version, os, language, images }) {
     thread_name: threadName,
     allowed_mentions: { parse: [] },
     embeds: [{ description: message, fields }],
-    attachments: images.map((image, i) => ({ id: i, filename: `screenshot-${i + 1}.${image.type.ext}` })),
+    attachments: files.map((file, i) => ({ id: i, filename: file.filename })),
   };
   const form = new FormData();
   form.append('payload_json', JSON.stringify(payload));
-  images.forEach((image, i) => {
-    form.append(`files[${i}]`, new Blob([image.bytes], { type: image.type.mime }), `screenshot-${i + 1}.${image.type.ext}`);
+  files.forEach((file, i) => {
+    form.append(`files[${i}]`, new Blob([file.bytes], { type: file.mime }), file.filename);
   });
   return form;
 }

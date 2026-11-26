@@ -16,10 +16,16 @@ import (
 const maxFeedbackRequestBytes = 14 << 20
 
 type feedbackRequest struct {
-	Message     string   `json:"message"`
-	Contact     string   `json:"contact"`
-	Language    string   `json:"language"`
-	Screenshots []string `json:"screenshots"`
+	Message     string                  `json:"message"`
+	Contact     string                  `json:"contact"`
+	Language    string                  `json:"language"`
+	Screenshots []string                `json:"screenshots"`
+	Replays     []feedbackRequestReplay `json:"replays"`
+}
+
+type feedbackRequestReplay struct {
+	Name string `json:"name"`
+	Data string `json:"data"`
 }
 
 var sendFeedback = feedbackfacade.Send
@@ -44,6 +50,14 @@ func (d *Dashboard) handlerFeedback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		submission.Screenshots = append(submission.Screenshots, shot)
+	}
+	for _, replay := range req.Replays {
+		data, err := base64.StdEncoding.DecodeString(replay.Data)
+		if err != nil {
+			writeFeedbackResult(w, http.StatusBadRequest, "invalid")
+			return
+		}
+		submission.Replays = append(submission.Replays, feedbackfacade.Replay{Name: replay.Name, Data: data})
 	}
 
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 90*time.Second)
