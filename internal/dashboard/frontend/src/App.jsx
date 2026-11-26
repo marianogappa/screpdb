@@ -7912,6 +7912,8 @@ function App() {
               ) : null}
               <span className="workflow-meta-sep" aria-hidden="true"> · </span>
               <a href="https://github.com/marianogappa/screpdb/issues/new/choose" target="_blank" rel="noopener noreferrer">{t('footer.reportIssue')}</a>
+              <span className="workflow-meta-sep" aria-hidden="true"> · </span>
+              <a href="https://discord.com/users/516408972652183576" target="_blank" rel="noopener noreferrer">{t('footer.discord')}</a>
               {updateAvailable && updateTier === 'quiet' && !quietUpdateDismissed ? (
                 <>
                   <span className="workflow-meta-sep" aria-hidden="true"> · </span>

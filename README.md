@@ -304,6 +304,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
+2026-11-26  OK. The dashboard footer, landing page and README add a plain outbound link to the author's Discord profile; no code makes network calls and no allowlists change.
 2026-11-23  OK. The landing page sends Google Analytics hits to its own screpdb property (G-FWF642V3PP) instead of the blog's; site HTML only, no app code, paths, network calls or allowlist changes.
 ```
 
@@ -326,7 +327,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 ## License, Contributing & Acknowledgements
 
 - This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-- Due to security safeguards I can no longer accept PRs or other code contributions, but please feel free to file an [Issue](https://github.com/marianogappa/screpdb/issues), and you're more than welcome to contribute non-code improvements.
+- Due to security safeguards I can no longer accept PRs or other code contributions, but please feel free to file an [Issue](https://github.com/marianogappa/screpdb/issues) or add me on Discord as [jareth.the.goblin.king](https://discord.com/users/516408972652183576) for feedback and screenshots, and you're more than welcome to contribute non-code improvements.
 - Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing. This project would have been impossible without [András Belicza](https://github.com/icza)'s work.
 - Engine-powered features run on [openbw-go](https://github.com/marianogappa/openbw-go), a Go port of [OpenBW](https://github.com/OpenBW/openbw), the open-source StarCraft: Brood War engine. These features would have been impossible without Vegard Mella's work.
 - Country flags on platforms that lack them (Windows) are drawn with the [Twemoji Country Flags](https://github.com/talkjs/country-flag-emoji-polyfill) font, whose artwork comes from [Twemoji](https://github.com/jdecked/twemoji) and is used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
