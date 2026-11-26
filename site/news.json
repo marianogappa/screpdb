@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-11-26",
+    "kind": "release",
+    "version": "2.6.0",
+    "title": "Spot mech transitions in TvZ",
+    "items": [
+      "Game Events now show when a Terran switches from bio to mech against Zerg, with the new Factories lit up on the map. The games list and the player summary mark these games too.",
+      "The hotkey chart shows every key, fits the screen and names the units on each hotkey.",
+      "Send private feedback from the app, with screenshots and replays attached.",
+      "Game dates in the games list now show correctly in every timezone."
+    ]
+  },
+  {
     "date": "2026-11-22",
     "kind": "release",
     "version": "2.5.0",
