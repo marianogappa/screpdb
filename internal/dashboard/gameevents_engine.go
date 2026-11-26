@@ -354,7 +354,7 @@ func withChokes(bases []moments.Base, layout *models.MapContextLayout) []moments
 }
 
 // listedEngineEvents are the engine's game events that the games list shows and filters on.
-var listedEngineEvents = map[string]bool{"drop": true, "reaver_drop": true, "dt_drop": true, "ht_drop": true, "lurker_drop": true}
+var listedEngineEvents = map[string]bool{"drop": true, "reaver_drop": true, "dt_drop": true, "ht_drop": true, "lurker_drop": true, "mech_transition": true}
 
 // engineFeatures runs the game-event detectors on a fresh digest for the games list. Bases come from the
 // layout the library already holds, so no replay file is read.

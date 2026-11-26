@@ -306,6 +306,15 @@ const playerGameSummarySignalParts = (player, gameEvents) => {
       className: 'workflow-pattern-pill workflow-pattern-pill-strong',
     });
   }
+  if (playerIsActorForGameEventTypes(events, pid, ['mech_transition'])) {
+    positive.push({
+      event: pillEvent(events, pid, ['mech_transition']),
+      key: `ge-mech-transition-${pid}`,
+      icon: getUnitIcon('factory'),
+      label: t('events.mechTransition'),
+      className: 'workflow-pattern-pill workflow-pattern-pill-strong',
+    });
+  }
   if (playerIsActorForGameEventTypes(events, pid, ['long_supply_block'])) {
     const supply = { terran: 'supplydepot', protoss: 'pylon', zerg: 'overlord' }[String(player?.race || '').toLowerCase()];
     positive.push({
@@ -851,7 +860,7 @@ const gameEventLeadDescription = (event, registry) => {
   }
   if (eventType === 'became_terran') return actor ? t('events.sentence.becameTerran', { actor }) : t('events.becameTerran');
   if (eventType === 'became_zerg') return actor ? t('events.sentence.becameZerg', { actor }) : t('events.becameZerg');
-  if (eventType === 'mech_transition') return actor ? t('events.sentence.mechTransition', { actor }) : t('events.mechTransition');
+  if (eventType === 'mech_transition') return actor ? t('events.sentence.mechTransition', { actor, count: Number(event?.unit_count || 0) }) : t('events.mechTransition');
   return fallbackEventName(event);
 };
 
@@ -1542,7 +1551,7 @@ const renderGameEventLeadDescription = (event, registry, playerRaceByID) => {
   }
   if (eventType === 'became_terran') return actorName ? fill('events.sentence.becameTerran', { actor: actorSpan }) : t('events.becameTerran');
   if (eventType === 'became_zerg') return actorName ? fill('events.sentence.becameZerg', { actor: actorSpan }) : t('events.becameZerg');
-  if (eventType === 'mech_transition') return actorName ? fill('events.sentence.mechTransition', { actor: actorSpan }) : t('events.mechTransition');
+  if (eventType === 'mech_transition') return actorName ? fill('events.sentence.mechTransition', { actor: actorSpan, count: Number(event?.unit_count || 0) }) : t('events.mechTransition');
   return fallbackEventName(event);
 };
 
