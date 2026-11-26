@@ -27,8 +27,8 @@ const (
 	mechFactoriesAfter  = 120
 	// A transition is a burst of new Factories that outnumbers the ones already standing, typically one:
 	// a Terran with three Factories who adds a fourth is not switching.
-	mechNewFactories   = 2
-	mechFactoriesTotal = 3
+	mechNewFactories     = 2
+	mechFactoriesTotal   = 3
 	mechUnitsPer5Minutes = 10
 	mechUnitsAtLeast     = 4
 	// The event is when the last bio unit came out. The map shows the switch once the new Factories are up,
