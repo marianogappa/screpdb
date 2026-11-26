@@ -304,18 +304,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-26  OK. Private feedback: internal/feedbackfacade is the only new network path. Only when the user presses Send in the feedback dialog, it makes one HTTPS POST of a JSON document (the typed message, an optional contact, the UI language, the app version, GOOS/GOARCH, at most four PNG or JPEG screenshots and at most three .rep replays the user picked in the browser, 9 MB in total, with replay names reduced to a safe base name) to https://screpdb-feedback.screpdb.workers.dev/ (exact URL, no redirects, 60 second timeout, 4 KB reply cap, no credentials or cookies); that Cloudflare Worker (feedback-worker/) relays it to a private Discord channel. The new POST /api/custom/feedback route only accepts application/json, so a cross-site form cannot trigger it. The footer, landing page and README also link to the author's Discord profile. No files are read or written and no allowlists change. The embedded ShieldBattery pro list is refreshed from the TL.net thread (Speed's account is now named SpeedTube); data only.
+2026-11-26  OK. The website gains a drafts folder (site/drafts) for articles merged ahead of their release, holding a first article on late-game production hotkeys; make pages leaves the folder out of the deployed site. Site and docs only, no app code, paths, network calls or allowlist changes.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-26  OK. Private feedback: internal/feedbackfacade is the only new network path. Only when the user presses Send in the feedback dialog, it makes one HTTPS POST of a JSON document (the typed message, an optional contact, the UI language, the app version, GOOS/GOARCH, at most four PNG or JPEG screenshots and at most three .rep replays the user picked in the browser, 9 MB in total, with replay names reduced to a safe base name) to https://screpdb-feedback.screpdb.workers.dev/ (exact URL, no redirects, 60 second timeout, 4 KB reply cap, no credentials or cookies); that Cloudflare Worker (feedback-worker/) relays it to a private Discord channel. The new POST /api/custom/feedback route only accepts application/json, so a cross-site form cannot trigger it. The footer, landing page and README also link to the author's Discord profile. No files are read or written and no allowlists change. The embedded ShieldBattery pro list is refreshed from the TL.net thread (Speed's account is now named SpeedTube); data only.
 2026-11-25  OK. Replay dates are sent to the dashboard as RFC3339 instead of Go's time.String(), which browsers could not parse for zones like CET or KST; formatting only, no paths, network calls or allowlist changes.
 2026-11-25  OK. Engine digests (EngineVersion 14) record every unit type a hotkey assign held; older digests are redone only when their game is opened, through the existing engine pass and digest cache. No new paths, network calls or allowlist changes.
 2026-11-25  OK. The landing page gains a News section rendered from site/news.json (release notes, videos, articles), with YouTube thumbnails from i.ytimg.com; plus release-please changelog sections, a player-facing writing guide and a dev-only scripts/news drafter; site and docs only, no app code, paths, network calls or allowlist changes.
 2026-11-23  OK. The landing page sends Google Analytics hits to its own screpdb property (G-FWF642V3PP) instead of the blog's; site HTML only, no app code, paths, network calls or allowlist changes.
-2026-11-22  OK. A You button between Games and Players opens the profile the user played their most recent game on (games only observed do not count); it reads the replays already loaded in memory and rides on the existing gaming session response, so there are no new paths, network calls or writes.
 ```
 
 </details>
