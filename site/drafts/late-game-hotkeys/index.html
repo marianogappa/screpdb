@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How progamers keep making units when they run out of hotkeys · screpdb research</title>
+  <meta name="description" content="Six late-game production habits, read from about 19,000 ladder games. See which one Speed, Best and Soma use, and which one is yours.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#090911">
+  <link rel="icon" type="image/png" href="../../icon.png">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="How progamers keep making units when they run out of hotkeys">
+  <meta property="og:description" content="Six late-game production habits from about 19,000 ladder games. Which one is yours?">
+  <meta property="og:image" content="https://marianogappa.github.io/screpdb/articles/late-game-hotkeys/speed.webp">
+  <meta property="og:url" content="https://marianogappa.github.io/screpdb/articles/late-game-hotkeys/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="../../article.css">
+  <script>
+    if (location.hostname === "marianogappa.github.io") {
+      var ga = document.createElement("script");
+      ga.async = true;
+      ga.src = "https://www.googletagmanager.com/gtag/js?id=G-FWF642V3PP";
+      document.head.appendChild(ga);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { dataLayer.push(arguments); };
+      gtag("js", new Date());
+      gtag("config", "G-FWF642V3PP");
+    }
+  </script>
+</head>
+<body>
+  <header class="article-nav">
+    <div class="wrap nav-row">
+      <a class="logo logo-sm" href="../../" aria-label="screpdb">screp<b>db</b></a>
+      <a class="lab" href="../">Articles</a>
+      <span class="spacer"></span>
+      <a class="btn btn-sm btn-primary" href="../../#install">Install</a>
+    </div>
+  </header>
+
+  <main class="article">
+    <header>
+      <p class="eyebrow">screpdb research</p>
+      <h1>How progamers keep making units when they run out of hotkeys</h1>
+      <p class="dek">Eight Barracks, ten keys. I read about 19,000 ladder games to see what progamers do about it, and found six habits. Which one is yours?</p>
+      <p class="byline">Mariano Gappa · November 2026 · 3 minute read</p>
+    </header>
+
+    <p><a href="https://tl.net/forum/profile.php?user=zimp">zimp</a>'s <a href="https://tl.net/forum/brood-war/645718-screpdb-new-starcraft-reporting-tool?page=2#31">review of screpdb on TL.net</a> got me staring at hotkey reports. One thing kept showing up: around the middle of the game, strong players' Barracks keys go quiet. So I went and checked why.</p>
+
+    <h2>Three ways it could go</h2>
+    <p>Early on, almost everyone puts production on keys: press 4, train, press 5, train. Then you have 8 Barracks and only 10 keys, and something has to give.</p>
+    <figure>
+      <svg viewBox="0 0 720 280" role="img" aria-label="Early game: production on keys. After 14:00: more buildings than keys. Three ways out: keep a key per building group and click the rest, keep one key as a shortcut and click nearby, or switch to function keys and give the keys to the army or leave them unused.">
+        <rect x="10" y="100" width="170" height="80" rx="10" fill="#12141c" stroke="#262a35"/>
+        <text x="95" y="132" text-anchor="middle" font-size="15" font-weight="600">Early game</text>
+        <text class="quiet" x="95" y="156" text-anchor="middle" font-size="13">press 4, train, press 5</text>
+        <rect x="240" y="100" width="170" height="80" rx="10" fill="#12141c" stroke="#2ab2a3"/>
+        <text x="325" y="132" text-anchor="middle" font-size="15" font-weight="600">After 14:00</text>
+        <text class="quiet" x="325" y="156" text-anchor="middle" font-size="13">8 Barracks, 10 keys</text>
+        <path d="M180 140 H236" stroke="#8b93a3" stroke-width="2" fill="none"/>
+        <path d="M410 140 C440 140 440 50 466 50" stroke="#8b93a3" stroke-width="2" fill="none"/>
+        <path d="M410 140 H466" stroke="#8b93a3" stroke-width="2" fill="none"/>
+        <path d="M410 140 C440 140 440 230 466 230" stroke="#8b93a3" stroke-width="2" fill="none"/>
+        <rect x="470" y="22" width="240" height="56" rx="10" fill="#12141c" stroke="#5aa6cc"/>
+        <text x="590" y="46" text-anchor="middle" font-size="14" font-weight="600">1. Keep a key per building group</text>
+        <text class="quiet" x="590" y="66" text-anchor="middle" font-size="12">and click the ones that don't fit</text>
+        <rect x="470" y="112" width="240" height="56" rx="10" fill="#12141c" stroke="#e0a04a"/>
+        <text x="590" y="136" text-anchor="middle" font-size="14" font-weight="600">2. Keep one key as a shortcut</text>
+        <text class="quiet" x="590" y="156" text-anchor="middle" font-size="12">press it, then click the buildings nearby</text>
+        <rect x="470" y="202" width="240" height="56" rx="10" fill="#12141c" stroke="#e07a72"/>
+        <text x="590" y="226" text-anchor="middle" font-size="14" font-weight="600">3. Switch to function keys</text>
+        <text class="quiet" x="590" y="246" text-anchor="middle" font-size="12">and the keys go to the army, or sit unused</text>
+      </svg>
+    </figure>
+
+    <h2>What the replays say</h2>
+    <ul>
+      <li><b>Terran and Protoss do switch.</b> Of the advanced players who made their army from keys early, only 3 to 22% still do after 14:00.</li>
+      <li><b>Buildings decide it.</b> At 8 or more Terran production buildings, nobody keeps it up.</li>
+      <li><b>The army takes the key afterwards.</b> A key goes to the army about a minute after it went quiet, so needing army keys isn't why players stop.</li>
+      <li><b>Zerg never switch.</b> Terran and Protoss build their production together in one spot. Zerg production comes from Hatcheries, which sit next to minerals all over the map, so a key per Hatchery stays the quickest way. 92% of pro Zerg games still make their army from keys late.</li>
+    </ul>
+    <p class="note"><b>The data.</b> About 19,000 ladder games of 12 minutes or more: players at 1800 MMR and up, and a sample below 1800 MMR.</p>
+
+    <h2>Six habits</h2>
+    <p>Once the game goes long, each player settles into one of these:</p>
+    <div class="habits">
+      <div class="habit" style="--c:#5aa6cc"><b>⌨️ Production keys, all game</b><span>Every production building stays on a key, and units keep coming from those keys to the end.</span></div>
+      <div class="habit" style="--c:#e0a04a"><b>🖱️ One key, then clicks around</b><span>Press one production key to jump there, then click the buildings next to it one by one.</span></div>
+      <div class="habit" style="--c:#a98bd0"><b>⚔️ Keys handed to army</b><span>The production keys become army groups, and the buildings get clicked.</span></div>
+      <div class="habit" style="--c:#e07a72"><b>💤 Keys left unused</b><span>The keys stay bound but are never pressed again. The camera gets there some other way.</span></div>
+      <div class="habit" style="--c:#6cc08c"><b>➕ Keys plus clicks</b><span>Keep producing from the keys, and click the extra buildings that didn't fit.</span></div>
+      <div class="habit" style="--c:#8b93a3"><b>🔀 No fixed way</b><span>A bit of everything. Common below 1800 MMR, rare among pros.</span></div>
+    </div>
+
+    <h2>Who does what</h2>
+    <p>Some of the best-known progamers in screpdb. Each one sticks to their habit: split a pro's games in two at random and both halves land on the same habit for 23 of 31 Terrans, 15 of 16 Protoss and every Zerg.</p>
+    <div class="roster">
+      <div style="--c:#e0a04a"><b>🖱️ One key, then clicks around</b><span>RoyaL, Sharp, Mind, JyJ, Leta, sSak, Speed, Scan, BishOp, Snow</span></div>
+      <div style="--c:#a98bd0"><b>⚔️ Keys handed to army</b><span>Light, Ample</span></div>
+      <div style="--c:#5aa6cc"><b>⌨️ Production keys, all game</b><span>Best, Stork, Paralyze, and every Zerg: Soulkey, Soma, herO, Queen, Effort, Larva, ggaemo, True, Hm</span></div>
+      <div style="--c:#e07a72"><b>💤 Keys left unused</b><span>Shuttle</span></div>
+      <div style="--c:#8b93a3"><b>🔀 No fixed way</b><span>Shinee</span></div>
+    </div>
+
+    <h2>Does it matter?</h2>
+    <p>The data says no habit wins more games. But everyone plays opponents of their own level, so that hides a lot. Having a habit clearly goes with level:</p>
+    <figure>
+      <svg viewBox="0 0 720 350" role="img" aria-label="Share of long Terran games by ladder level: key then click around rises from 14% to 47%, no fixed way falls from 43% to 10%">
+<line x1="40" x2="710" y1="270.0" y2="270.0" stroke="#262a35"/>
+<text class="quiet" x="32" y="274.0" text-anchor="end" font-size="12">0%</text>
+<line x1="40" x2="710" y1="190.0" y2="190.0" stroke="#262a35"/>
+<text class="quiet" x="32" y="194.0" text-anchor="end" font-size="12">20%</text>
+<line x1="40" x2="710" y1="110.0" y2="110.0" stroke="#262a35"/>
+<text class="quiet" x="32" y="114.0" text-anchor="end" font-size="12">40%</text>
+<line x1="40" x2="710" y1="30.0" y2="30.0" stroke="#262a35"/>
+<text class="quiet" x="32" y="34.0" text-anchor="end" font-size="12">60%</text>
+<rect x="55.2" y="214.0" width="30.6" height="56.0" rx="2" fill="#e0a04a"/>
+<text x="70.5" y="208.0" text-anchor="middle" font-size="12">14</text>
+<rect x="89.9" y="98.0" width="30.6" height="172.0" rx="2" fill="#8b93a3"/>
+<text x="105.2" y="92.0" text-anchor="middle" font-size="12">43</text>
+<text class="quiet" x="87.9" y="290" text-anchor="middle" font-size="13">Under 1000</text>
+<rect x="150.9" y="202.0" width="30.6" height="68.0" rx="2" fill="#e0a04a"/>
+<text x="166.3" y="196.0" text-anchor="middle" font-size="12">17</text>
+<rect x="185.6" y="114.0" width="30.6" height="156.0" rx="2" fill="#8b93a3"/>
+<text x="200.9" y="108.0" text-anchor="middle" font-size="12">39</text>
+<text class="quiet" x="183.6" y="290" text-anchor="middle" font-size="13">1000s</text>
+<rect x="246.7" y="170.0" width="30.6" height="100.0" rx="2" fill="#e0a04a"/>
+<text x="262.0" y="164.0" text-anchor="middle" font-size="12">25</text>
+<rect x="281.3" y="126.0" width="30.6" height="144.0" rx="2" fill="#8b93a3"/>
+<text x="296.6" y="120.0" text-anchor="middle" font-size="12">36</text>
+<text class="quiet" x="279.3" y="290" text-anchor="middle" font-size="13">1400s</text>
+<rect x="342.4" y="138.0" width="30.6" height="132.0" rx="2" fill="#e0a04a"/>
+<text x="357.7" y="132.0" text-anchor="middle" font-size="12">33</text>
+<rect x="377.0" y="194.0" width="30.6" height="76.0" rx="2" fill="#8b93a3"/>
+<text x="392.3" y="188.0" text-anchor="middle" font-size="12">19</text>
+<text class="quiet" x="375.0" y="290" text-anchor="middle" font-size="13">1800s</text>
+<rect x="438.1" y="122.0" width="30.6" height="148.0" rx="2" fill="#e0a04a"/>
+<text x="453.4" y="116.0" text-anchor="middle" font-size="12">37</text>
+<rect x="472.7" y="198.0" width="30.6" height="72.0" rx="2" fill="#8b93a3"/>
+<text x="488.0" y="192.0" text-anchor="middle" font-size="12">18</text>
+<text class="quiet" x="470.7" y="290" text-anchor="middle" font-size="13">2100s</text>
+<rect x="533.8" y="58.0" width="30.6" height="212.0" rx="2" fill="#e0a04a"/>
+<text x="549.1" y="52.0" text-anchor="middle" font-size="12">53</text>
+<rect x="568.4" y="178.0" width="30.6" height="92.0" rx="2" fill="#8b93a3"/>
+<text x="583.7" y="172.0" text-anchor="middle" font-size="12">23</text>
+<text class="quiet" x="566.4" y="290" text-anchor="middle" font-size="13">2400+</text>
+<rect x="629.5" y="82.0" width="30.6" height="188.0" rx="2" fill="#e0a04a"/>
+<text x="644.8" y="76.0" text-anchor="middle" font-size="12">47</text>
+<rect x="664.1" y="230.0" width="30.6" height="40.0" rx="2" fill="#8b93a3"/>
+<text x="679.5" y="224.0" text-anchor="middle" font-size="12">10</text>
+<text class="quiet" x="662.1" y="290" text-anchor="middle" font-size="13">Pro</text>
+<text class="quiet" x="375" y="310" text-anchor="middle" font-size="13">ladder MMR</text>
+<rect x="40" y="326" width="12" height="12" rx="2" fill="#e0a04a"/><text x="58" y="336" font-size="13">One key, then clicks around</text>
+<rect x="290" y="326" width="12" height="12" rx="2" fill="#8b93a3"/><text x="308" y="336" font-size="13">No fixed way</text>
+</svg>
+      <figcaption>Share of Terran games of 14 minutes or more.</figcaption>
+    </figure>
+    <p>A few things to take from it:</p>
+    <ul>
+      <li><b>Put production on keys.</b> Below 1800 MMR, about a third of long Terran games have no production key at 12:00.</li>
+      <li><b>Keeping them late is fine.</b> At the same number of buildings, games still made from keys produced 9 to 21% more units per building.</li>
+      <li><b>Don't leave keys unused.</b> Virtually none of the top progamers keeps production keys bound and never presses them. Press one to jump to your buildings, or give it to the army.</li>
+      <li><b>Pick one habit and stick to it.</b> It barely matters which.</li>
+    </ul>
+
+    <h2>Now in screpdb</h2>
+    <p>Every built-in player's Hotkeys tab now says how they make units after 14:00, right under their hotkey timeline.</p>
+    <figure>
+      <img src="speed.webp" alt="Speed's hotkey timeline in screpdb, with 'One key, then clicks around' under it" loading="lazy">
+      <figcaption>Speed: one key, then clicks around, in 96% of 46 long games.</figcaption>
+    </figure>
+    <p>If your long games have no fixed way, or your production keys sit unused, screpdb's insights will tell you:</p>
+    <figure>
+      <img class="shot-narrow" src="insight.webp" alt="screpdb insight card: Put your production keys back to work" loading="lazy">
+    </figure>
+
+    <h2>Out now in screpdb v2.6.0</h2>
+    <p>Free, open source, and it runs on your own computer. Insights are still in beta, so I need your help: if one gets you wrong, tell me.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="../../#install">Install screpdb</a>
+      <a class="btn btn-ghost" href="https://github.com/marianogappa/screpdb">See the code</a>
+    </div>
+  </main>
+</body>
+</html>

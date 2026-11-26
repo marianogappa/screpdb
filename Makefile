@@ -90,6 +90,8 @@ pages:
 	rm -rf $(PAGES_DIST)
 	mkdir -p $(PAGES_DIST)
 	cp -r site/. $(PAGES_DIST)/
+	# Drafts are merged ahead of the release they describe and only go live once moved to site/articles.
+	rm -rf $(PAGES_DIST)/drafts
 
 clean-windows-syso:
 	rm -f resource_windows_amd64.syso cmd/windows-dashboard/resource_windows_amd64.syso
