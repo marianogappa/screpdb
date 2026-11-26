@@ -9,6 +9,8 @@ import { countryCodeToFlag, countryCodeToName } from './lib/countries';
 import GlobalReplayFilterModal from './components/GlobalReplayFilterModal';
 import FilterOmnibar from './components/FilterOmnibar';
 import EngineProgressNote from './components/EngineProgressNote';
+import FeedbackLink from './components/FeedbackDialog';
+import { releaseNotesUrl } from './lib/releaseNotes';
 import SkillTab, { PlayersSkillTab, LEFT_EARLY_MARK, SkillCard, SkillTierChip, TIER_KEYS, tierLabel } from './components/SkillTab';
 import { cardRaces, skillCardFileName } from './lib/skillCard';
 import { downloadSvgAsPng } from './lib/svgPng';
@@ -2544,7 +2546,7 @@ const PLAYERS_PER_LIST_ROW = 4;
 
 // Package-manager installs can't self-update, so we surface the exact upgrade
 // command with a one-click copy button plus a link to the release notes.
-const ManagedUpdateHint = ({ latestVersion, command, releaseUrl, className }) => {
+const ManagedUpdateHint = ({ latestVersion, command, className }) => {
   const t = useT();
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef(null);
@@ -2572,7 +2574,7 @@ const ManagedUpdateHint = ({ latestVersion, command, releaseUrl, className }) =>
         {copied ? t('update.copiedButton') : t('update.copyButton')}
       </button>
       <a
-        href={releaseUrl}
+        href={releaseNotesUrl(latestVersion)}
         target="_blank"
         rel="noopener noreferrer"
         className="managed-update-hint-changelog"
@@ -5931,7 +5933,6 @@ function App() {
                     className="workflow-nav-update-available managed-update-hint--nav"
                     latestVersion={updateLatest}
                     command={updateManagerCommand}
-                    releaseUrl={updateReleaseUrl}
                   />
                 ) : (
                   <a
@@ -7911,7 +7912,9 @@ function App() {
                 </>
               ) : null}
               <span className="workflow-meta-sep" aria-hidden="true"> · </span>
-              <a href="https://github.com/marianogappa/screpdb/issues/new/choose" target="_blank" rel="noopener noreferrer">{t('footer.reportIssue')}</a>
+              <FeedbackLink />
+              <span className="workflow-meta-sep" aria-hidden="true"> · </span>
+              <a href="https://discord.com/users/516408972652183576" target="_blank" rel="noopener noreferrer">{t('footer.discord')}</a>
               {updateAvailable && updateTier === 'quiet' && !quietUpdateDismissed ? (
                 <>
                   <span className="workflow-meta-sep" aria-hidden="true"> · </span>
@@ -7939,7 +7942,6 @@ function App() {
                         className="managed-update-hint--footer"
                         latestVersion={updateLatest}
                         command={updateManagerCommand}
-                        releaseUrl={updateReleaseUrl}
                       />
                     ) : (
                       <a href={updateReleaseUrl} target="_blank" rel="noopener noreferrer" className="footer-update-link" data-tip={updateUnsupportedTip}>

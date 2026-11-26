@@ -313,6 +313,7 @@ func (d *Dashboard) setupRouter() *mux.Router {
 	r.HandleFunc("/api/custom/feature-flags", d.handlerSetFeatureFlag).Methods(http.MethodPut)
 	r.HandleFunc("/api/custom/gaming-session", d.handlerGamingSession).Methods(http.MethodGet)
 	r.HandleFunc("/api/custom/quit", d.handlerQuit).Methods(http.MethodPost)
+	r.HandleFunc("/api/custom/feedback", d.handlerFeedback).Methods(http.MethodPost)
 	apigen.HandlerFromMux(strictHandler, r)
 	r.PathPrefix("/api/").Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

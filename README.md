@@ -304,18 +304,18 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 
 <!-- IO-AUDIT:START -->
 ```
-2026-11-25  OK. Replay dates are sent to the dashboard as RFC3339 instead of Go's time.String(), which browsers could not parse for zones like CET or KST; formatting only, no paths, network calls or allowlist changes.
+2026-11-26  OK. Private feedback: internal/feedbackfacade is the only new network path. Only when the user presses Send in the feedback dialog, it makes one HTTPS POST of a JSON document (the typed message, an optional contact, the UI language, the app version, GOOS/GOARCH, at most four PNG or JPEG screenshots and at most three .rep replays the user picked in the browser, 9 MB in total, with replay names reduced to a safe base name) to https://screpdb-feedback.screpdb.workers.dev/ (exact URL, no redirects, 60 second timeout, 4 KB reply cap, no credentials or cookies); that Cloudflare Worker (feedback-worker/) relays it to a private Discord channel. The new POST /api/custom/feedback route only accepts application/json, so a cross-site form cannot trigger it. The footer, landing page and README also link to the author's Discord profile. No files are read or written and no allowlists change. The embedded ShieldBattery pro list is refreshed from the TL.net thread (Speed's account is now named SpeedTube); data only.
 ```
 
 <details>
 <summary>Older I/O safety audit entries (click to expand, five most recent)</summary>
 
 ```
+2026-11-25  OK. Replay dates are sent to the dashboard as RFC3339 instead of Go's time.String(), which browsers could not parse for zones like CET or KST; formatting only, no paths, network calls or allowlist changes.
 2026-11-25  OK. Engine digests (EngineVersion 14) record every unit type a hotkey assign held; older digests are redone only when their game is opened, through the existing engine pass and digest cache. No new paths, network calls or allowlist changes.
 2026-11-25  OK. The landing page gains a News section rendered from site/news.json (release notes, videos, articles), with YouTube thumbnails from i.ytimg.com; plus release-please changelog sections, a player-facing writing guide and a dev-only scripts/news drafter; site and docs only, no app code, paths, network calls or allowlist changes.
 2026-11-23  OK. The landing page sends Google Analytics hits to its own screpdb property (G-FWF642V3PP) instead of the blog's; site HTML only, no app code, paths, network calls or allowlist changes.
 2026-11-22  OK. A You button between Games and Players opens the profile the user played their most recent game on (games only observed do not count); it reads the replays already loaded in memory and rides on the existing gaming session response, so there are no new paths, network calls or writes.
-2026-11-22  OK. Merge review fixes: the games list name search matches player names instead of keys, so ShieldBattery players (keyed sb:<id>) are found by name and their ids no longer match; the I/O audit is reordered newest first and the ShieldBattery entry restates its own network checks; no new paths, network calls or allowlist changes.
 ```
 
 </details>
@@ -326,7 +326,7 @@ The LLM that authors each change records a dated, one-line verdict on whether it
 ## License, Contributing & Acknowledgements
 
 - This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-- Due to security safeguards I can no longer accept PRs or other code contributions, but please feel free to file an [Issue](https://github.com/marianogappa/screpdb/issues), and you're more than welcome to contribute non-code improvements.
+- Due to security safeguards I can no longer accept PRs or other code contributions, but please feel free to file an [Issue](https://github.com/marianogappa/screpdb/issues) or add me on Discord as [jareth.the.goblin.king](https://discord.com/users/516408972652183576) for feedback and screenshots, and you're more than welcome to contribute non-code improvements.
 - Built using the [github.com/icza/screp](https://github.com/icza/screp) library for StarCraft replay parsing. This project would have been impossible without [András Belicza](https://github.com/icza)'s work.
 - Engine-powered features run on [openbw-go](https://github.com/marianogappa/openbw-go), a Go port of [OpenBW](https://github.com/OpenBW/openbw), the open-source StarCraft: Brood War engine. These features would have been impossible without Vegard Mella's work.
 - Country flags on platforms that lack them (Windows) are drawn with the [Twemoji Country Flags](https://github.com/talkjs/country-flag-emoji-polyfill) font, whose artwork comes from [Twemoji](https://github.com/jdecked/twemoji) and is used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

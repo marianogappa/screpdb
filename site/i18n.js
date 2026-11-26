@@ -81,7 +81,7 @@ window.SCREPDB_KO = {
   "dep.openbw": "OpenBW를 Go로 옮긴 것이니, 진짜 공은 <a href=\"https://github.com/tscmoo\">tscmoo</a>에게 있습니다. 게임을 다시 돌려 실제로 일어난 일을 알려줍니다.",
   "dep.scmap": "맵 분석: 기지 영역, 앞마당, 미네랄 멀티, 입구, 시계 방향 기지 이름, 그리고 맵 이미지까지.",
   "dep.scfp": "이름이 아니라 플레이 방식으로 플레이어를 알아봅니다. <a href=\"https://marianogappa.github.io/software/player-fingerprinting-in-the-age-of-ai-bots/\">작동 방식 (영문)</a>.",
-  "note.p3": "잘못된 부분이 있거나 그냥 인사하고 싶다면 <a href=\"https://github.com/marianogappa/screpdb/issues\">이슈를 남기거나</a> <a href=\"https://tl.net/forum/brood-war/645718-screpdb-new-starcraft-reporting-tool\">TL.net의 screpdb 스레드</a>에 글을 남겨 주세요.",
+  "note.p3": "잘못된 부분이 있거나 그냥 인사하고 싶다면 <a href=\"https://github.com/marianogappa/screpdb/issues\">이슈를 남기거나</a> <a href=\"https://tl.net/forum/brood-war/645718-screpdb-new-starcraft-reporting-tool\">TL.net의 screpdb 스레드</a>에 글을 남기거나, 디스코드에서 <a href=\"https://discord.com/users/516408972652183576\">jareth.the.goblin.king</a>을 친구 추가하고 메시지나 스크린샷을 보내 주세요.",
   "install.win.why": "Windows가 왜 경고하는지 궁금하다면 <a href=\"https://www.youtube.com/watch?v=p5fUvRRv-Rc\">짧은 영상으로 설명해 두었습니다</a>.",
   "author.factsTitle": "저에 대해 몇 가지",
   "author.fact1": "예전에 iCCup에서 어뷰징 대응(Counter Abuse) 팀을 이끌었습니다",
