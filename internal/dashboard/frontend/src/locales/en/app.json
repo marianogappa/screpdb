@@ -342,7 +342,7 @@
   "events.becameTerran": "Terran via Mind Control",
   "events.sentence.becameZerg": "{actor} became Zerg via Mind Control",
   "events.becameZerg": "Zerg via Mind Control",
-  "events.sentence.mechTransition": "{actor} transitions to Mech",
+  "events.sentence.mechTransition": "{actor} transitions to mech with {count} Factories",
   "events.mechTransition": "Mech transition",
   "player.youTip": "You",
   "player.analyze": "Analyze player",

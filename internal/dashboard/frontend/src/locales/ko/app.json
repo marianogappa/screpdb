@@ -342,7 +342,7 @@
   "events.becameTerran": "마인드 컨트롤로 테란 전환",
   "events.sentence.becameZerg": "{actor}, 마인드 컨트롤로 저그 전환",
   "events.becameZerg": "마인드 컨트롤로 저그 전환",
-  "events.sentence.mechTransition": "{actor}, 메카닉 전환",
+  "events.sentence.mechTransition": "{actor}, 팩토리 {count}개로 메카닉 전환",
   "events.mechTransition": "메카닉 전환",
   "player.youTip": "본인",
   "player.analyze": "플레이어 분석",

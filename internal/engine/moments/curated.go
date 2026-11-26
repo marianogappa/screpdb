@@ -220,6 +220,7 @@ func Detect(d *engine.Digest, bases []Base, players []Player) []Event {
 	out = append(out, g.attacks(out)...)
 	out = append(out, g.workerKills(out)...)
 	out = append(out, g.supplyBlocks()...)
+	out = append(out, g.mechTransition()...)
 	lastShown := min(g.trusted-1, second(d.LastFrame))
 	kept := out[:0]
 	for _, e := range out {

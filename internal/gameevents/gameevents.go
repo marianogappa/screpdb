@@ -60,7 +60,7 @@ var baseWeight = map[string]float64{
 	"attack":       0.45,
 	"worker_kills": 0.45,
 	"expansion":    0.3,
-	"first_reaver": 0.45, "first_corsair": 0.45, "speedlot": 0.4, "mech_transition": 0.4,
+	"first_reaver": 0.45, "first_corsair": 0.45, "speedlot": 0.4, "mech_transition": 0.6,
 	"takeover":          0.35,
 	"long_supply_block": 0.2,
 	"eraser":            0.9, "elevator": 0.85, "undetected_cloak": 0.8, "nydus_denied": 0.75,
