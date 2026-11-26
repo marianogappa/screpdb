@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.6.0](https://github.com/marianogappa/screpdb/compare/v2.5.0...v2.6.0) (2026-11-26)
+
+
+### New
+
+* Game Events show when a Terran transitions from bio to mech in TvZ ([#552](https://github.com/marianogappa/screpdb/issues/552)) ([0a7beee](https://github.com/marianogappa/screpdb/commit/0a7beee3d2196f2aa137da538572ff2ecca42009))
+* hotkey chart shows every key, fits the screen and names the units on each hotkey ([#546](https://github.com/marianogappa/screpdb/issues/546)) ([b726261](https://github.com/marianogappa/screpdb/commit/b726261709b1dd400297d12b46f535aee3b1eb9f))
+* send private feedback with screenshots and replays from the app ([#550](https://github.com/marianogappa/screpdb/issues/550)) ([d1ec30f](https://github.com/marianogappa/screpdb/commit/d1ec30ff567004e2ae2e4cdfffe9eabd61f20eab))
+
+
+### Fixed
+
+* show game dates in the games list for every timezone ([#549](https://github.com/marianogappa/screpdb/issues/549)) ([f766b3a](https://github.com/marianogappa/screpdb/commit/f766b3ad7e84525d5137615f44aec9e60816a851))
+
 ## [2.5.0](https://github.com/marianogappa/screpdb/compare/v2.4.0...v2.5.0) (2026-11-22)
 
 
